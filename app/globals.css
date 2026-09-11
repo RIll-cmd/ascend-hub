@@ -230,17 +230,28 @@
     0 12px 80px rgba(254, 164, 128, 0.85);
 }
 .cubby-cell:hover .cubby-led-wash {
-  filter: brightness(1.16);
-  transform: scaleY(1.03);
+  filter: brightness(1.18);
+  opacity: 1;
 }
 .cubby-cell:hover .cubby-floor-bounce {
   filter: brightness(1.22);
+  opacity: 1;
 }
-.cubby-cell.led-off .cubby-led-strip {
+.cubby-cell.led-off .cubby-led-strip,
+.cubby-cell.led-off:hover .cubby-led-strip {
   opacity: 0 !important;
 }
-.cubby-cell.led-off .cubby-bg-on {
+.cubby-cell.led-off .cubby-bg-on,
+.cubby-cell.led-off:hover .cubby-bg-on {
   opacity: 0 !important;
+}
+.cubby-cell.led-off .prop-on,
+.cubby-cell.led-off:hover .prop-on {
+  opacity: 0 !important;
+}
+.cubby-cell.led-off .prop-off,
+.cubby-cell.led-off:hover .prop-off {
+  opacity: 1 !important;
 }
 
 .framed-poster{position:relative;width:82%;height:88%;background:#06080c;border:10px solid #14100c;outline:1px solid #3d281a;box-shadow:0 16px 40px rgba(0,0,0,.95),0 0 0 1px rgba(255,255,255,.05);display:flex;flex-direction:column;overflow:hidden;z-index:5;border-radius:1px}
@@ -251,12 +262,48 @@
 .framed-poster-bottom{position:relative;z-index:2;background:linear-gradient(180deg,transparent 0%,rgba(6,9,14,.85) 30%,rgba(6,9,14,.96) 100%);padding:14px 12px 6px;margin:0 -16px -20px}
 .framed-poster-desc{font:500 7.5px/1.5 var(--sans);letter-spacing:.9px;color:#f4f1ff;max-width:240px;margin:0 auto;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.95);opacity:.95}
 .framed-poster-logos{display:flex;justify-content:center;gap:14px;font:8px var(--mono);color:#ffe2b7;margin-top:8px;letter-spacing:2.5px;text-shadow:0 1px 4px rgba(0,0,0,.9);opacity:.85}
-.cubby-prop{position:relative;z-index:5;width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;cursor:pointer}
-.cubby-prop img{max-width:86%;max-height:86%;object-fit:contain;filter:drop-shadow(0 12px 22px rgba(0,0,0,.9));transition:opacity .25s ease, transform .2s ease}
-.cubby-prop:hover img{transform:translateY(-2px) scale(1.02)}
-.cubby-prop .prop-on{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0;pointer-events:none}
-.cubby-prop:hover .prop-off{opacity:0}
-.cubby-prop:hover .prop-on{opacity:1}
+.cubby-prop {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), filter 0.22s ease;
+}
+.cubby-prop:hover,
+.cubby-cell:hover .cubby-prop {
+  transform: translateY(-2px) scale(1.02);
+  filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.95));
+}
+.cubby-prop img {
+  grid-area: 1 / 1;
+  max-width: 86%;
+  max-height: 86%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.9));
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  pointer-events: none;
+}
+.cubby-prop .prop-off {
+  opacity: 1;
+}
+.cubby-prop .prop-on {
+  opacity: 0;
+}
+.cubby-prop:hover .prop-off,
+.cubby-cell:hover .prop-off {
+  opacity: 0;
+}
+.cubby-prop:hover .prop-on,
+.cubby-cell:hover .prop-on {
+  opacity: 1;
+}
 .view-switch{display:flex;align-items:center;gap:7px;font:9px var(--mono);padding:6px 12px;background:#241b14;border:1px solid #483321;border-radius:3px;color:#cfaa71;cursor:pointer;transition:all .15s ease}
 .view-switch:hover{background:#38281a;color:#ffe2b7;border-color:#75502c}
 .view-switch.active{background:#fea48022;border-color:#fea480;color:#fea480;box-shadow:0 0 10px rgba(254,164,128,.3)}
