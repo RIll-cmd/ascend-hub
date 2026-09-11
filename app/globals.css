@@ -344,150 +344,163 @@
 .slot-dialog-btn.danger:hover{background:#4a1515;border-color:#8c2626;color:#ff9999}
 
 /* ==========================================================================
-   RETRO MEDIA CENTER COMPONENT STYLES (TV, DVD PLAYER & STUDIO SPEAKERS)
+   1:1 AUTHENTIC RETRO MEDIA CENTER COMPONENT SUITE (TV, DVD DECK, SPEAKERS)
    ========================================================================== */
-.retro-media-center-root {
+
+.retro-media-center-1to1-root {
+  position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 16px;
-  position: relative;
   user-select: none;
   width: 100%;
-  max-width: 680px;
-  margin: 30px auto 40px;
-  padding: 0 12px;
-  box-sizing: border-box;
+  transform: scale(var(--media-scale, 1));
+  transform-origin: bottom center;
 }
 
-.center-media-stack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* 1. Full Unified Media Rig Composition (1:1 Reference Layout) */
+.media-rig-composite {
   position: relative;
-  flex: 1;
-  max-width: 440px;
-  width: 100%;
-}
-
-/* 1. Rabbit-Ear Antenna */
-.retro-antenna-wrap {
-  position: absolute;
-  top: -46px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 240px;
-  height: 60px;
-  pointer-events: none;
-  z-index: 1;
-}
-.retro-antenna-svg {
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-/* 2. Retro CRT Television */
-.retro-tv-chassis {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 4 / 3.05;
-  background: linear-gradient(135deg, #343740 0%, #1e2026 45%, #101216 100%);
-  border: 3px solid #5a5f6e;
-  border-radius: 12px 12px 6px 6px;
-  box-shadow: inset 0 2px 3px rgba(255,255,255,0.35), 0 18px 40px rgba(0,0,0,0.95);
-  padding: 9px 12px 11px;
   display: flex;
-  flex-direction: column;
-  z-index: 3;
-  box-sizing: border-box;
-}
-.retro-tv-body {
-  display: flex;
-  gap: 12px;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-}
-.retro-crt-housing {
-  flex: 1;
-  height: 100%;
-  min-width: 0;
-  display: flex;
-}
-.retro-crt-bezel {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(145deg, #0e1014, #242730);
-  border-radius: 14% / 11%;
-  padding: 8px;
-  box-shadow: inset 2px 2px 6px #000, 0 1px 1px rgba(255,255,255,0.25);
-  border: 2px solid #2d303a;
-  box-sizing: border-box;
-}
-.retro-crt-screen {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: 10% / 9%;
-  overflow: hidden;
-  background: #07090e;
-  box-shadow: inset 0 0 28px rgba(0,0,0,0.95), 0 0 14px rgba(255,45,120,0.25);
-}
-
-/* "PON!" Screen Content */
-.pon-screen-wrapper {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  background: radial-gradient(circle at center, #261226 0%, #0c0812 100%);
-  overflow: hidden;
-}
-.pon-bg-lines {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(0deg, rgba(255, 45, 120, 0.09) 0px, rgba(255, 45, 120, 0.09) 2px, transparent 2px, transparent 6px);
-  pointer-events: none;
-}
-.pon-graphic-svg {
-  width: 94%;
-  height: 94%;
-  filter: drop-shadow(0 0 12px rgba(255,45,120,0.6));
-  animation: crt-flicker 0.15s infinite alternate;
-}
-.pon-text-shadow {
-  fill: #0d1117;
-  stroke: #000;
-  stroke-width: 14;
+  width: 100%;
+  max-width: 735px;
+  margin: 0 auto;
 }
 
-/* Screen FX: Scanlines, Phosphor, Glare */
+.rig-left-speaker {
+  width: 136px;
+  flex-shrink: 0;
+  margin-right: -42px;
+  z-index: 2;
+  position: relative;
+}
+
+.rig-center-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 3;
+  width: 532px;
+  max-width: 100%;
+}
+
+.rig-right-speaker {
+  width: 122px;
+  flex-shrink: 0;
+  margin-left: -36px;
+  z-index: 2;
+  position: relative;
+}
+
+/* Modular Layout Wrappers */
+.modular-layout-container {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+}
+
+.speakers-pair {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 40px;
+}
+
+.tv-deck-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 532px;
+  max-width: 100%;
+}
+
+/* 2. AUTHENTIC 1:1 CRT TELEVISION */
+.retro-tv-1to1 {
+  position: relative;
+  width: 318px;
+  max-width: 100%;
+  aspect-ratio: 318 / 276;
+  margin-bottom: -10px; /* Sits naturally on the DVD player deck */
+  z-index: 4;
+}
+
+.tv-chassis-frame-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.85));
+}
+
+/* CRT Screen Aperture Window (Exact 1:1 Cutout Alignment) */
+.tv-crt-display-window {
+  position: absolute;
+  left: 10.69%;
+  top: 31.16%;
+  width: 68.55%;
+  height: 59.42%;
+  border-radius: 12% / 10%;
+  overflow: hidden;
+  background: #05080c;
+  z-index: 1;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.95);
+}
+
+.crt-screen-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pon-screen-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pon-authentic-img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+}
+
+/* CRT Optical Effects */
 .crt-scanlines {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.45) 0px, rgba(0,0,0,0.45) 1.5px, transparent 1.5px, transparent 3px);
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.45) 0px, rgba(0, 0, 0, 0.45) 1.5px, transparent 1.5px, transparent 3px);
   opacity: 0.7;
   z-index: 5;
+  animation: crt-flicker 0.12s infinite alternate;
 }
+
 .crt-phosphor-bloom {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at center, rgba(255,50,130,0.12) 0%, transparent 75%);
+  background: radial-gradient(circle at center, rgba(255, 50, 130, 0.15) 0%, transparent 75%);
   mix-blend-mode: screen;
   z-index: 6;
 }
+
 .crt-glass-reflection {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(ellipse at 50% 15%, rgba(255,255,255,0.28) 0%, transparent 60%), linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 35%);
+  background: radial-gradient(ellipse at 50% 20%, rgba(255, 255, 255, 0.25) 0%, transparent 60%), linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, transparent 35%);
   z-index: 7;
   border-radius: inherit;
 }
+
 .crt-static-noise {
   position: absolute;
   inset: 0;
@@ -496,562 +509,335 @@
   animation: static-noise 0.2s steps(4) infinite;
   opacity: 0.85;
 }
+
+.crt-video-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
 .crt-video-player {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+
 .crt-powered-off {
   position: absolute;
   inset: 0;
-  background: #0a0b10;
+  background: #08090d;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .crt-off-glare {
   width: 80%;
   height: 80%;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.06) 0%, transparent 70%);
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
 }
 
-/* TV Right Control Panel */
-.retro-tv-controls {
-  width: 60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 2px;
-}
-.tuner-dial-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-.dial-label {
-  font: 700 6px var(--mono);
-  letter-spacing: 1px;
-  color: #8c909e;
-}
-.rotary-dial {
-  width: 34px;
-  height: 34px;
+/* TV Interactive Overlays */
+.tv-knob-target {
+  position: absolute;
   border-radius: 50%;
-  background: repeating-conic-gradient(#1a1c22 0deg 9deg, #484c5a 10deg 15deg);
-  border: 1px solid #5a5f6e;
-  padding: 4px;
-  box-shadow: 0 3px 6px #000, inset 0 1px rgba(255,255,255,0.4);
   cursor: pointer;
+  z-index: 3;
+  background: transparent;
+  border: none;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.rotary-dial.dial-small {
-  width: 26px;
-  height: 26px;
-  padding: 3px;
-}
-.dial-face {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #424652 0%, #1c1e24 100%);
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.dial-notch {
-  position: absolute;
-  width: 2px;
-  height: 100%;
-  background: rgba(255,255,255,0.15);
-}
-.dial-indicator {
-  position: absolute;
-  top: 2px;
-  width: 2px;
-  height: 7px;
-  background: #ff5292;
-  border-radius: 1px;
-  box-shadow: 0 0 4px #ff5292;
+
+.tv-knob-target.knob-tuner {
+  right: 9.8%;
+  top: 36.8%;
+  width: 28px;
+  height: 28px;
 }
 
-/* Speaker Slats */
-.tv-speaker-slats {
-  width: 38px;
-  display: flex;
-  flex-direction: column;
-  gap: 2.5px;
-  margin: 3px 0;
-}
-.tv-speaker-slats span {
-  height: 2px;
-  background: #121418;
-  border-bottom: 1px solid #3d414e;
-  border-radius: 1px;
-}
-
-/* RGB Color Sliders */
-.tv-sliders-panel {
-  display: flex;
-  gap: 5px;
-  height: 38px;
-  align-items: center;
-  padding: 2px 4px;
-  background: #111318;
-  border: 1px solid #2d303a;
-  border-radius: 2px;
-  box-shadow: inset 0 1px 3px #000;
-}
-.slider-track {
-  position: relative;
-  width: 4px;
-  height: 100%;
-  background: #1a1c22;
-  border-radius: 2px;
-}
-.slider-track.red { border-left: 1px solid #ff4d6d80; }
-.slider-track.green { border-left: 1px solid #5eff5e80; }
-.slider-track.blue { border-left: 1px solid #00f0ff80; }
-.slider-thumb {
-  position: absolute;
-  left: -2px;
-  width: 8px;
-  height: 5px;
-  background: #d0d4de;
-  border: 1px solid #484c56;
-  border-radius: 1px;
-  cursor: pointer;
-  box-shadow: 0 1px 2px #000;
-  transition: bottom 0.15s ease;
-}
-
-.tv-power-indicator {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font: 700 5.5px var(--mono);
-  letter-spacing: 0.8px;
-  color: #787c8a;
-  cursor: pointer;
-  margin-top: auto;
-}
-.power-led-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #333;
-  transition: all 0.2s;
-}
-.tv-power-indicator.active .power-led-dot {
-  background: #5eff5e;
-  box-shadow: 0 0 6px #5eff5e;
-}
-
-/* 3. DVD / VCR Player Deck */
-.dvd-player-chassis {
-  position: relative;
-  width: 100%;
-  height: 64px;
-  background: linear-gradient(180deg, #2c2f3a 0%, #1e2028 35%, #12141a 100%);
-  border: 2px solid #4b505f;
-  border-top: 1px solid #63687a;
-  border-radius: 3px;
-  box-shadow: inset 0 1px 2px rgba(255,255,255,0.25), 0 14px 32px rgba(0,0,0,0.95);
-  margin-top: 4px;
-  z-index: 4;
-  box-sizing: border-box;
-}
-.dvd-front-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 100%;
-  padding: 0 12px;
-  gap: 10px;
-}
-
-/* Left Mini Subwoofer Ports */
-.dvd-left-ports {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.mini-sub-port {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #0d0f14;
-  border: 2px solid #4a4f5e;
-  padding: 3px;
-  box-shadow: inset 0 2px 5px #000, 0 1px 1px rgba(255,255,255,0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-.port-rim {
-  position: absolute;
-  inset: 2px;
-  border-radius: 50%;
-  border: 1px solid #6b7182;
-}
-.port-cone {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, #1b1d24 0%, #0a0b0e 100%);
-  box-shadow: inset 0 0 4px #000;
-}
-.port-cap {
-  position: absolute;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #2a2d36;
-  border: 1px solid #3c404c;
-}
-
-/* Gold Cartridge */
-.gold-cartridge-prop {
-  position: absolute;
-  top: -15px;
-  left: 20px;
-  width: 48px;
-  height: 16px;
-  background: linear-gradient(180deg, #c79a42 0%, #876520 100%);
-  border: 1px solid #edd082;
-  border-radius: 2px 2px 0 0;
-  box-shadow: 0 3px 6px rgba(0,0,0,0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 5;
-}
-.cartridge-label {
-  font: 700 6px var(--mono);
-  color: #1a1506;
-  letter-spacing: 0.5px;
-}
-
-/* Power Button */
-.dvd-power-section {
-  display: flex;
-  align-items: center;
-}
-.dvd-power-btn {
+.tv-knob-target.knob-vhold {
+  right: 10.8%;
+  top: 51.8%;
   width: 22px;
   height: 22px;
-  border-radius: 3px;
-  background: #16181f;
-  border: 1px solid #3b3f4d;
-  color: #4a505e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: inset 0 1px 2px #000, 0 1px rgba(255,255,255,0.15);
-  transition: all 0.2s;
-}
-.dvd-power-btn.active {
-  color: #5eff5e;
-  border-color: #5eff5e80;
-  box-shadow: 0 0 10px rgba(94,255,94,0.4);
 }
 
-/* Cassette/Disc Slot */
-.dvd-slot-section {
-  flex: 1;
-  max-width: 140px;
-}
-.tape-slot-housing {
-  position: relative;
-  background: #0a0c10;
-  border: 1.5px solid #383c48;
-  border-radius: 2px;
-  padding: 3px 6px;
-  box-shadow: inset 0 2px 6px #000;
-}
-.tape-window-glass {
-  position: relative;
+.knob-indicator-needle {
   width: 100%;
-  height: 22px;
-  background: #06070a;
-  border: 1px solid #282b34;
-  border-radius: 1px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding: 0 12px;
+  height: 100%;
+  border-radius: 50%;
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+.knob-indicator-needle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2.5px;
+  height: 7px;
+  background: #ffffff;
+  border-radius: 1px;
+  box-shadow: 0 0 4px #00f0ff;
+}
+
+.knob-indicator-needle.small::after {
+  height: 5px;
+  background: #fea480;
+  box-shadow: 0 0 4px #fea480;
+}
+
+.tv-power-led-dot {
+  position: absolute;
+  right: 12.8%;
+  bottom: 11.2%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #1c261c;
+  cursor: pointer;
+  z-index: 3;
+  transition: all 0.2s ease;
+}
+
+.tv-power-led-dot.active {
+  background: #5eff5e;
+  box-shadow: 0 0 6px #5eff5e, 0 0 14px #5eff5e;
+}
+
+/* 3. AUTHENTIC 1:1 DVD / VCR PLAYER DECK */
+.dvd-player-1to1 {
+  position: relative;
+  width: 532px;
+  max-width: 100%;
+  aspect-ratio: 532 / 127;
+  z-index: 3;
+}
+
+.dvd-chassis-frame-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 16px 36px rgba(0, 0, 0, 0.95));
+}
+
+/* Motorized Tape Chamber Cavity */
+.dvd-tape-cavity-window {
+  position: absolute;
+  left: 38.72%;
+  top: 22.05%;
+  width: 31.95%;
+  height: 28.35%;
+  z-index: 1;
+  overflow: hidden;
+  background: #120406;
+  border-radius: 2px;
+}
+
 .tape-backlight {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(255, 35, 60, 0.9) 0%, rgba(180, 15, 30, 0.4) 65%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s;
+  background: radial-gradient(ellipse at center, rgba(255, 35, 75, 0.95) 0%, rgba(160, 15, 40, 0.5) 60%, rgba(20, 4, 8, 0.8) 100%);
+  opacity: 0.25;
+  transition: opacity 0.3s ease;
 }
+
 .tape-backlight.active {
   opacity: 1;
+  animation: tape-pulse 2.2s ease-in-out infinite alternate;
 }
-.tape-reel {
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  border: 2px solid #525764;
-  position: relative;
+
+.tape-reels-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
   z-index: 2;
-  background: #14161c;
 }
+
+.tape-reel {
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #2b0d14 0%, #150508 100%);
+  border: 2px solid #ff2350;
+  box-shadow: 0 0 6px rgba(255, 35, 80, 0.8);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .tape-reel.spinning {
   animation: tape-spin 2s linear infinite;
 }
+
 .reel-hub {
-  position: absolute;
-  inset: 3px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #ff3b5c;
-  box-shadow: 0 0 4px #ff3b5c;
+  background: #ff527b;
+  box-shadow: 0 0 4px #fff;
 }
 
-/* Transport Keys & OXO Brand */
-.dvd-controls-section {
+.reel-teeth {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.6);
+}
+
+/* DVD Interactive Buttons */
+.dvd-btn-target {
+  position: absolute;
+  z-index: 3;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
 }
-.transport-btn {
+
+.dvd-btn-target.btn-power {
+  left: 31.2%;
+  top: 25.4%;
   width: 22px;
   height: 22px;
-  border-radius: 2px;
-  background: #1a1d24;
-  border: 1px solid #3c4150;
-  color: #cbd0dc;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 1px 2px #000;
-  transition: all 0.15s;
-}
-.transport-btn:hover {
-  background: #282d38;
-  color: #fff;
-  border-color: #5a6278;
-}
-.transport-btn.active {
-  color: #ff5292;
-  border-color: #ff5292;
-  box-shadow: 0 0 8px rgba(255,82,146,0.4);
-}
-.oxo-brand-logo {
-  font: 800 11px var(--mono);
-  letter-spacing: 1.8px;
-  display: flex;
-  gap: 1px;
-}
-.oxo-o1 { color: #00f0ff; text-shadow: 0 0 6px #00f0ff; }
-.oxo-x  { color: #ff5292; text-shadow: 0 0 6px #ff5292; }
-.oxo-o2 { color: #5eff5e; text-shadow: 0 0 6px #5eff5e; }
-
-/* VU Meter */
-.dvd-vu-meter-section {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.vu-meter-display {
-  display: flex;
-  gap: 2.5px;
-  padding: 3px 5px;
-  background: #080a0e;
-  border: 1px solid #282c36;
-  border-radius: 2px;
-  box-shadow: inset 0 1px 3px #000;
-}
-.vu-meter-column {
-  display: flex;
-  flex-direction: column-reverse;
-  gap: 2px;
-}
-.vu-segment {
-  width: 4px;
-  height: 2.5px;
-  border-radius: 0.5px;
-  opacity: 0.18;
-  transition: opacity 0.1s;
-}
-.vu-segment.green { background: #5eff5e; box-shadow: 0 0 4px #5eff5e; }
-.vu-segment.yellow { background: #ffe24d; box-shadow: 0 0 4px #ffe24d; }
-.vu-segment.red { background: #ff3b5c; box-shadow: 0 0 4px #ff3b5c; }
-.vu-segment.bounce-0 { animation: vu-pulse 0.3s infinite alternate; }
-.vu-segment.bounce-1 { animation: vu-pulse 0.4s infinite alternate; }
-.vu-segment.bounce-2 { animation: vu-pulse 0.25s infinite alternate; }
-.vu-segment.bounce-3 { animation: vu-pulse 0.35s infinite alternate; }
-
-.dvd-eject-bars {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.dvd-eject-bars span {
-  width: 8px;
-  height: 2px;
-  background: #3a3f4e;
 }
 
-/* "Press to Play" Neon Floor Glow */
-.press-to-play-glow {
-  position: absolute;
-  bottom: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  font: 700 11px 'Barlow Condensed', sans-serif;
-  letter-spacing: 1.5px;
-  color: #ff5292;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-  animation: neon-pulse 3s infinite alternate;
-}
-.press-to-play-glow:hover {
-  color: #fff;
-  transform: translateX(-50%) scale(1.06);
-}
-
-/* 4. Studio Bookshelf Speakers */
-.studio-speaker-cabinet {
-  width: 108px;
-  height: 235px;
-  background: linear-gradient(150deg, #2e3038 0%, #1c1d24 45%, #101116 100%);
-  border: 2px solid #484c5a;
-  border-radius: 4px;
-  padding: 14px 10px 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: inset 0 2px 2px rgba(255,255,255,0.22), 0 16px 36px rgba(0,0,0,0.95);
-  position: relative;
-  z-index: 2;
-  box-sizing: border-box;
-  flex-shrink: 0;
-}
-.speaker-tweeter-housing {
-  width: 54px;
-  height: 54px;
+.power-halo {
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #14151a;
-  border: 1.5px solid #3c404e;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 2px 4px #000, 0 1px 1px rgba(255,255,255,0.15);
+  border: 1.5px solid #5eff5e;
+  opacity: 0.2;
+  transition: all 0.2s ease;
 }
-.tweeter-bracket {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, #2e313c 0%, #16171d 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+.dvd-btn-target.btn-power.active .power-halo {
+  opacity: 1;
+  box-shadow: 0 0 8px #5eff5e, 0 0 16px rgba(94, 255, 94, 0.6);
 }
-.tweeter-dome {
+
+.dvd-btn-target.btn-play-pause {
+  left: 63.2%;
+  top: 25.4%;
+  width: 22px;
+  height: 22px;
+}
+
+.transport-halo {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #555a6a 0%, #1a1c22 100%);
-  box-shadow: 0 1px 3px #000;
-}
-.tweeter-lens {
-  position: absolute;
-  width: 22px;
-  height: 2px;
-  background: #3c404e;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
 }
 
-/* Large Woofer Cone with Thumping Animation */
-.speaker-woofer-housing {
-  width: 82px;
-  height: 82px;
-  border-radius: 50%;
-  background: #0d0e12;
-  border: 2px solid #444856;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 4px 10px #000, 0 1px 2px rgba(255,255,255,0.2);
+.dvd-btn-target.btn-play-pause:hover .transport-halo {
+  border-color: #00f0ff;
+  box-shadow: 0 0 6px #00f0ff;
 }
-.woofer-surround {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, #242730 0%, #101115 100%);
-  padding: 4px;
+
+/* 8-Channel Animated LED VU Spectrum Meter Overlay */
+.dvd-vu-meter-overlay {
+  position: absolute;
+  left: 77.2%;
+  top: 26%;
+  width: 8.5%;
+  height: 19%;
+  z-index: 3;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 2px;
+  align-items: flex-end;
+  padding: 1px;
 }
-.woofer-cone {
+
+.vu-bar-column {
+  flex: 1;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 1.5px;
+}
+
+.vu-dot {
   width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, #323540 0%, #15161b 80%, #0e0f13 100%);
-  box-shadow: inset 0 0 8px #000;
+  height: 2.2px;
+  border-radius: 0.5px;
+  opacity: 0.15;
+  transition: opacity 0.08s ease;
+}
+
+.vu-dot.green { background: #5eff5e; }
+.vu-dot.yellow { background: #ffe24d; }
+.vu-dot.red { background: #ff3b5c; }
+
+.vu-dot.bounce-0 { animation: vu-pulse 0.28s infinite alternate; }
+.vu-dot.bounce-1 { animation: vu-pulse 0.38s infinite alternate; }
+.vu-dot.bounce-2 { animation: vu-pulse 0.22s infinite alternate; }
+.vu-dot.bounce-3 { animation: vu-pulse 0.32s infinite alternate; }
+
+/* "Press to Play" Floor Neon Glow & Interactive Hit Target */
+.press-to-play-floor-glow {
+  position: absolute;
+  left: 36%;
+  top: 75%;
+  width: 28%;
+  height: 22%;
+  z-index: 3;
+  cursor: pointer;
+  border-radius: 4px;
+  background: radial-gradient(ellipse at center, rgba(255, 42, 112, 0) 0%, transparent 70%);
+  transition: all 0.25s ease;
+}
+
+.press-to-play-floor-glow:hover,
+.press-to-play-floor-glow.active {
+  background: radial-gradient(ellipse at center, rgba(255, 42, 112, 0.48) 0%, rgba(255, 42, 112, 0.16) 50%, transparent 80%);
+  box-shadow: 0 0 16px rgba(255, 42, 112, 0.55);
+}
+
+/* 4. AUTHENTIC 1:1 STUDIO BOOKSHELF SPEAKERS */
+.studio-speaker-1to1 {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  user-select: none;
   transition: transform 0.1s ease-out;
 }
-.woofer-cone.pulsing {
-  animation: woofer-thump 0.75s ease-in-out infinite;
-}
-.woofer-rib-rings {
-  position: absolute;
-  inset: 6px;
-  border-radius: 50%;
-  border: 1px dashed rgba(255,255,255,0.08);
-}
-.woofer-dust-cap {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #464a58 0%, #181920 100%);
-  border: 1px solid #2f323c;
-  box-shadow: 0 2px 4px #000;
-}
-.speaker-bass-vent {
-  width: 24px;
-  height: 10px;
-  border-radius: 5px;
-  background: #090a0d;
-  border: 1.5px solid #333642;
-  box-shadow: inset 0 2px 4px #000;
+
+.studio-speaker-1to1.speaker-left {
+  width: 136px;
+  aspect-ratio: 136 / 184;
 }
 
-/* Left Speaker Coiled Snake Cable */
-.speaker-coiled-cable {
-  position: absolute;
-  bottom: -12px;
-  left: -48px;
-  width: 80px;
-  height: 38px;
-  pointer-events: none;
-  z-index: 1;
+.studio-speaker-1to1.speaker-right {
+  width: 122px;
+  aspect-ratio: 122 / 170;
 }
-.cable-svg {
+
+.studio-speaker-1to1.thumping {
+  animation: speaker-thump 0.72s ease-in-out infinite;
+}
+
+.speaker-chassis-img {
   width: 100%;
   height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.9));
 }
 
 /* Animations */
@@ -1059,16 +845,35 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-@keyframes woofer-thump {
-  0%, 100% { transform: scale(1); }
-  35% { transform: scale(1.045); }
-  50% { transform: scale(0.985); }
-  65% { transform: scale(1.025); }
+
+@keyframes tape-pulse {
+  0% { opacity: 0.8; filter: drop-shadow(0 0 4px #ff1e42); }
+  100% { opacity: 1; filter: drop-shadow(0 0 10px #ff1e42); }
 }
+
 @keyframes vu-pulse {
-  from { opacity: 0.2; }
-  to { opacity: 1; }
+  0% { opacity: 0.2; }
+  100% { opacity: 1; box-shadow: 0 0 4px currentColor; }
 }
+
+@keyframes speaker-thump {
+  0%, 100% { transform: scale(1); }
+  35% { transform: scale(1.025); }
+  50% { transform: scale(0.99); }
+  65% { transform: scale(1.015); }
+}
+
+@keyframes neon-floor-pulse {
+  0%, 100% {
+    color: #ff9bbb;
+    text-shadow: 0 0 5px #ff2a70, 0 0 16px rgba(255, 42, 112, 0.85);
+  }
+  50% {
+    color: #ffffff;
+    text-shadow: 0 0 8px #ff2a70, 0 0 24px rgba(255, 42, 112, 1), 0 0 40px rgba(255, 42, 112, 0.6);
+  }
+}
+
 @keyframes static-noise {
   0% { background-position: 0 0; }
   25% { background-position: 20% 30%; }
@@ -1076,31 +881,13 @@
   75% { background-position: 15% -25%; }
   100% { background-position: 0 0; }
 }
-@keyframes neon-pulse {
-  0%, 100% { text-shadow: 0 0 6px #ff2370, 0 0 16px rgba(255,35,112,0.8); }
-  50% { text-shadow: 0 0 12px #ff2370, 0 0 28px rgba(255,35,112,1); }
+
+@keyframes crt-flicker {
+  from { opacity: 0.65; }
+  to { opacity: 0.75; }
 }
 
-/* Media Center Modes */
-.retro-media-center-root.mode-tv-only .center-media-stack { max-width: 380px; }
-.retro-media-center-root.mode-tv-deck .center-media-stack { max-width: 440px; }
-.retro-media-center-root.mode-deck-only .center-media-stack { max-width: 420px; }
-
-/* Responsive adjustments */
-@media (max-width: 700px) {
-  .retro-media-center-root {
-    transform: scale(0.85);
-    margin: 10px auto 25px;
-  }
-}
-@media (max-width: 500px) {
-  .retro-media-center-root {
-    transform: scale(0.68);
-    margin: 0 auto 15px;
-  }
-}
-
-/* Shelf and Cubby Integration for Extracted Retro Media Components */
+/* Shelf & Cubby Integration */
 .cubby-prop.cubby-media-station {
   width: 100%;
   height: 100%;
@@ -1112,6 +899,7 @@
   overflow: visible;
   padding-bottom: 2px;
 }
+
 .cubby-prop.cubby-tv-pon {
   width: 100%;
   height: 100%;
@@ -1121,6 +909,7 @@
   position: relative;
   z-index: 2;
 }
+
 .cubby-prop.cubby-dvd-deck {
   width: 100%;
   height: 100%;
@@ -1130,6 +919,7 @@
   position: relative;
   z-index: 2;
 }
+
 .cubby-prop.cubby-speaker {
   width: 100%;
   height: 100%;
@@ -1145,11 +935,13 @@
   transform-origin: bottom center;
   margin-bottom: -16px;
 }
+
 .shelf-fit-deck {
   transform: scale(0.62);
   transform-origin: bottom center;
   margin-bottom: 4px;
 }
+
 .shelf-fit-speaker {
   transform: scale(0.65);
   transform-origin: bottom center;
@@ -1163,18 +955,22 @@
   align-items: center;
   justify-content: center;
 }
+
 .media-station-desk {
   transform: scale(0.5);
   transform-origin: center center;
 }
+
 .tv-pon-desk {
   transform: scale(0.55);
   transform-origin: center center;
 }
+
 .dvd-deck-desk {
   transform: scale(0.7);
   transform-origin: center center;
 }
+
 .studio-monitors-desk {
   transform: scale(0.75);
   transform-origin: center center;
