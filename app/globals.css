@@ -43,3 +43,28 @@
 .picker-thumb span{font:8px var(--mono);letter-spacing:.8px;color:#cbb497;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .picker-link-dot{position:absolute;top:6px;right:6px;width:5px;height:5px;background:#8ab8ba;border-radius:50%;box-shadow:0 0 6px #8ab8ba}
 
+/* WorkOS Architectural Cabinet & Lighting System */
+.cabinet-view{width:100%;height:100%;display:grid;grid-template-columns:280px 1fr 280px;grid-template-rows:1fr 1fr;gap:16px;padding:18px;background:#0c0805;box-sizing:border-box}
+.cubby-cell{position:relative;background:radial-gradient(ellipse at 50% 0%,rgba(254,164,128,.48) 0%,rgba(164,128,92,.22) 38%,rgba(12,8,5,0) 78%),repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0px,rgba(255,255,255,.012) 1px,transparent 1px,transparent 18px),linear-gradient(180deg,#18110b 0%,#100a06 55%,#0c0805 100%);border:7px solid #23160e;border-top:3px solid #523722;border-bottom:5px solid #090604;box-shadow:inset 0 16px 32px rgba(0,0,0,.92),inset 0 -16px 32px rgba(0,0,0,.92),inset 14px 0 24px rgba(0,0,0,.8),inset -14px 0 24px rgba(0,0,0,.8),0 12px 30px rgba(0,0,0,.9);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.cubby-cell.tall-center{grid-column:2;grid-row:1 / span 2;border-width:8px}
+.cubby-led-strip{position:absolute;top:0;left:0;right:0;height:90%;pointer-events:none;z-index:3;transition:opacity .2s ease}
+.cubby-led-bar{position:absolute;top:0;left:12px;right:12px;height:3px;background:linear-gradient(90deg,transparent 2%,#ffe2b7 20%,#fff 50%,#ffe2b7 80%,transparent 98%);box-shadow:0 0 10px #fea480,0 1px 18px #fea480,0 4px 28px #a4805c;border-radius:2px}
+.cubby-led-wash{position:absolute;top:0;left:-10%;right:-10%;height:100%;background:radial-gradient(ellipse at 50% 0%,rgba(254,164,128,.52) 0%,rgba(164,128,92,.25) 38%,rgba(12,8,5,0) 78%)}
+.framed-poster{position:relative;width:82%;height:88%;background:#06080c;border:10px solid #14100c;outline:1px solid #3d281a;box-shadow:0 16px 40px rgba(0,0,0,.95),0 0 0 1px rgba(255,255,255,.05);display:flex;flex-direction:column;overflow:hidden;z-index:2;border-radius:1px}
+.framed-poster-art{width:100%;height:100%;position:relative;background:url('/hail-mary-poster.jpg') center center / cover no-repeat #081219;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:22px 16px 20px;box-shadow:inset 0 0 50px rgba(0,0,0,.85)}
+.poster-galaxy{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 15%,rgba(254,164,128,.2) 0%,transparent 65%);pointer-events:none;mix-blend-mode:screen}
+.framed-poster-tagline{font:600 8.5px/1.3 var(--sans);letter-spacing:2.2px;color:#ffe2b7;text-shadow:0 1px 8px rgba(0,0,0,.95),0 0 12px rgba(254,164,128,.7);position:relative;z-index:2;text-align:center;background:rgba(8,12,18,.6);backdrop-filter:blur(4px);padding:4px 12px;border-radius:2px;display:inline-block;margin:0 auto}
+.framed-poster-center{display:none}
+.framed-poster-bottom{position:relative;z-index:2;background:linear-gradient(180deg,transparent 0%,rgba(6,9,14,.85) 30%,rgba(6,9,14,.96) 100%);padding:14px 12px 6px;margin:0 -16px -20px}
+.framed-poster-desc{font:500 7.5px/1.5 var(--sans);letter-spacing:.9px;color:#f4f1ff;max-width:240px;margin:0 auto;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.95);opacity:.95}
+.framed-poster-logos{display:flex;justify-content:center;gap:14px;font:8px var(--mono);color:#ffe2b7;margin-top:8px;letter-spacing:2.5px;text-shadow:0 1px 4px rgba(0,0,0,.9);opacity:.85}
+.cubby-prop{position:relative;z-index:2;width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:16px;cursor:pointer}
+.cubby-prop img{max-width:86%;max-height:86%;object-fit:contain;filter:drop-shadow(0 12px 22px rgba(0,0,0,.9));transition:opacity .25s ease}
+.cubby-prop .prop-on{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0;pointer-events:none}
+.cubby-prop:hover .prop-off{opacity:0}
+.cubby-prop:hover .prop-on{opacity:1}
+.view-switch{display:flex;align-items:center;gap:7px;font:9px var(--mono);padding:6px 12px;background:#241b14;border:1px solid #483321;border-radius:3px;color:#cfaa71;cursor:pointer;transition:all .15s ease}
+.view-switch:hover{background:#38281a;color:#ffe2b7;border-color:#75502c}
+.view-switch.active{background:#fea48022;border-color:#fea480;color:#fea480;box-shadow:0 0 10px rgba(254,164,128,.3)}
+
+

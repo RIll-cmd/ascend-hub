@@ -58,6 +58,27 @@
   --shadow-sm: rgba(255, 48, 28, 0.95) 0px 0px 4px 0px, rgba(255, 0, 0, 0.7) 0px 0px 12px 0px;
   --shadow-lg: rgba(0, 0, 0, 0.42) 0px 10px 28px 0px;
 
+  /* ── Architectural Cabinet & Lighting ────────── */
+  --cabinet-wood-dark: #0c0805;
+  --cabinet-wood-base: #140d08;
+  --cabinet-wood-mid: #1d140e;
+  --cabinet-wood-highlight: #3b2416;
+  --cabinet-border: #23160e;
+  --cabinet-border-light: #523722;
+  --cabinet-bevel-dark: #090604;
+  --cabinet-led-emitter: #ffffff;
+  --cabinet-led-glow: #fea480;
+  --cabinet-led-core: #ffe2b7;
+  --cabinet-led-ambient: #a4805c;
+  --cabinet-led-bar-shadow: 0 0 10px #fea480, 0 1px 18px #fea480, 0 4px 28px #a4805c;
+  --cabinet-downlight: radial-gradient(ellipse at 50% 0%, rgba(254, 164, 128, 0.48) 0%, rgba(164, 128, 92, 0.22) 38%, rgba(12, 8, 5, 0) 78%);
+  --cabinet-wood-texture: linear-gradient(180deg, #18110b 0%, #100a06 55%, #0c0805 100%);
+  --cabinet-grain-pattern: repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 18px);
+  --cabinet-inner-shadow: inset 0 16px 32px rgba(0,0,0,0.92), inset 0 -16px 32px rgba(0,0,0,0.92), inset 14px 0 24px rgba(0,0,0,0.8), inset -14px 0 24px rgba(0,0,0,0.8);
+  --poster-frame-border: 10px solid #14100c;
+  --poster-frame-bevel: 1px solid #3d281a;
+  --poster-frame-shadow: 0 16px 40px rgba(0,0,0,0.95), 0 0 0 1px rgba(255,255,255,0.05);
+
   /* ── Site Variables (from scanned page) ─────── */
   /* colors */
   --border-gray: #2a2640;
