@@ -67,4 +67,39 @@
 .view-switch:hover{background:#38281a;color:#ffe2b7;border-color:#75502c}
 .view-switch.active{background:#fea48022;border-color:#fea480;color:#fea480;box-shadow:0 0 10px rgba(254,164,128,.3)}
 
-
+/* Multi-Row Expandable Cabinet System */
+.cabinet-multi-rows{width:1160px;display:flex;flex-direction:column;gap:16px;padding:18px;background:#0c0805;box-sizing:border-box;margin:0 auto}
+.shelf-row-wrapper{position:relative;border:8px solid #23160e;border-top:4px solid #523722;border-bottom:6px solid #090604;background:#0c0805;box-shadow:0 16px 40px rgba(0,0,0,.85)}
+.shelf-row-bar{display:flex;justify-content:space-between;align-items:center;padding:7px 16px;background:#150e09;border-bottom:2px solid #2a1b12;font:10px var(--mono);color:#a4805c;letter-spacing:1px}
+.shelf-row-bar span{display:flex;align-items:center;gap:8px;color:#fea480}
+.shelf-row-controls{display:flex;align-items:center;gap:8px}
+.shelf-row-btn{background:#241a12;border:1px solid #483321;color:#cfaa71;font:9px var(--mono);padding:4px 9px;border-radius:2px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s ease}
+.shelf-row-btn:hover{background:#38281a;color:#ffe2b7;border-color:#75502c}
+.shelf-row-btn.danger:hover{background:#4a1515;border-color:#8c2626;color:#ff9999}
+.shelf-row-grid{display:flex;gap:14px;padding:14px;height:360px;box-sizing:border-box}
+.bay-col{height:100%;display:flex;flex-direction:column}
+.bay-col.bay-split{gap:14px}
+.bay-col.bay-split .cubby-cell{height:calc(50% - 7px)}
+.bay-col.bay-tall .cubby-cell{height:100%}
+.cubby-edit-overlay{position:absolute;inset:0;background:rgba(12,8,5,.78);backdrop-filter:blur(3px);z-index:15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;opacity:0;transition:opacity .2s ease;pointer-events:none}
+.cubby-cell:hover .cubby-edit-overlay,.cubby-edit-overlay.visible{opacity:1;pointer-events:auto}
+.cubby-action-btn{background:#23160e;border:1px solid #fea480;color:#ffe2b7;font:10px var(--mono);padding:5px 12px;border-radius:3px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 4px 12px rgba(0,0,0,.8);transition:all .15s ease}
+.cubby-action-btn:hover{background:#fea480;color:#000}
+.cubby-action-btn.secondary{border-color:#483321;background:#18110b;color:#cfaa71}
+.cubby-action-btn.secondary:hover{background:#38281a;color:#ffe2b7}
+.add-row-zone{display:flex;align-items:center;justify-content:center;padding:20px;margin-top:10px}
+.add-row-big-btn{background:#18110b;border:2px dashed #fea48066;color:#fea480;font:600 12px var(--mono);padding:14px 28px;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:10px;letter-spacing:1.5px;transition:all .2s ease}
+.add-row-big-btn:hover{background:#fea48022;border-color:#fea480;box-shadow:0 0 20px rgba(254,164,128,.4);color:#ffe2b7;transform:translateY(-1px)}
+.cubby-cell.led-off .cubby-led-strip{opacity:0}
+.cubby-cell.led-off{background:linear-gradient(180deg,#120d08 0%,#090604 100%)}
+.empty-cubby-prompt{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#7c5f43;font:10px var(--mono);text-align:center;padding:12px;user-select:none}
+.empty-cubby-prompt span{letter-spacing:1px}
+.template-picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding:20px}
+.template-picker-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;background:#18110b;border:1px solid #3d2a1b;border-radius:4px;padding:16px;cursor:pointer;transition:all .18s ease;gap:8px;width:100%;box-sizing:border-box}
+.template-picker-card:hover{background:#251a11;border-color:#fea480;box-shadow:0 0 16px rgba(254,164,128,.2);transform:translateY(-2px)}
+.template-picker-card strong{font:600 12px var(--mono);color:#ffe2b7;letter-spacing:1px}
+.template-picker-card p{font:10px/1.4 var(--sans);color:#a4805c;margin:0}
+.slot-dialog-actions{display:flex;gap:10px;padding:12px 18px;background:#140e0a;border-bottom:1px solid #332216}
+.slot-dialog-btn{background:#241a12;border:1px solid #483321;color:#cfaa71;font:10px var(--mono);padding:6px 12px;border-radius:3px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s ease}
+.slot-dialog-btn:hover{background:#38281a;color:#ffe2b7;border-color:#75502c}
+.slot-dialog-btn.danger:hover{background:#4a1515;border-color:#8c2626;color:#ff9999}
