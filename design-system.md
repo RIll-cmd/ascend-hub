@@ -112,6 +112,60 @@ A pill-shaped element (999px radius) with a background of #0c0805 and a 1px bord
 **Role:** Content Container
 A brutalist container with 0px border-radius and a 1px border of #3a3129. The background is a subtle gradient (gradient-5) transitioning from #3d3934 to #191919. Internal padding is 20px. Headlines inside use SuisseIntl 23.52px in #f4f1ff.
 
+### Architectural Cabinet Cubby
+**Role:** Workstation Compartment / Display Bay
+- **Dimensions:** Standard cubbies (280px × 340px), Tall Center Bay (560px × 696px).
+- **Outer Border:** 7px solid `#23160e` (Walnut Border).
+- **Top Chamfer:** 3px solid `#523722` (Bevel Highlight reflecting top ambient ceiling light).
+- **Bottom Bevel:** 5px solid `#090604` (Deep contact shadow).
+- **Back Wall Material:** Vertical wood gradient `linear-gradient(180deg, #18110b 0%, #100a06 55%, #0c0805 100%)`.
+- **Subtle Wood Grain:** `repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 18px)`.
+- **Multi-directional Cavity Shadow:**
+  ```css
+  box-shadow: 
+    inset 0 16px 32px rgba(0,0,0,0.92),
+    inset 0 -16px 32px rgba(0,0,0,0.92),
+    inset 14px 0 24px rgba(0,0,0,0.8),
+    inset -14px 0 24px rgba(0,0,0,0.8),
+    0 12px 30px rgba(0,0,0,0.9);
+  ```
+
+### Overhead Linear LED Strip Light
+**Role:** Downward Illumination Fixture
+Mounted flush to the interior ceiling of each cubby cell.
+1. **Emitter Rail (`.cubby-led-bar`):**
+   - **Dimensions:** `height: 3px; top: 0; left: 12px; right: 12px; border-radius: 2px;`
+   - **Gradient Core:** `linear-gradient(90deg, transparent 2%, #ffe2b7 20%, #ffffff 50%, #ffe2b7 80%, transparent 98%)`
+   - **Multi-tier Glow:** `box-shadow: 0 0 10px #fea480, 0 1px 18px #fea480, 0 4px 28px #a4805c;`
+2. **Downward Light Wash (`.cubby-led-wash`):**
+   - **Coverage:** `top: 0; left: -10%; right: -10%; height: 100%; pointer-events: none;`
+   - **Radial Falloff:** `radial-gradient(ellipse at 50% 0%, rgba(254, 164, 128, 0.48) 0%, rgba(164, 128, 92, 0.22) 38%, rgba(12, 8, 5, 0) 78%)`
+   - **Dynamic Control:** Controlled via CSS opacity (0.0 to 1.0) or CSS variable `--led-intensity`.
+
+### Framed Centerpiece Poster
+**Role:** Hero Focus Element
+A matte black aluminum gallery frame suspended within the central tall cubby bay.
+- **Dimensions:** 82% width × 86% height of central cubby bay.
+- **Frame Border:** 10px solid `#14100c` with 1px outer outline `#3d281a`.
+- **Drop Shadow:** `0 16px 40px rgba(0,0,0,0.95), 0 0 0 1px rgba(255,255,255,0.05)`.
+- **Artwork Background:** High-resolution cosmic nebula/gas giant vortex with lone astronaut standing on space station tower (`/hail-mary-poster.jpg`).
+- **Typography Hierarchy:**
+  - Tagline: "EVERY ENVIRONMENT TELLS A DIFFERENT STORY" — SuisseIntl 8.5px, weight 500, letter-spacing 2px, `#ffe2b7`.
+  - Title: "PROJECTS" — SuisseIntl 25px, weight 800, letter-spacing 5px, `#f4f1ff`.
+  - Subtitle: "HAIL MARY" — SuisseIntl 12px, weight 500, letter-spacing 4px, `#fea480`.
+  - Description: "MANAGE DEVELOPMENT, STAGING, AND PRODUCTION UNDER ONE PROJECT, WITH UNIQUE BRANDING FOR EACH." — SuisseIntl 7.5px, line-height 1.6, `#cbb497`.
+  - Bottom Partner Glyphs: `П ◇ ▲ ◎ ◈ ⏣ ▼ H` — vt323 / monospace 7px, letter-spacing 2px, `#887153`.
+
+### Interactive Shelf Props
+**Role:** Tangible Artifacts
+Each cubby houses a physical collectible with dual-state illumination:
+1. **Science Kit (Top-Left):** Microscope and chemical lab glassware (`science-kit-off.avif` / `science-kit-on.avif`).
+2. **3D Printer (Bottom-Left):** Rapid prototyping machine with geometric polyhedron (`3d-printer-off.avif` / `3d-printer-on.avif`).
+3. **iMac Classic (Top-Right):** Bonded CRT computer with astronaut figurine and active "Error 404" system dialog (`imac-on.avif`).
+4. **Model Ship (Bottom-Right):** Project Hail Mary modular rocket probe with solar wings on display stand (`ship-off.avif` / `ship-on.avif`).
+- **Hover Micro-interaction:** 0.25s crossfade between unlit state and glowing neon active state.
+- **Drop Shadow:** `filter: drop-shadow(0 12px 20px rgba(0,0,0,0.85))`.
+
 ### Footer
 **Role:** Navigation & Credits
 A spacious section with 80px bottom padding. Text is primarily #a4805c (Bronze) at 16px. Links transition to #f4f1ff on hover. Layout is a 4-column grid with 19.6px gaps.
@@ -126,9 +180,10 @@ A spacious section with 80px bottom padding. Text is primarily #a4805c (Bronze) 
 - Use #fea480 as the primary accent for interactive highlights.
 - Ensure all text meets AAA contrast ratios against the dark canvas.
 - Use 20px (spacing-5) as the default gap for flex layouts.
+- Always include the top highlight chamfer (`#523722`) on cabinet borders to simulate ceiling ambient bounce.
 
 ### Don't
-- Never use soft shadows; depth is achieved through color contrast and borders.
+- Never use soft blurry shadows for UI cards; depth is achieved through color contrast and crisp borders.
 - Do not use border-radius on buttons unless they are specific "pill" variants.
 - Avoid using #ffffff as a surface color; use it only for text on dark fills.
 - Never pair #fea480 with light backgrounds.
@@ -140,33 +195,106 @@ A spacious section with 80px bottom padding. Text is primarily #a4805c (Bronze) 
 | Level | Name | Value | Purpose |
 | :--- | :--- | :--- | :--- |
 | Level 0 | Canvas | #000000 | The primary background for the entire application. |
-| Level 1 | Section | #0c0805 | Secondary background for alternating sections or large containers. |
-| Level 2 | Card | #191919 | The darkest point of a component gradient, used for elevated surfaces. |
-| Level 3 | Highlight | #3a3129 | Used for borders and subtle hover states on dark surfaces. |
+| Level 1 | Section / Cabinet Base | #0c0805 | Deep espresso warm neutral surface for cabinet cavities. |
+| Level 2 | Card / Inner Panel | #18110b | Top gradient stop of wood cubby back walls. |
+| Level 3 | Cabinet Frame | #23160e | Heavy architectural walnut border dividing shelf bays. |
+| Level 4 | Bevel Highlight | #523722 | Top chamfer bounce light on horizontal shelf edges. |
+| Level 5 | LED Emitter Core | #ffe2b7 / #ffffff | White-hot filament center of overhead LED light fixtures. |
 
 ## Elevation
-The UI is strictly shadowless, adhering to a flat, architectural philosophy. Depth is communicated through "Figure/Ground" separation using high-contrast borders (#3a3129) and subtle background shifts between #000000 and #0c0805. When elevation is required, it is achieved through glowing borders or inner gradients rather than traditional drop shadows.
+The UI is strictly shadowless for standard UI cards, adhering to a flat architectural philosophy. However, the **Architectural Cabinet** utilizes deep cavernous inner shadows (`inset 0 16px 32px rgba(0,0,0,0.92)`) combined with downward radial illumination washes to create a photo-realistic 3D recessed bay depth.
 
 ## Imagery
-Graphics follow a "High-Tech Industrial" style. Product cards use square aspect ratios (1:1) with "fill" object-fit settings. Visuals often incorporate complex gradients, including radial glows and conic gradients that mimic light reflecting off metallic surfaces. Icons are sharp and stroke-based, matching the technical precision of the typography.
+Graphics follow a "High-Tech Industrial & Technical Noir" style. Collectibles use authentic 3D photorealistic renders with dual-state alpha channels (`-off.avif` and `-on.avif`).
 
 ## Agent Prompt Guide
 
 ### Quick Color Reference
 - **Canvas**: `#000000` (Obsidian)
+- **Cabinet Wood**: `#0c0805` to `#18110b` (Dark Walnut / Espresso)
+- **Cabinet Border**: `#23160e` (Walnut Frame)
+- **Bevel Highlight**: `#523722` (Top Chamfer)
+- **LED Glow**: `#fea480` (Warm Peach Glow)
+- **LED Core**: `#ffe2b7` / `#ffffff` (Champagne White Core)
 - **Primary Action**: `#fea480` (Peach Glow)
 - **Primary Text**: `#f4f1ff` (Lavender White)
 - **Secondary Text**: `#a4805c` (Bronze)
 - **Borders**: `#3a3129` (Coffee)
 
-### Example Component Prompts
-1. **Primary Button**: Create a rectangular button with 0px radius, background #fea480, text #000000, font SuisseIntl 16px Medium, and 0.2s ease-out transition.
-2. **Data Badge**: Create a pill-shaped badge with 999px radius, 1px border #3a3129, background #0c0805, text #dcdad6 in digital7Mono 17px with 3px letter-spacing.
-3. **Content Card**: Create a 0px radius container with 1px border #3a3129, background linear-gradient(155deg, #3d3934 0%, #191919 100%), and 20px internal padding.
-4. **Display Headline**: Create a text element using SuisseIntl 72px, weight 400, color #f4f1ff, line-height 1, and letter-spacing -0.05em.
+---
 
-### Signature Motifs
-The brand identity is anchored by three motifs: the **Brutalist Grid** (sharp 0px corners and 1px borders), the **Digital Readout** (monospaced type with extreme tracking), and the **Copper Glow** (warm metallic accents against a cold black canvas).
+### Ready-to-Paste AI Prompts
+
+#### Prompt 1: Full WorkOS Architectural Cabinet Recreation
+> **For Antigravity, Cursor, Claude, v0, Bolt, and ChatGPT:**
+>
+> ```markdown
+> Create a high-fidelity "WorkOS Launch Week Summer 2026" architectural cabinet component with overhead LED strip lights and dark walnut cubbies:
+> 1. Layout: A 3-column grid container (1160px wide, 728px high) inside a dark canvas (#000000). Left column: 280px wide (2 equal cubbies). Center column: 1fr (~560px wide, 1 tall bay spanning full height). Right column: 280px wide (2 equal cubbies). Grid gap: 16px.
+> 2. Cubby Architecture: Background linear-gradient(180deg, #18110b 0%, #100a06 55%, #0c0805 100%). Border: 7px solid #23160e, with border-top: 3px solid #523722 (chamfer highlight) and border-bottom: 5px solid #090604. Deep cavity shadow: inset 0 16px 32px rgba(0,0,0,0.92), inset 0 -16px 32px rgba(0,0,0,0.92), inset 14px 0 24px rgba(0,0,0,0.8), inset -14px 0 24px rgba(0,0,0,0.8).
+> 3. Overhead LED Fixture: Mounted flush to the ceiling of every cubby cell. Top emitter bar: 3px high, positioned top: 0, left: 12px, right: 12px, background linear-gradient(90deg, transparent 2%, #ffe2b7 20%, #ffffff 50%, #ffe2b7 80%, transparent 98%), box-shadow: 0 0 10px #fea480, 0 1px 18px #fea480, 0 4px 28px #a4805c. Downward wash: radial-gradient(ellipse at 50% 0%, rgba(254,164,128,0.48) 0%, rgba(164,128,92,0.22) 38%, rgba(12,8,5,0) 78%).
+> 4. Centerpiece Framed Poster: A matte black aluminum frame (10px solid #14100c, 1px outline #3d281a, shadow 0 16px 40px rgba(0,0,0,0.95)). Inside: Cosmic space background with lone astronaut on an orbital tower looking at a giant swirling planet. Text: "EVERY ENVIRONMENT TELLS A DIFFERENT STORY" at top in SuisseIntl, bold "PROJECTS HAIL MARY" in center, and "MANAGE DEVELOPMENT, STAGING, AND PRODUCTION UNDER ONE PROJECT, WITH UNIQUE BRANDING FOR EACH." at bottom, with a row of tech glyphs (П, ◇, ▲, ◎, ◈, ⏣, ▼, H).
+> 5. Cubby Collectibles:
+>    - Top-Left: Science Kit (Microscope and beakers).
+>    - Bottom-Left: 3D Printer (Rapid prototyping machine).
+>    - Top-Right: Vintage iMac Classic (Screen illuminated with 404 dialog and astronaut figurine).
+>    - Bottom-Right: Model Rocket Ship on black stand.
+>    Provide hover crossfade on collectibles between idle and glowing active states.
+> ```
+
+#### Prompt 2: Overhead Linear LED Light Bar & Downward Wash
+> **For Antigravity, Cursor, Claude, v0, Bolt, and ChatGPT:**
+>
+> ```markdown
+> Write a self-contained CSS component for an overhead warm copper/peach LED strip light fixture mounted under a shelf or cabinet ceiling:
+> ```html
+> <div class="cubby-led-strip">
+>   <div class="cubby-led-bar"></div>
+>   <div class="cubby-led-wash"></div>
+> </div>
+> ```
+> CSS:
+> ```css
+> .cubby-led-strip {
+>   position: absolute;
+>   top: 0;
+>   left: 0;
+>   right: 0;
+>   height: 90%;
+>   pointer-events: none;
+>   z-index: 3;
+> }
+> .cubby-led-bar {
+>   position: absolute;
+>   top: 0;
+>   left: 12px;
+>   right: 12px;
+>   height: 3px;
+>   background: linear-gradient(90deg, transparent 2%, #ffe2b7 20%, #ffffff 50%, #ffe2b7 80%, transparent 98%);
+>   box-shadow: 0 0 10px #fea480, 0 1px 18px #fea480, 0 4px 28px #a4805c;
+>   border-radius: 2px;
+> }
+> .cubby-led-wash {
+>   position: absolute;
+>   top: 0;
+>   left: -10%;
+>   right: -10%;
+>   height: 100%;
+>   background: radial-gradient(ellipse at 50% 0%, rgba(254,164,128,0.48) 0%, rgba(164,128,92,0.22) 38%, rgba(12,8,5,0) 78%);
+> }
+> ```
+> ```
+
+#### Prompt 3: Technical Noir Typography & UI Kit
+> **For Antigravity, Cursor, Claude, v0, Bolt, and ChatGPT:**
+>
+> ```markdown
+> Create a Technical Noir UI card and CTA button following the WorkOS Launch Week design tokens:
+> - Container: Background #0c0805, 1px solid #3a3129, 0px border-radius, 20px padding.
+> - Headline: SuisseIntl 23.52px, color #f4f1ff, letter-spacing normal.
+> - Monospace Readout: digital7Mono 17.2px, color #fea480, letter-spacing 3.1px.
+> - Primary Button: Rectangular 0px radius, background #fea480, color #000000, font SuisseIntl 16px medium, 0.2s ease transition, hover background #ffb599.
+> ```
 
 ### Similar Brands
 - **Sentry** — Shared DNA in dark-mode technical interfaces with vibrant, high-contrast accents.

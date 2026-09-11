@@ -58,6 +58,16 @@
   --shadow-sm: rgba(255, 48, 28, 0.95) 0px 0px 4px 0px, rgba(255, 0, 0, 0.7) 0px 0px 12px 0px;
   --shadow-lg: rgba(0, 0, 0, 0.42) 0px 10px 28px 0px;
 
+  /* Architectural Cabinet & Lighting */
+  --color-cabinet-wood: var(--cabinet-wood-dark);
+  --color-cabinet-wood-base: var(--cabinet-wood-base);
+  --color-cabinet-wood-mid: var(--cabinet-wood-mid);
+  --color-cabinet-border: var(--cabinet-border);
+  --color-cabinet-border-light: var(--cabinet-border-light);
+  --color-cabinet-led: var(--cabinet-led-glow);
+  --color-cabinet-led-core: var(--cabinet-led-core);
+  --color-cabinet-led-ambient: var(--cabinet-led-ambient);
+
   /* Breakpoints */
 }
 
