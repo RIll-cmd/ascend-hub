@@ -1,0 +1,501 @@
+{
+  "name": "Design Language — Launch Week Summer 2026 — WorkOS",
+  "modes": [
+    {
+      "name": "Default",
+      "variables": [
+        {
+          "name": "color/primary",
+          "type": "COLOR",
+          "value": {
+            "r": 0.996078431372549,
+            "g": 0.6431372549019608,
+            "b": 0.5019607843137255,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/secondary",
+          "type": "COLOR",
+          "value": {
+            "r": 0.6431372549019608,
+            "g": 0.5019607843137255,
+            "b": 0.3607843137254902,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/accent",
+          "type": "COLOR",
+          "value": {
+            "r": 1,
+            "g": 0.8862745098039215,
+            "b": 0.7176470588235294,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/neutral/50",
+          "type": "COLOR",
+          "value": {
+            "r": 0.9568627450980393,
+            "g": 0.9450980392156862,
+            "b": 1,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/neutral/100",
+          "type": "COLOR",
+          "value": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/neutral/200",
+          "type": "COLOR",
+          "value": {
+            "r": 0.22745098039215686,
+            "g": 0.19215686274509805,
+            "b": 0.1607843137254902,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/neutral/300",
+          "type": "COLOR",
+          "value": {
+            "r": 0.8627450980392157,
+            "g": 0.8549019607843137,
+            "b": 0.8392156862745098,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/neutral/400",
+          "type": "COLOR",
+          "value": {
+            "r": 0.7843137254901961,
+            "g": 0.7764705882352941,
+            "b": 0.7607843137254902,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/neutral/500",
+          "type": "COLOR",
+          "value": {
+            "r": 0.047058823529411764,
+            "g": 0.03137254901960784,
+            "b": 0.0196078431372549,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/background/default",
+          "type": "COLOR",
+          "value": {
+            "r": 0.047058823529411764,
+            "g": 0.03137254901960784,
+            "b": 0.0196078431372549,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/background/1",
+          "type": "COLOR",
+          "value": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/text/default",
+          "type": "COLOR",
+          "value": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/text/1",
+          "type": "COLOR",
+          "value": {
+            "r": 0.9568627450980393,
+            "g": 0.9450980392156862,
+            "b": 1,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/text/2",
+          "type": "COLOR",
+          "value": {
+            "r": 0.22745098039215686,
+            "g": 0.19215686274509805,
+            "b": 0.1607843137254902,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/text/3",
+          "type": "COLOR",
+          "value": {
+            "r": 0.996078431372549,
+            "g": 0.6431372549019608,
+            "b": 0.5019607843137255,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "color/text/4",
+          "type": "COLOR",
+          "value": {
+            "r": 0.8627450980392157,
+            "g": 0.8549019607843137,
+            "b": 0.8392156862745098,
+            "a": 1
+          },
+          "scopes": [
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "spacing/4",
+          "type": "FLOAT",
+          "value": 4,
+          "scopes": [
+            "GAP",
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "spacing/7",
+          "type": "FLOAT",
+          "value": 7,
+          "scopes": [
+            "GAP",
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "spacing/20",
+          "type": "FLOAT",
+          "value": 20,
+          "scopes": [
+            "GAP",
+            "ALL_SCOPES"
+          ]
+        },
+        {
+          "name": "radius/md",
+          "type": "FLOAT",
+          "value": 6,
+          "scopes": [
+            "CORNER_RADIUS"
+          ]
+        },
+        {
+          "name": "radius/xl",
+          "type": "FLOAT",
+          "value": 23,
+          "scopes": [
+            "CORNER_RADIUS"
+          ]
+        },
+        {
+          "name": "radius/full",
+          "type": "FLOAT",
+          "value": 999,
+          "scopes": [
+            "CORNER_RADIUS"
+          ]
+        },
+        {
+          "name": "typography/size/display",
+          "type": "FLOAT",
+          "value": 23.52,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        },
+        {
+          "name": "typography/size/heading-2xl",
+          "type": "FLOAT",
+          "value": 23.52,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        },
+        {
+          "name": "typography/size/heading-lg",
+          "type": "FLOAT",
+          "value": 23.52,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        },
+        {
+          "name": "typography/size/heading",
+          "type": "FLOAT",
+          "value": 23.52,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        },
+        {
+          "name": "typography/size/heading-sm",
+          "type": "FLOAT",
+          "value": 23.52,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        },
+        {
+          "name": "typography/size/subheading",
+          "type": "FLOAT",
+          "value": 23.52,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        },
+        {
+          "name": "typography/size/body-lg",
+          "type": "FLOAT",
+          "value": 17.2391,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        },
+        {
+          "name": "typography/size/body",
+          "type": "FLOAT",
+          "value": 16,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        },
+        {
+          "name": "typography/size/body-sm",
+          "type": "FLOAT",
+          "value": 14,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        },
+        {
+          "name": "typography/size/caption",
+          "type": "FLOAT",
+          "value": 11.2,
+          "scopes": [
+            "FONT_SIZE"
+          ]
+        }
+      ]
+    }
+  ],
+  "textStyles": [
+    {
+      "name": "Type/Display",
+      "fontFamily": "SuisseIntl",
+      "fontStyle": "Regular",
+      "fontWeight": 400,
+      "fontSize": 23.52,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 100
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": -2
+      }
+    },
+    {
+      "name": "Type/Heading-2xl",
+      "fontFamily": "SuisseIntl",
+      "fontStyle": "Regular",
+      "fontWeight": 400,
+      "fontSize": 23.52,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 100
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": -2
+      }
+    },
+    {
+      "name": "Type/Heading-lg",
+      "fontFamily": "SuisseIntl",
+      "fontStyle": "Regular",
+      "fontWeight": 400,
+      "fontSize": 23.52,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 100
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": -2
+      }
+    },
+    {
+      "name": "Type/Heading",
+      "fontFamily": "SuisseIntl",
+      "fontStyle": "Regular",
+      "fontWeight": 400,
+      "fontSize": 23.52,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 100
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": -1
+      }
+    },
+    {
+      "name": "Type/Heading-sm",
+      "fontFamily": "SuisseIntl",
+      "fontStyle": "Regular",
+      "fontWeight": 400,
+      "fontSize": 23.52,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 100
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": -1
+      }
+    },
+    {
+      "name": "Type/Subheading",
+      "fontFamily": "SuisseIntl",
+      "fontStyle": "Regular",
+      "fontWeight": 400,
+      "fontSize": 23.52,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 100
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 0
+      }
+    },
+    {
+      "name": "Type/Body-lg",
+      "fontFamily": "digital7Mono",
+      "fontStyle": "Regular",
+      "fontWeight": 400,
+      "fontSize": 17.2391,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 100
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 0
+      }
+    },
+    {
+      "name": "Type/Body",
+      "fontFamily": "digital7Mono",
+      "fontStyle": "Regular",
+      "fontWeight": 400,
+      "fontSize": 16,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 150
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 0
+      }
+    },
+    {
+      "name": "Type/Body-sm",
+      "fontFamily": "digital7Mono",
+      "fontStyle": "Medium",
+      "fontWeight": 500,
+      "fontSize": 14,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 100
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 0
+      }
+    },
+    {
+      "name": "Type/Caption",
+      "fontFamily": "digital7Mono",
+      "fontStyle": "Regular",
+      "fontWeight": 400,
+      "fontSize": 11.2,
+      "lineHeight": {
+        "unit": "PERCENT",
+        "value": 100
+      },
+      "letterSpacing": {
+        "unit": "PIXELS",
+        "value": 0
+      }
+    }
+  ]
+}
