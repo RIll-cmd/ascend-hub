@@ -41,6 +41,7 @@ import {
   type ShelfRow,
   type RowTemplateType
 } from "./cabinet-data";
+import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../components/RetroMediaCenter";
 
 const chapters = [
   { id: "core", number: "01", title: "Core Engine", eyebrow: "BUILD YOUR FOUNDATION", tag: "FOUNDATION", color: "#e9aa63", description: "A clear direction. A stronger operating system.", specs: ["Define your personal mission and values", "Create a focused progression roadmap", "Choose the principles that guide your work"], art: "engine" },
@@ -140,6 +141,36 @@ function LightItem({ item }: { item: Item }) {
 function CollectibleItem({ item }: { item: Item }) {
   const def = COLLECTIBLES.find(c => c.id === item.collectibleId);
   if (!def) return <div className="collectible-empty">?</div>;
+
+  if (def.id === "media-station") {
+    return (
+      <div className="collectible-item-custom media-station-desk">
+        <RetroMediaCenter mode="all" scale={0.42} />
+      </div>
+    );
+  }
+  if (def.id === "retro-tv-pon") {
+    return (
+      <div className="collectible-item-custom tv-pon-desk">
+        <RetroTv channel="pon" className="shelf-fit-tv" />
+      </div>
+    );
+  }
+  if (def.id === "oxo-dvd-deck") {
+    return (
+      <div className="collectible-item-custom dvd-deck-desk">
+        <DvdPlayer className="shelf-fit-deck" />
+      </div>
+    );
+  }
+  if (def.id === "studio-monitors") {
+    return (
+      <div className="collectible-item-custom studio-monitors-desk">
+        <StudioSpeaker position="left" className="shelf-fit-speaker" />
+      </div>
+    );
+  }
+
   const inner = (
     <div className="collectible-item">
       <img className="collectible-off" src={def.offSrc} alt={def.label} draggable={false} />
@@ -269,6 +300,7 @@ export default function Home() {
   const [presetMode, setPresetMode] = useState<"workspace" | "reference">("reference");
   const [slotPickerTarget, setSlotPickerTarget] = useState<{ rowId: string; bayId: string; slotId: string } | null>(null);
   const [rowTemplateModalOpen, setRowTemplateModalOpen] = useState(false);
+  const [tvModalTab, setTvModalTab] = useState<"media-center" | "standard">("media-center");
 
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -837,10 +869,28 @@ export default function Home() {
                                       </div>
 
                                       {def ? (
-                                        <div className="cubby-prop">
-                                          <img className="prop-off" src={def.offSrc} alt={def.label} draggable={false} />
-                                          <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
-                                        </div>
+                                        def.id === "media-station" ? (
+                                          <div className="cubby-prop cubby-media-station">
+                                            <RetroMediaCenter mode="all" scale={0.38} />
+                                          </div>
+                                        ) : def.id === "retro-tv-pon" ? (
+                                          <div className="cubby-prop cubby-tv-pon">
+                                            <RetroTv channel="pon" className="shelf-fit-tv" />
+                                          </div>
+                                        ) : def.id === "oxo-dvd-deck" ? (
+                                          <div className="cubby-prop cubby-dvd-deck">
+                                            <DvdPlayer className="shelf-fit-deck" />
+                                          </div>
+                                        ) : def.id === "studio-monitors" ? (
+                                          <div className="cubby-prop cubby-speaker">
+                                            <StudioSpeaker position="left" className="shelf-fit-speaker" />
+                                          </div>
+                                        ) : (
+                                          <div className="cubby-prop">
+                                            <img className="prop-off" src={def.offSrc} alt={def.label} draggable={false} />
+                                            <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
+                                          </div>
+                                        )
                                       ) : slot.isPoster ? (
                                         <div className="framed-poster">
                                           <div className="framed-poster-art">
@@ -1056,22 +1106,63 @@ export default function Home() {
       )}
 
       {active === "tv" && (
-        <Modal title="SONORA / AV 01 — ENDLESS POSSIBILITIES" onClose={() => setActive(null)}>
-          <div className="tv-focus">
-            <Television src={media.tv} playing={playing} position={position} videoRef={videoRef} onTime={setPosition} onDuration={setDuration} />
-          </div>
-          <div className="osd">
-            <button aria-label={playing ? "Pause playback" : "Play playback"} onClick={() => setPlaying(v => !v)}>
-              {playing ? <Pause size={20} /> : <Play size={20} />}
+        <Modal title="MEDIA CENTER · PON! CRT & AUDIO RIG" onClose={() => setActive(null)}>
+          <div style={{ display: "flex", gap: "8px", padding: "12px 20px", borderBottom: "1px solid #3c2a1c", background: "#140e0a" }}>
+            <button
+              onClick={() => { synth.play("click"); setTvModalTab("media-center"); }}
+              style={{
+                font: "9px var(--mono)",
+                letterSpacing: "1px",
+                padding: "6px 14px",
+                borderRadius: "3px",
+                background: tvModalTab === "media-center" ? "#fea48022" : "transparent",
+                border: `1px solid ${tvModalTab === "media-center" ? "#fea480" : "#3c2a1c"}`,
+                color: tvModalTab === "media-center" ? "#fea480" : "#a4805c",
+                cursor: "pointer"
+              }}
+            >
+              ★ PON! RETRO MEDIA CENTER (REFERENCE SETUP)
             </button>
-            <span>{Math.floor(position / 60)}:{String(Math.floor(position % 60)).padStart(2, "0")}</span>
-            <input type="range" aria-label="Playback position" min="0" max={Number.isFinite(duration) ? duration : 120} step=".1" value={position} onChange={e => { const n = Number(e.target.value); setPosition(n); if (videoRef.current) videoRef.current.currentTime = n; }} />
-            <button onClick={() => { setSound(v => !v); synth.unlock(); }} aria-label={sound ? "Mute audio" : "Enable audio"}>
-              {sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            <button
+              onClick={() => { synth.play("click"); setTvModalTab("standard"); }}
+              style={{
+                font: "9px var(--mono)",
+                letterSpacing: "1px",
+                padding: "6px 14px",
+                borderRadius: "3px",
+                background: tvModalTab === "standard" ? "#fea48022" : "transparent",
+                border: `1px solid ${tvModalTab === "standard" ? "#fea480" : "#3c2a1c"}`,
+                color: tvModalTab === "standard" ? "#fea480" : "#a4805c",
+                cursor: "pointer"
+              }}
+            >
+              SONORA TRINITRON 1996
             </button>
-            <input className="volume-range" type="range" aria-label="Volume" min="0" max="1" step=".01" value={volume} onChange={e => setVolume(Number(e.target.value))} />
           </div>
-          <p className="tv-modal-note">{media.tv ? layout.items.tv.mediaName : "AMBIENT TRANSMISSION · PROCEDURALLY GENERATED"}</p>
+
+          {tvModalTab === "media-center" ? (
+            <div style={{ padding: "30px 10px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "440px" }}>
+              <RetroMediaCenter mode="all" scale={0.92} videoSrc={media.tv} />
+            </div>
+          ) : (
+            <>
+              <div className="tv-focus">
+                <Television src={media.tv} playing={playing} position={position} videoRef={videoRef} onTime={setPosition} onDuration={setDuration} />
+              </div>
+              <div className="osd">
+                <button aria-label={playing ? "Pause playback" : "Play playback"} onClick={() => setPlaying(v => !v)}>
+                  {playing ? <Pause size={20} /> : <Play size={20} />}
+                </button>
+                <span>{Math.floor(position / 60)}:{String(Math.floor(position % 60)).padStart(2, "0")}</span>
+                <input type="range" aria-label="Playback position" min="0" max={Number.isFinite(duration) ? duration : 120} step=".1" value={position} onChange={e => { const n = Number(e.target.value); setPosition(n); if (videoRef.current) videoRef.current.currentTime = n; }} />
+                <button onClick={() => { setSound(v => !v); synth.unlock(); }} aria-label={sound ? "Mute audio" : "Enable audio"}>
+                  {sound ? <Volume2 size={18} /> : <VolumeX size={18} />}
+                </button>
+                <input className="volume-range" type="range" aria-label="Volume" min="0" max="1" step=".01" value={volume} onChange={e => setVolume(Number(e.target.value))} />
+              </div>
+              <p className="tv-modal-note">{media.tv ? layout.items.tv.mediaName : "AMBIENT TRANSMISSION · PROCEDURALLY GENERATED"}</p>
+            </>
+          )}
         </Modal>
       )}
 

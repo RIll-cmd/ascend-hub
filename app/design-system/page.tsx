@@ -1,13 +1,17 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Copy, ExternalLink, Lightbulb } from "lucide-react";
+import { ArrowLeft, Check, Copy, ExternalLink, Lightbulb, Play, Pause, Power, Tv, Disc, Speaker } from "lucide-react";
 import { COLLECTIBLES } from "../collectibles";
+import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../../components/RetroMediaCenter";
 
 export default function DesignSystemPage() {
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [lightsOn, setLightsOn] = useState(true);
   const [lightIntensity, setLightIntensity] = useState(0.85);
+  const [mediaMode, setMediaMode] = useState<"all" | "tv-only" | "tv-deck" | "deck-only" | "speakers-only">("all");
+  const [mediaChannel, setMediaChannel] = useState<"pon" | "ambient" | "static" | "video">("pon");
+  const [mediaPlaying, setMediaPlaying] = useState(true);
 
   const copy = (val: string, name: string) => {
     navigator.clipboard.writeText(val);
@@ -354,21 +358,264 @@ export default function DesignSystemPage() {
           </div>
         </section>
 
-        {/* 5. QUICK-COPY SPEC CODE */}
-        <section style={{ background: "#140d08", border: "1px solid #23160e", borderRadius: "4px", padding: "24px" }}>
-          <span style={{ font: "9px var(--mono)", color: "#fea480", letterSpacing: "1.5px" }}>READY-TO-USE CODE · 05</span>
-          <h2 style={{ font: "600 20px var(--sans)", margin: "4px 0 16px" }}>Copy CSS Snippet for Overhead LED Strip</h2>
-          <pre
+        {/* 5. EXTRACTED RETRO MEDIA CENTER (TV, DVD PLAYER & SPEAKERS) */}
+        <section style={{ background: "#110b07", border: "1px solid #291b12", borderRadius: "6px", padding: "28px", boxShadow: "0 20px 50px rgba(0,0,0,0.8)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "16px", marginBottom: "24px" }}>
+            <div>
+              <span style={{ font: "9px var(--mono)", color: "#fea480", letterSpacing: "1.5px" }}>EXTRACTED COMPONENT SUITE · 05</span>
+              <h2 style={{ font: "600 24px var(--sans)", margin: "4px 0 6px", color: "#f4f1ff" }}>
+                Retro Media Center: CRT TV, DVD Player Deck & Studio Monitors
+              </h2>
+              <p style={{ font: "13px var(--sans)", color: "#a4805c", margin: 0, maxWidth: "700px", lineHeight: "1.5" }}>
+                Extracted faithfully from the anime/cyberpunk media workstation reference. Features modular rabbit-ear antennas,
+                curved CRT phosphor display with &quot;PON!&quot; comic graphics and 25% SUPER starburst badge, rotary tuning dials,
+                motorized red tape slot with rotating reels, dancing LED VU spectrum meters, &quot;OXO&quot; branding, and pulsing studio monitors.
+              </p>
+            </div>
+
+            {/* Interactive Control Toolbar */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-end" }}>
+              {/* Mode Selector */}
+              <div style={{ display: "flex", gap: "6px", background: "#1a120b", padding: "4px", borderRadius: "4px", border: "1px solid #3c2a1c" }}>
+                {(
+                  [
+                    { id: "all", label: "Full Station" },
+                    { id: "tv-only", label: "TV Only" },
+                    { id: "tv-deck", label: "TV + Deck" },
+                    { id: "deck-only", label: "Deck Only" },
+                    { id: "speakers-only", label: "Speakers" }
+                  ] as const
+                ).map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setMediaMode(m.id)}
+                    style={{
+                      font: "9px var(--mono)",
+                      letterSpacing: "0.8px",
+                      padding: "5px 10px",
+                      borderRadius: "3px",
+                      background: mediaMode === m.id ? "#fea48028" : "transparent",
+                      border: `1px solid ${mediaMode === m.id ? "#fea480" : "transparent"}`,
+                      color: mediaMode === m.id ? "#fea480" : "#a4805c",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease"
+                    }}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Channel Selector */}
+              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                <span style={{ font: "9px var(--mono)", color: "#cfaa71" }}>CRT Channel:</span>
+                {(["pon", "ambient", "static", "video"] as const).map(c => (
+                  <button
+                    key={c}
+                    onClick={() => setMediaChannel(c)}
+                    style={{
+                      font: "8px var(--mono)",
+                      letterSpacing: "0.6px",
+                      padding: "4px 8px",
+                      borderRadius: "2px",
+                      background: mediaChannel === c ? "#c20048" : "#241910",
+                      border: `1px solid ${mediaChannel === c ? "#ff3b7c" : "#3c2a1c"}`,
+                      color: mediaChannel === c ? "#ffffff" : "#a4805c",
+                      cursor: "pointer",
+                      textTransform: "uppercase"
+                    }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Live Component Stage */}
+          <div
             style={{
-              background: "#0c0805",
-              border: "1px solid #3a3129",
-              padding: "16px",
-              borderRadius: "3px",
-              font: "11px/1.6 var(--mono)",
-              color: "#fea480",
-              overflowX: "auto",
+              background: "radial-gradient(ellipse at 50% 50%, #20140e 0%, #0c0805 100%)",
+              border: "1px solid #3c2a1c",
+              borderRadius: "4px",
+              padding: "40px 20px 30px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "440px",
+              boxShadow: "inset 0 0 40px rgba(0,0,0,0.9)",
+              position: "relative",
+              overflow: "hidden"
             }}
           >
+            {/* Background Ambient Cyberpunk Grid lines */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                backgroundImage: "radial-gradient(#fea48014 1px, transparent 1px)",
+                backgroundSize: "16px 16px",
+                pointerEvents: "none",
+                opacity: 0.7
+              }}
+            />
+
+            <RetroMediaCenter
+              mode={mediaMode}
+              channel={mediaChannel}
+              initialPlaying={mediaPlaying}
+              onPlayChange={setMediaPlaying}
+              scale={1}
+            />
+          </div>
+
+          {/* Subcomponent Gallery breakdown */}
+          <div style={{ marginTop: "32px" }}>
+            <h3 style={{ font: "600 16px var(--sans)", margin: "0 0 14px", color: "#f4f1ff" }}>
+              Modular Standalone Subcomponents
+            </h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px" }}>
+              {/* 1. CRT Television */}
+              <div style={{ background: "#18100a", border: "1px solid #2f1e14", borderRadius: "4px", padding: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Tv size={14} color="#fea480" />
+                    <span style={{ font: "11px var(--mono)", color: "#fea480" }}>&lt;RetroTv /&gt;</span>
+                  </div>
+                  <span style={{ font: "8px var(--mono)", color: "#a4805c" }}>CRT PHOSPHOR</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", padding: "10px 0", transform: "scale(0.82)", transformOrigin: "top center", height: "260px" }}>
+                  <RetroTv channel={mediaChannel} isPlaying={mediaPlaying} />
+                </div>
+                <p style={{ font: "11px var(--sans)", color: "#a4805c", margin: "10px 0 0", lineHeight: "1.4" }}>
+                  Rotary channel tuner, fine-tuning knobs, triple RGB sliders, and rabbit-ear antenna.
+                </p>
+              </div>
+
+              {/* 2. DVD / VCR Player Deck */}
+              <div style={{ background: "#18100a", border: "1px solid #2f1e14", borderRadius: "4px", padding: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Disc size={14} color="#fea480" />
+                    <span style={{ font: "11px var(--mono)", color: "#fea480" }}>&lt;DvdPlayer /&gt;</span>
+                  </div>
+                  <span style={{ font: "8px var(--mono)", color: "#a4805c" }}>OXO DECK</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "20px 0", height: "260px" }}>
+                  <DvdPlayer isPlaying={mediaPlaying} onPlayToggle={() => setMediaPlaying(p => !p)} />
+                </div>
+                <p style={{ font: "11px var(--sans)", color: "#a4805c", margin: "10px 0 0", lineHeight: "1.4" }}>
+                  Motorized red tape slot, spinning reels, 8-channel LED VU meter, gold ROM cart, and &quot;Press to Play&quot; glow.
+                </p>
+              </div>
+
+              {/* 3. Studio Monitor Speaker */}
+              <div style={{ background: "#18100a", border: "1px solid #2f1e14", borderRadius: "4px", padding: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Speaker size={14} color="#fea480" />
+                    <span style={{ font: "11px var(--mono)", color: "#fea480" }}>&lt;StudioSpeaker /&gt;</span>
+                  </div>
+                  <span style={{ font: "8px var(--mono)", color: "#a4805c" }}>LEFT &amp; RIGHT</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "20px", padding: "15px 0", height: "260px" }}>
+                  <StudioSpeaker position="left" isPlaying={mediaPlaying} />
+                  <StudioSpeaker position="right" isPlaying={mediaPlaying} />
+                </div>
+                <p style={{ font: "11px var(--sans)", color: "#a4805c", margin: "10px 0 0", lineHeight: "1.4" }}>
+                  Silk dome tweeter, animated pulsing woofer cone, and authentic coiled snake audio cable.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 6. QUICK-COPY SPEC CODE */}
+        <section style={{ background: "#140d08", border: "1px solid #23160e", borderRadius: "4px", padding: "24px" }}>
+          <span style={{ font: "9px var(--mono)", color: "#fea480", letterSpacing: "1.5px" }}>READY-TO-USE CODE · 06</span>
+          <h2 style={{ font: "600 20px var(--sans)", margin: "4px 0 16px" }}>Component Import &amp; Usage Snippets</h2>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <span style={{ font: "10px var(--mono)", color: "#cfaa71" }}>React Component Usage</span>
+                <button
+                  onClick={() => copy(`import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "@/components/RetroMediaCenter";
+
+// 1. Full All-in-One Media Rig
+<RetroMediaCenter mode="all" channel="pon" />
+
+// 2. Individual Modular Components
+<RetroTv channel="pon" />
+<DvdPlayer />
+<StudioSpeaker position="left" />`, "react-usage")}
+                  style={{ display: "flex", alignItems: "center", gap: "4px", font: "9px var(--mono)", color: "#fea480", background: "none", border: "none", cursor: "pointer" }}
+                >
+                  {copiedToken === "react-usage" ? <Check size={11} /> : <Copy size={11} />}
+                  {copiedToken === "react-usage" ? "COPIED" : "COPY CODE"}
+                </button>
+              </div>
+              <pre
+                style={{
+                  background: "#0c0805",
+                  border: "1px solid #3a3129",
+                  padding: "14px",
+                  borderRadius: "3px",
+                  font: "11px/1.6 var(--mono)",
+                  color: "#fea480",
+                  overflowX: "auto",
+                  margin: 0
+                }}
+              >
+{`import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "@/components/RetroMediaCenter";
+
+// 1. Full All-in-One Media Rig (TV, DVD deck, and Studio Monitors)
+<RetroMediaCenter mode="all" channel="pon" initialPlaying={true} />
+
+// 2. Individual Modular Components
+<RetroTv channel="pon" />
+<DvdPlayer />
+<StudioSpeaker position="left" />`}
+              </pre>
+            </div>
+
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                <span style={{ font: "10px var(--mono)", color: "#cfaa71" }}>CSS Overhead LED Strip Fixture</span>
+                <button
+                  onClick={() => copy(`/* Overhead Linear LED Strip Fixture */
+.cubby-led-bar {
+  position: absolute;
+  top: 0; left: 12px; right: 12px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 2%, #ffe2b7 20%, #ffffff 50%, #ffe2b7 80%, transparent 98%);
+  box-shadow: 0 0 10px #fea480, 0 1px 18px #fea480, 0 4px 28px #a4805c;
+}
+
+/* Downward Warm Copper Wash */
+.cubby-led-wash {
+  position: absolute;
+  top: 0; left: -10%; right: -10%; height: 100%;
+  background: radial-gradient(ellipse at 50% 0%, rgba(254,164,128,0.48) 0%, rgba(164,128,92,0.22) 38%, rgba(12,8,5,0) 78%);
+}`, "css-led")}
+                  style={{ display: "flex", alignItems: "center", gap: "4px", font: "9px var(--mono)", color: "#fea480", background: "none", border: "none", cursor: "pointer" }}
+                >
+                  {copiedToken === "css-led" ? <Check size={11} /> : <Copy size={11} />}
+                  {copiedToken === "css-led" ? "COPIED" : "COPY CSS"}
+                </button>
+              </div>
+              <pre
+                style={{
+                  background: "#0c0805",
+                  border: "1px solid #3a3129",
+                  padding: "14px",
+                  borderRadius: "3px",
+                  font: "11px/1.6 var(--mono)",
+                  color: "#fea480",
+                  overflowX: "auto",
+                  margin: 0
+                }}
+              >
 {`/* Overhead Linear LED Strip Fixture */
 .cubby-led-bar {
   position: absolute;
@@ -384,7 +631,9 @@ export default function DesignSystemPage() {
   top: 0; left: -10%; right: -10%; height: 100%;
   background: radial-gradient(ellipse at 50% 0%, rgba(254,164,128,0.48) 0%, rgba(164,128,92,0.22) 38%, rgba(12,8,5,0) 78%);
 }`}
-          </pre>
+              </pre>
+            </div>
+          </div>
         </section>
 
       </main>
