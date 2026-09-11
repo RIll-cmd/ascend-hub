@@ -68,18 +68,18 @@
 .view-switch.active{background:#fea48022;border-color:#fea480;color:#fea480;box-shadow:0 0 10px rgba(254,164,128,.3)}
 
 /* Multi-Row Expandable Cabinet System */
-.cabinet-multi-rows{width:1160px;display:flex;flex-direction:column;gap:16px;padding:18px;background:#0c0805;box-sizing:border-box;margin:0 auto}
-.shelf-row-wrapper{position:relative;border:8px solid #23160e;border-top:4px solid #523722;border-bottom:6px solid #090604;background:#0c0805;box-shadow:0 16px 40px rgba(0,0,0,.85)}
-.shelf-row-bar{display:flex;justify-content:space-between;align-items:center;padding:7px 16px;background:#150e09;border-bottom:2px solid #2a1b12;font:10px var(--mono);color:#a4805c;letter-spacing:1px}
+.cabinet-multi-rows{width:1160px;display:flex;flex-direction:column;gap:24px;padding:0 0 24px;background:transparent;box-sizing:border-box;margin:0 auto}
+.shelf-row-wrapper{position:relative;border:12px solid #140d08;border-radius:4px;background:#0c0805;box-shadow:0 25px 60px rgba(0,0,0,.95),inset 0 0 0 2px #382417;overflow:hidden}
+.shelf-row-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px;background:#150e09;border-bottom:2px solid #2a1b12;font:10px var(--mono);color:#a4805c;letter-spacing:1px}
 .shelf-row-bar span{display:flex;align-items:center;gap:8px;color:#fea480}
 .shelf-row-controls{display:flex;align-items:center;gap:8px}
 .shelf-row-btn{background:#241a12;border:1px solid #483321;color:#cfaa71;font:9px var(--mono);padding:4px 9px;border-radius:2px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .15s ease}
 .shelf-row-btn:hover{background:#38281a;color:#ffe2b7;border-color:#75502c}
 .shelf-row-btn.danger:hover{background:#4a1515;border-color:#8c2626;color:#ff9999}
-.shelf-row-grid{display:flex;gap:14px;padding:14px;height:360px;box-sizing:border-box}
+.shelf-row-grid{display:flex;gap:16px;padding:18px;height:560px;box-sizing:border-box}
 .bay-col{height:100%;display:flex;flex-direction:column}
-.bay-col.bay-split{gap:14px}
-.bay-col.bay-split .cubby-cell{height:calc(50% - 7px)}
+.bay-col.bay-split{gap:16px}
+.bay-col.bay-split .cubby-cell{height:calc(50% - 8px)}
 .bay-col.bay-tall .cubby-cell{height:100%}
 .cubby-edit-overlay{position:absolute;inset:0;background:rgba(12,8,5,.78);backdrop-filter:blur(3px);z-index:15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;opacity:0;transition:opacity .2s ease;pointer-events:none}
 .cubby-cell:hover .cubby-edit-overlay,.cubby-edit-overlay.visible{opacity:1;pointer-events:auto}

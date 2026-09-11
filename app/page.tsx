@@ -686,7 +686,7 @@ export default function Home() {
   const completed = chapters.filter(c => layout.items[c.id].completed).length;
 
   const dynamicStageHeight = presetMode === "reference"
-    ? Math.max(728, rows.length * 390 + (edit ? 160 : 70))
+    ? Math.max(728, rows.length * 644 + (edit ? 180 : 80))
     : 728;
 
   return (
@@ -763,12 +763,19 @@ export default function Home() {
                       )}
                     </div>
                     <div className="shelf-row-grid">
-                      {row.bays.map(bay => (
-                        <div
-                          key={bay.id}
-                          className={`bay-col bay-${bay.layout}`}
-                          style={{ flex: bay.flex || 1 }}
-                        >
+                      {row.bays.map((bay, bIdx) => {
+                        const isThreeCol = row.bays.length === 3;
+                        const bayStyle: CSSProperties = isThreeCol
+                          ? (bIdx === 1
+                              ? { flex: 1, minWidth: 320 }
+                              : { flex: "0 0 280px", width: "280px" })
+                          : { flex: bay.flex || 1 };
+                        return (
+                          <div
+                            key={bay.id}
+                            className={`bay-col bay-${bay.layout}`}
+                            style={bayStyle}
+                          >
                           {bay.slots.map(slot => {
                             const def = slot.collectibleId
                               ? COLLECTIBLES.find(c => c.id === slot.collectibleId)
@@ -860,7 +867,8 @@ export default function Home() {
                             );
                           })}
                         </div>
-                      ))}
+                      );
+                    })}
                     </div>
                   </div>
                 ))}
