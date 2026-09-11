@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { Rnd } from "react-rnd";
 import {
@@ -132,6 +132,7 @@ function LightItem({ item }: { item: Item }) {
     <div className="light-item" style={{ position: "relative", width: "100%", height: "100%", pointerEvents: "none" }}>
       <div className="cubby-led-bar" style={{ position: "absolute", top: 0, left: 12, right: 12, height: 4, background: `linear-gradient(90deg,transparent 0%,${c} 10%,#fff 50%,${c} 90%,transparent 100%)`, boxShadow: `0 0 10px #fff, 0 0 20px ${c}, 0 4px 30px ${c}` }} />
       <div className="cubby-led-wash" style={{ background: bg }} />
+      <div className="cubby-floor-bounce" />
     </div>
   );
 }
@@ -726,7 +727,7 @@ export default function Home() {
           <span>∞ &nbsp; ALWAYS A WORK IN PROGRESS</span>
           <i />
         </div>
-        <div className="stage-viewport" ref={stageRef} style={{ height: dynamicStageHeight * scale }}>
+        <div className="stage-viewport cabinet-wall-bg" ref={stageRef} style={{ height: dynamicStageHeight * scale }}>
           <div className="stage" style={{ transform: `scale(${scale})` }}>
             {presetMode === "reference" ? (
               <div className="cabinet-multi-rows">
@@ -762,6 +763,9 @@ export default function Home() {
                         </div>
                       )}
                     </div>
+                    <div className="shelf-rail-h top" aria-hidden="true">
+                      <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-horizontal.avif" alt="" draggable={false} />
+                    </div>
                     <div className="shelf-row-grid">
                       {row.bays.map((bay, bIdx) => {
                         const isThreeCol = row.bays.length === 3;
@@ -770,105 +774,152 @@ export default function Home() {
                               ? { flex: 1, minWidth: 320 }
                               : { flex: "0 0 280px", width: "280px" })
                           : { flex: bay.flex || 1 };
-                        return (
-                          <div
-                            key={bay.id}
-                            className={`bay-col bay-${bay.layout}`}
-                            style={bayStyle}
-                          >
-                          {bay.slots.map(slot => {
-                            const def = slot.collectibleId
-                              ? COLLECTIBLES.find(c => c.id === slot.collectibleId)
-                              : null;
-                            return (
-                              <div
-                                key={slot.id}
-                                className={`cubby-cell ${slot.ledOn === false ? "led-off" : ""}`}
-                                title={def ? def.label : slot.customTitle || "Cubby Slot"}
-                              >
-                                <div className="cubby-led-strip">
-                                  <div className="cubby-led-bar" />
-                                  <div className="cubby-led-wash" />
-                                </div>
-                                {def ? (
-                                  <div className="cubby-prop">
-                                    <img className="prop-off" src={def.offSrc} alt={def.label} draggable={false} />
-                                    <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
-                                  </div>
-                                ) : slot.isPoster ? (
-                                  <div className="framed-poster">
-                                    <div className="framed-poster-art">
-                                      <div className="poster-galaxy" />
-                                      <div className="framed-poster-tagline">
-                                        EVERY ENVIRONMENT<br />TELLS A DIFFERENT STORY
-                                      </div>
-                                      <div className="framed-poster-bottom">
-                                        <p className="framed-poster-desc">
-                                          MANAGE DEVELOPMENT, STAGING, AND PRODUCTION UNDER ONE PROJECT, WITH UNIQUE BRANDING FOR EACH.
-                                        </p>
-                                        <div className="framed-poster-logos">
-                                          <span>П</span><span>◇</span><span>▲</span><span>◎</span><span>◈</span><span>⏣</span><span>▼</span><span>H</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div
-                                    className="empty-cubby-prompt"
-                                    onClick={() => {
-                                      if (edit) setSlotPickerTarget({ rowId: row.id, bayId: bay.id, slotId: slot.id });
-                                    }}
-                                  >
-                                    <Plus size={16} />
-                                    <span>EMPTY BAY</span>
-                                    {edit && <span style={{ fontSize: "8px", opacity: 0.6 }}>CLICK TO ASSIGN</span>}
-                                  </div>
-                                )}
+                        const isSplit = bay.layout === "split";
+                        const isWide = !isSplit && (bay.flex !== undefined ? bay.flex > 1 : isThreeCol && bIdx === 1);
+                        const texture = isSplit
+                          ? {
+                              off: "https://dotcom.workos.com/images/launch-week/summer-2026/shelf/small-off.webp",
+                              on: "https://dotcom.workos.com/images/launch-week/summer-2026/shelf/small-on.webp",
+                            }
+                          : isWide
+                          ? {
+                              off: "https://dotcom.workos.com/images/launch-week/summer-2026/shelf/large-off.webp",
+                              on: "https://dotcom.workos.com/images/launch-week/summer-2026/shelf/large-on.webp",
+                            }
+                          : {
+                              off: "https://dotcom.workos.com/images/launch-week/summer-2026/shelf/long-off.webp",
+                              on: "https://dotcom.workos.com/images/launch-week/summer-2026/shelf/long-on.webp",
+                            };
 
-                                {edit && (
-                                  <div className="cubby-edit-overlay">
-                                    <button
-                                      className="cubby-action-btn"
-                                      onClick={() =>
-                                        setSlotPickerTarget({
-                                          rowId: row.id,
-                                          bayId: bay.id,
-                                          slotId: slot.id
-                                        })
-                                      }
-                                    >
-                                      <Sparkles size={11} /> {def ? "Change Item" : "Assign Item"}
-                                    </button>
-                                    <button
-                                      className="cubby-action-btn secondary"
-                                      onClick={() => handleToggleBayLayout(row.id, bay.id)}
-                                    >
-                                      <Columns size={11} />
-                                      {bay.layout === "split" ? "Make Tall Bay" : "Make Split (2)"}
-                                    </button>
-                                    <button
-                                      className="cubby-action-btn secondary"
-                                      onClick={() => handleToggleSlotLed(row.id, bay.id, slot.id)}
-                                    >
-                                      {slot.ledOn === false ? <LightbulbOff size={11} /> : <Lightbulb size={11} />}
-                                      {slot.ledOn === false ? "LED On" : "LED Off"}
-                                    </button>
-                                    {(slot.collectibleId || slot.isPoster) && (
-                                      <button
-                                        className="cubby-action-btn secondary"
-                                        onClick={() => handleClearSlot(row.id, bay.id, slot.id)}
-                                      >
-                                        <Trash2 size={11} /> Clear
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
+                        return (
+                          <Fragment key={bay.id}>
+                            {bIdx > 0 && (
+                              <div className="shelf-divider-v" aria-hidden="true">
+                                <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-vertical.avif" alt="" draggable={false} />
                               </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
+                            )}
+                            <div
+                              className={`bay-col bay-${bay.layout}`}
+                              style={bayStyle}
+                            >
+                              {bay.slots.map((slot, sIdx) => {
+                                const def = slot.collectibleId
+                                  ? COLLECTIBLES.find(c => c.id === slot.collectibleId)
+                                  : null;
+                                return (
+                                  <Fragment key={slot.id}>
+                                    {sIdx > 0 && (
+                                      <div className="shelf-divider-h" aria-hidden="true">
+                                        <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-horizontal.avif" alt="" draggable={false} />
+                                      </div>
+                                    )}
+                                    <div
+                                      className={`cubby-cell ${slot.ledOn === false ? "led-off" : ""}`}
+                                      title={def ? def.label : slot.customTitle || "Cubby Slot"}
+                                    >
+                                      {/* Authentic Photographic Cubby Backdrop Layers */}
+                                      <div className="cubby-bg-layer" aria-hidden="true">
+                                        <img className="cubby-bg-off" src={texture.off} alt="" draggable={false} />
+                                        <img
+                                          className="cubby-bg-on"
+                                          src={texture.on}
+                                          alt=""
+                                          draggable={false}
+                                          style={{ opacity: slot.ledOn === false ? 0 : 1 }}
+                                        />
+                                      </div>
+
+                                      {/* Signature Overhead LED Light Bar Fixture & Volumetric Lighting */}
+                                      <div className="cubby-led-strip" style={{ opacity: slot.ledOn === false ? 0 : 1 }}>
+                                        <div className="cubby-led-bar" />
+                                        <div className="cubby-led-wash" />
+                                        <div className="cubby-floor-bounce" />
+                                      </div>
+
+                                      {def ? (
+                                        <div className="cubby-prop">
+                                          <img className="prop-off" src={def.offSrc} alt={def.label} draggable={false} />
+                                          <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
+                                        </div>
+                                      ) : slot.isPoster ? (
+                                        <div className="framed-poster">
+                                          <div className="framed-poster-art">
+                                            <div className="poster-galaxy" />
+                                            <div className="framed-poster-tagline">
+                                              EVERY ENVIRONMENT<br />TELLS A DIFFERENT STORY
+                                            </div>
+                                            <div className="framed-poster-bottom">
+                                              <p className="framed-poster-desc">
+                                                MANAGE DEVELOPMENT, STAGING, AND PRODUCTION UNDER ONE PROJECT, WITH UNIQUE BRANDING FOR EACH.
+                                              </p>
+                                              <div className="framed-poster-logos">
+                                                <span>П</span><span>◇</span><span>▲</span><span>◎</span><span>◈</span><span>⏣</span><span>▼</span><span>H</span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div
+                                          className="empty-cubby-prompt"
+                                          onClick={() => {
+                                            if (edit) setSlotPickerTarget({ rowId: row.id, bayId: bay.id, slotId: slot.id });
+                                          }}
+                                        >
+                                          <Plus size={16} />
+                                          <span>EMPTY BAY</span>
+                                          {edit && <span style={{ fontSize: "8px", opacity: 0.6 }}>CLICK TO ASSIGN</span>}
+                                        </div>
+                                      )}
+
+                                      {edit && (
+                                        <div className="cubby-edit-overlay">
+                                          <button
+                                            className="cubby-action-btn"
+                                            onClick={() =>
+                                              setSlotPickerTarget({
+                                                rowId: row.id,
+                                                bayId: bay.id,
+                                                slotId: slot.id
+                                              })
+                                            }
+                                          >
+                                            <Sparkles size={11} /> {def ? "Change Item" : "Assign Item"}
+                                          </button>
+                                          <button
+                                            className="cubby-action-btn secondary"
+                                            onClick={() => handleToggleBayLayout(row.id, bay.id)}
+                                          >
+                                            <Columns size={11} />
+                                            {bay.layout === "split" ? "Make Tall Bay" : "Make Split (2)"}
+                                          </button>
+                                          <button
+                                            className="cubby-action-btn secondary"
+                                            onClick={() => handleToggleSlotLed(row.id, bay.id, slot.id)}
+                                          >
+                                            {slot.ledOn === false ? <LightbulbOff size={11} /> : <Lightbulb size={11} />}
+                                            {slot.ledOn === false ? "LED On" : "LED Off"}
+                                          </button>
+                                          {(slot.collectibleId || slot.isPoster) && (
+                                            <button
+                                              className="cubby-action-btn secondary"
+                                              onClick={() => handleClearSlot(row.id, bay.id, slot.id)}
+                                            >
+                                              <Trash2 size={11} /> Clear
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </Fragment>
+                                );
+                              })}
+                            </div>
+                          </Fragment>
+                        );
+                      })}
+                    </div>
+                    <div className="shelf-rail-h bottom" aria-hidden="true">
+                      <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-horizontal.avif" alt="" draggable={false} />
                     </div>
                   </div>
                 ))}
