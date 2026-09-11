@@ -18,6 +18,10 @@ export const COLLECTIBLES:CollectibleDef[]=[
  {id:"mcp-shirt",name:"mcp-shirt",label:"MCP Shirt",offSrc:BASE+"mcp-shirt-off.avif",onSrc:BASE+"mcp-shirt-on.avif",category:"apparel",href:"https://shop.workos.com/product/run-mcp-t-shirt"},
  {id:"skateboard",name:"skateboard",label:"T3 Skateboard",offSrc:BASE+"skateboard-off.avif",onSrc:BASE+"skateboard-on.avif",category:"apparel",href:"https://shop.workos.com/product/t3-skateboard"},
  {id:"clothes",name:"clothes",label:"Acronym Shirt",offSrc:BASE+"clothes-off.avif",onSrc:BASE+"clothes-on.avif",category:"apparel",href:"https://shop.workos.com/product/acronym-shirt"},
+ {id:"media-station",name:"media-station",label:"Retro Media Center",offSrc:BASE+"imac-off.avif",onSrc:BASE+"imac-on.avif",category:"hardware"},
+ {id:"retro-tv-pon",name:"retro-tv-pon",label:"PON! CRT Television",offSrc:BASE+"boombox-off.avif",onSrc:BASE+"boombox-on.avif",category:"hardware"},
+ {id:"oxo-dvd-deck",name:"oxo-dvd-deck",label:"OXO DVD/VCR Deck",offSrc:BASE+"cd-player-off.avif",onSrc:BASE+"cd-player-on.avif",category:"hardware"},
+ {id:"studio-monitors",name:"studio-monitors",label:"Studio Monitor Speaker",offSrc:BASE+"headphones-off.avif",onSrc:BASE+"headphones-on.avif",category:"hardware"},
 ];
 export const COLLECTIBLE_CATEGORIES=["all","hardware","sci-fi","apparel","misc"] as const;
 export type CollectibleCategory=typeof COLLECTIBLE_CATEGORIES[number];
