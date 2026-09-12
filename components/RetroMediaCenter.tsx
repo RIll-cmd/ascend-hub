@@ -80,7 +80,7 @@ export function RetroTv({
   return (
     <div
       className={`retro-tv-1to1 ${powerOn ? "power-on" : "power-off"} ${className}`}
-      style={{ aspectRatio: "318 / 276" }}
+      style={{ aspectRatio: "420 / 420" }}
     >
       {/* 1. Under-layer: Dynamic CRT Display Screen (Positioned inside bezel hole) */}
       <div className="tv-crt-display-window">
@@ -193,7 +193,7 @@ export function DvdPlayer({
   return (
     <div
       className={`dvd-player-1to1 ${powerOn ? "power-on" : "power-off"} ${className}`}
-      style={{ aspectRatio: "532 / 127" }}
+      style={{ aspectRatio: "730 / 119" }}
     >
       {/* 1. Under-layer: Motorized Red Tape Chamber with Spinning Cassette Reels */}
       <div className="dvd-tape-cavity-window">
@@ -311,6 +311,7 @@ export function StudioSpeaker({
       className={`studio-speaker-1to1 speaker-${position} ${
         powerOn && isPlaying ? "thumping" : ""
       } ${className}`}
+      style={{ aspectRatio: position === "left" ? "204 / 238" : "193 / 210" }}
     >
       <img
         src={imgSrc}
