@@ -365,14 +365,14 @@
   align-items: flex-end;
   justify-content: center;
   width: 100%;
-  max-width: 735px;
+  max-width: 780px;
   margin: 0 auto;
 }
 
 .rig-left-speaker {
-  width: 136px;
+  width: 150px;
   flex-shrink: 0;
-  margin-right: -42px;
+  margin-right: -45px;
   z-index: 2;
   position: relative;
 }
@@ -382,14 +382,14 @@
   flex-direction: column;
   align-items: center;
   z-index: 3;
-  width: 532px;
+  width: 540px;
   max-width: 100%;
 }
 
 .rig-right-speaker {
-  width: 122px;
+  width: 142px;
   flex-shrink: 0;
-  margin-left: -36px;
+  margin-left: -46px;
   z-index: 2;
   position: relative;
 }
@@ -413,17 +413,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 532px;
+  width: 540px;
   max-width: 100%;
 }
 
 /* 2. AUTHENTIC 1:1 CRT TELEVISION */
 .retro-tv-1to1 {
   position: relative;
-  width: 318px;
+  width: 310px;
   max-width: 100%;
-  aspect-ratio: 318 / 276;
-  margin-bottom: -10px; /* Sits naturally on the DVD player deck */
+  aspect-ratio: 420 / 420;
+  margin-bottom: -6px; /* Sits naturally on the DVD player deck */
   z-index: 4;
 }
 
@@ -441,10 +441,10 @@
 /* CRT Screen Aperture Window (Exact 1:1 Cutout Alignment) */
 .tv-crt-display-window {
   position: absolute;
-  left: 10.69%;
-  top: 31.16%;
-  width: 68.55%;
-  height: 59.42%;
+  left: 4.29%;
+  top: 44.29%;
+  width: 67.14%;
+  height: 49.76%;
   border-radius: 12% / 10%;
   overflow: hidden;
   background: #05080c;
@@ -552,17 +552,17 @@
 }
 
 .tv-knob-target.knob-tuner {
-  right: 9.8%;
-  top: 36.8%;
-  width: 28px;
-  height: 28px;
+  right: 11.2%;
+  top: 48.5%;
+  width: 26px;
+  height: 26px;
 }
 
 .tv-knob-target.knob-vhold {
-  right: 10.8%;
-  top: 51.8%;
-  width: 22px;
-  height: 22px;
+  right: 11.2%;
+  top: 62.5%;
+  width: 24px;
+  height: 24px;
 }
 
 .knob-indicator-needle {
@@ -594,10 +594,10 @@
 
 .tv-power-led-dot {
   position: absolute;
-  right: 12.8%;
-  bottom: 11.2%;
-  width: 6px;
-  height: 6px;
+  right: 13.5%;
+  top: 90.5%;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #1c261c;
   cursor: pointer;
@@ -613,9 +613,9 @@
 /* 3. AUTHENTIC 1:1 DVD / VCR PLAYER DECK */
 .dvd-player-1to1 {
   position: relative;
-  width: 532px;
+  width: 540px;
   max-width: 100%;
-  aspect-ratio: 532 / 127;
+  aspect-ratio: 730 / 119;
   z-index: 3;
 }
 
@@ -633,10 +633,10 @@
 /* Motorized Tape Chamber Cavity */
 .dvd-tape-cavity-window {
   position: absolute;
-  left: 38.72%;
-  top: 22.05%;
-  width: 31.95%;
-  height: 28.35%;
+  left: 37.53%;
+  top: 18.48%;
+  width: 29.86%;
+  height: 39.49%;
   z-index: 1;
   overflow: hidden;
   background: #120406;
@@ -712,10 +712,10 @@
 }
 
 .dvd-btn-target.btn-power {
-  left: 31.2%;
-  top: 25.4%;
-  width: 22px;
-  height: 22px;
+  left: 29.86%;
+  top: 25.21%;
+  width: 24px;
+  height: 24px;
 }
 
 .power-halo {
@@ -733,10 +733,10 @@
 }
 
 .dvd-btn-target.btn-play-pause {
-  left: 63.2%;
-  top: 25.4%;
-  width: 22px;
-  height: 22px;
+  left: 70.95%;
+  top: 28.57%;
+  width: 24px;
+  height: 24px;
 }
 
 .transport-halo {
@@ -755,9 +755,9 @@
 /* 8-Channel Animated LED VU Spectrum Meter Overlay */
 .dvd-vu-meter-overlay {
   position: absolute;
-  left: 77.2%;
-  top: 26%;
-  width: 8.5%;
+  left: 77.67%;
+  top: 32.77%;
+  width: 7.2%;
   height: 19%;
   z-index: 3;
   display: flex;
@@ -793,10 +793,10 @@
 /* "Press to Play" Floor Neon Glow & Interactive Hit Target */
 .press-to-play-floor-glow {
   position: absolute;
-  left: 36%;
-  top: 75%;
-  width: 28%;
-  height: 22%;
+  left: 35%;
+  top: 72%;
+  width: 30%;
+  height: 25%;
   z-index: 3;
   cursor: pointer;
   border-radius: 4px;
@@ -819,13 +819,13 @@
 }
 
 .studio-speaker-1to1.speaker-left {
-  width: 136px;
-  aspect-ratio: 136 / 184;
+  width: 150px;
+  aspect-ratio: 204 / 238;
 }
 
 .studio-speaker-1to1.speaker-right {
-  width: 122px;
-  aspect-ratio: 122 / 170;
+  width: 142px;
+  aspect-ratio: 193 / 210;
 }
 
 .studio-speaker-1to1.thumping {
