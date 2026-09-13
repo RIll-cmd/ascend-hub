@@ -1,0 +1,104 @@
+:root {
+  --container-w: 100%; /* Container width as percentage */
+  --container-h: 100%; /* Container height as percentage */
+  --logo-w: 26%; /* Logo width as percentage of the container */
+  --logo-h: 30%; /* Logo height as percentage of the container */
+  --speed: 10; /* Speed for the animation */
+
+  /* Calculate the percentage values as actual numbers for duration calculation */
+  --container-w-number: 100; /* 100% */
+  --container-h-number: 100; /* 100% */
+  --logo-w-number: 26; /* 17% */
+  --logo-h-number: 30; /* 12% */
+
+  /* Calculate the durations based on the numerical values */
+  --duration-x: calc(
+    (var(--container-w-number) - var(--logo-w-number)) / var(--speed) * 1s
+  );
+  --duration-y: calc(
+    (var(--container-h-number) - var(--logo-h-number)) / var(--speed) * 1s
+  );
+}
+
+@keyframes movementX {
+  from {
+    left: 0;
+  }
+  to {
+    left: calc(100% - var(--logo-w));
+  }
+}
+
+@keyframes movementY {
+  from {
+    top: 0;
+  }
+  to {
+    top: calc(100% - var(--logo-h));
+  }
+}
+
+@keyframes colorX {
+  from {
+    --color-x: 0;
+  }
+  20% {
+    --color-x: 2;
+  }
+  40% {
+    --color-x: 4;
+  }
+  60% {
+    --color-x: 1;
+  }
+  80% {
+    --color-x: 3;
+  }
+  to {
+    --color-x: 0;
+  }
+}
+
+@keyframes colorY {
+  from {
+    --color-y: 0;
+  }
+  20% {
+    --color-y: 2;
+  }
+  40% {
+    --color-y: 4;
+  }
+  60% {
+    --color-y: 1;
+  }
+  80% {
+    --color-y: 3;
+  }
+  to {
+    --color-y: 0;
+  }
+}
+
+.logo-bounce {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--container-w);
+  height: var(--container-h);
+  z-index: 10;
+  background-color: rgb(24, 24, 24);
+}
+
+.logo {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: var(--logo-w);
+  height: var(--logo-h);
+  animation: movementX var(--duration-x) linear infinite alternate,
+    movementY var(--duration-y) linear infinite alternate,
+    colorX calc(var(--duration-x) * 5) step-start infinite,
+    colorY calc(var(--duration-y) * 5) step-start infinite;
+  // fill: hsl(calc(360 / 25 * (var(--color-y) * 5 + var(--color-x))), 100%, 50%);
+}

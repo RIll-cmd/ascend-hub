@@ -1,0 +1,109 @@
+.no-signal {
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  // animation:flicker 0.18s infinite;
+}
+
+.top {
+    width: 100%;
+    height: 100%;
+    background: red;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+  
+  .middle {
+    width: 100%;
+    height: 10%;
+    background: blue;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+  
+  .bottom {
+    width: 100%;
+    height: 30%;
+    background: purple;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr)
+  }
+  
+  .grid-over {
+    display: grid;
+    height: 100%;
+    position: absolute;
+    top: 0%;
+    left: 0%;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+  }
+  
+  .message-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+  }
+  
+  .message {
+    color: rgb(0, 0, 0);
+    font-family: Impact, Miland, sans-serif;
+    text-align: center;
+    margin: 0;
+    line-height: 0.82;
+    // padding: 1vh 7vh;
+  }
+  
+  .message-part1 {
+    font-size: 12vh; /* Adjust size for "SIGNAL" */
+  }
+  
+  .message-part2 {
+    margin-top: -6vh;
+    font-size: 17.5vh; /* Adjust size for "LOST" */
+    // display: block;
+  }
+  
+  .shell {
+    background: lightgray;
+  }
+  
+  .yellow {
+    background: yellow;
+  }
+  
+  .light-blue {
+    background: skyblue;
+  }
+  
+  .green {
+    background: lightgreen;
+  }
+  
+  .purple {
+    background: purple;
+  }
+  
+  .red {
+    background: red;
+  }
+  
+  .blue {
+    background: blue;
+  }
+  
+  
+  
+  .black {
+    background: black;
+  }
+  
+  .white {
+    background: white;
+  }
+  
+  .dark-blue { 
+  background: darkblue;
+  }

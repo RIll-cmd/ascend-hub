@@ -1,0 +1,13 @@
+:root {
+    --container-w: 320; /* no units so we can do division */
+    --container-h: 180;
+    --logo-w: 40;
+    --logo-h: 20;
+    --speed: 90; 
+    --duration-x: calc(
+      (var(--container-w) - var(--logo-w)) / var(--speed) * 1s
+    );
+    --duration-y: calc(
+      (var(--container-h) - var(--logo-h)) / var(--speed) * 1s
+    );
+  }

@@ -1,0 +1,148 @@
+.tv-control-container {
+  position: absolute;
+  top: 20%; /* Adjust as needed */
+  left: 60%;
+  height: 80%;
+  width: 8%;
+  display: flex;
+  // justify-content: space-between;
+  // align-items: center;
+  z-index: 300; /* Ensure it is on top */
+}
+
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+button img {
+  display: block;
+  width: 100%; /* Adjust as needed */
+  height: auto; /* Adjust as needed */
+}
+
+// button:hover {
+//   transform: scale(1.1);
+//   opacity: 0.8;
+//   box-shadow: 0 0 10px rgba(0, 128, 255, 0.8), 0 0 20px rgba(0, 128, 255, 0.6);
+// }
+
+#switch-input {
+  position: absolute;
+  top: 7.5%; /* Adjust as needed */
+  left: 38%; /* Adjust as needed */
+  font-size: 1.5vh;
+  // background-color: #ff3300;
+  // color: white;
+  border: none;
+  border-radius: 5vh;
+  cursor: pointer;
+  height: 10%;
+  width: 28%;
+  transform: rotateZ(-0deg);
+  transition: all 0.3s ease;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-image: url("../resource/image/switch_input.png")
+  // overflow: hidden;
+}
+
+#switch-channel {
+  position: absolute;
+  top: 20%; /* Adjust as needed */
+  left: 38%; /* Adjust as needed */
+  // font-size: 1.5vh;
+  // background-color: #8c00ff;
+  // color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  z-index: 300; /* Ensure it is on top */
+  height: 10%;
+  width: 29%;
+  transform: rotateZ(-0deg);
+  transition: all 0.3s ease;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-image: url("../resource/image/switch_channel.png")
+}
+
+.tv-switch-checkbox {
+  display: none;
+}
+
+.switch-label {
+  position: absolute;
+  top: -3%;
+  left: 40%;
+  display: inline-block;
+  width: 10%;
+  height: 3%;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #444, #353030);
+  box-shadow: 
+  -0.4vh 0vh 0 darken(#444, 10%),
+    -0.4vh 0 0 0.2vh darken(#444, 20%),
+  inset -0.5vh -0.5vh 1vh #837272be;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  // font-size: 2vh; /* Using vh instead of rem */
+  // color: #444;
+  // text-shadow: 0.1vh 0.1vh 0 rgba(255, 255, 255, 0.4);
+  align-self: flex-end;
+  margin: 5vh 5vh 0 0; /* Using vh instead of rem */
+}
+
+// .switch-label:after {
+//   content: '';
+//   position: absolute;
+//   top: 50%;
+//   left: 50%;
+//   transform: translate(-50%, -50%);
+//   display: block;
+//   border-radius: 50%;
+//   height: 0.5rem;
+//   width: 0.5rem;
+//   background: darken(#0f0, 40%);
+//   transition: all 0.3s ease;
+// }
+
+.tv-switch-checkbox:checked + .switch-label {
+  // background: linear-gradient(145deg, #ff3300, #ff6666);
+  left: 38.5%;
+  box-shadow: 
+  // 0vh 0vh 0 lighten(#444, 10%), 
+  0vh 0vh 0 darken(#444, 10%),
+  -0.15vh 0 0 0.1vh darken(#444, 20%),
+  inset -0.7vh -0.5vh 1vh #837272be;
+}
+
+// .tv-switch-checkbox:checked + .switch-label:after {
+// transform: translate(-50%, -50%) scale(0.9);
+// background: lighten(#0f0, 20%);
+// box-shadow: 0 0 1.2rem 0 rgba(#0f0, 1);
+// }
+
+#switch-play-state {
+  position: absolute;
+  top: 82.7%; /* Adjust as needed */
+  left: 51%; /* Adjust as needed */
+  height: 4.5%;
+  width:18%;
+  // scale: 25%;
+  // font-size: 1.5vh;
+  cursor: pointer;
+  z-index: 300; /* Ensure it is on top */
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  // background-size: contain;
+  // background-image: url("../resource/image/play_button.png ");
+}
+#switch-play-state:hover {
+  opacity: 1;
+  background-image: url("../resource/image/play_button_glow_4.png");
+}

@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 :root{--coffee:#0a0806;--walnut:#2b1810;--amber:#ff7a45;--green:#5eff5e;--cyan:#00f0ff;--cream:#ddd3c3;--muted:#918171;--mono:'IBM Plex Mono',monospace;--display:'Barlow Condensed',sans-serif;--body:'DM Sans',sans-serif;--retro-font:'Fredoka','DM Sans',sans-serif;color-scheme:dark}
-*{box-sizing:border-box}body{margin:0;background-color:#0c0805;background-image:radial-gradient(ellipse 1386px 603px at 50% 30%,rgba(6,6,6,.15) 0%,rgba(0,0,0,.92) 100%),url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');background-repeat:repeat;background-size:auto,627px 627px;background-position:center top,50% 50%;color:var(--cream);font-family:var(--body);font-size:14px}button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;transition:color .18s,background .18s}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--amber);outline-offset:5px}input:focus-visible{outline:2px solid var(--cyan)}button svg{flex-shrink:0}button:hover{color:#fff4e6}button:active{translate:0 1px}::selection{background:#8b492d;color:#fff}.os{max-width:1440px;margin:auto;padding:0 30px 40px;position:relative;background:transparent}.topbar{height:81px;border-bottom:1px solid #2d241c80;display:flex;align-items:center;justify-content:space-between;max-width:1160px;margin:0 auto;width:100%}.wordmark{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:8px;text-shadow:0 0 16px #eab98a36}.wordmark>span:last-child{font-weight:400;color:#9f8c77}.logo-mark{font-size:37px;color:#f1d4b4;margin-right:4px;line-height:1}.top-status,.sound-switch{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;display:flex;align-items:center;gap:10px;color:#a59682}.top-status i,.cabinet-bottom i,.editor-bar i{width:5px;height:5px;background:#a0c48c;border-radius:50%;box-shadow:0 0 8px #9bc987;display:inline-block}.top-divider{height:12px;width:1px;background:#49382b;margin:0 10px}.sound-switch{border:1px solid #3c3025;padding:9px 11px;border-radius:3px;letter-spacing:.5px}.intro{padding:28px 0 32px;width:100%;max-width:1160px;margin:0 auto}.intro-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;letter-spacing:1.7px;color:#9d8a73;width:100%}.intro-meta>span:last-child{color:#746555;letter-spacing:1px}.intro-meta i{display:inline-block;width:3px;height:3px;background:#76614e;border-radius:50%;margin:0 9px 3px}.intro-main{display:flex;align-items:center;justify-content:space-between;margin-top:15px}h1{font:500 51px/1.08 var(--display);letter-spacing:-.6px;margin:0}h1 em{font-style:normal;color:#ab9984}.intro p{font-size:13px;color:#968573;margin:13px 0 0}.neon-sign{position:relative;transform:rotate(-3deg);border:1px solid #6a3727;padding:11px 23px 12px;border-radius:3px;text-align:center;margin:0 37px 0 30px;box-shadow:inset 0 0 12px #ff6e2715,0 0 10px #ff6e270b}.neon-sign:before,.neon-sign:after{content:'';position:absolute;top:-22px;width:1px;height:22px;background:#493026;transform:rotate(3deg)}.neon-sign:before{left:18px}.neon-sign:after{right:18px}.neon-sign span{display:block;font:500 15px/1 var(--display);letter-spacing:6px;color:#ec9c76;text-shadow:0 0 8px #ff752c}.neon-sign strong{font:500 31px/1.15 var(--display);letter-spacing:2.5px;color:#ffb28d;text-shadow:0 0 3px #ff783a,0 0 13px #ff6427,0 0 29px #ff682280;animation:neon 8s infinite}
+*{box-sizing:border-box}html,body{overflow-x:clip;max-width:100%}body{margin:0;background-color:#0c0805;background-image:radial-gradient(ellipse 1386px 603px at 50% 30%,rgba(6,6,6,.15) 0%,rgba(0,0,0,.92) 100%),url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');background-repeat:repeat;background-size:auto,627px 627px;background-position:center top,50% 50%;color:var(--cream);font-family:var(--body);font-size:14px}button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;transition:color .18s,background .18s}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--amber);outline-offset:5px}input:focus-visible{outline:2px solid var(--cyan)}button svg{flex-shrink:0}button:hover{color:#fff4e6}button:active{translate:0 1px}::selection{background:#8b492d;color:#fff}.os{max-width:1440px;margin:auto;padding:0 30px 40px;position:relative;background:transparent;overflow-x:clip}.topbar{height:81px;border-bottom:1px solid #2d241c80;display:flex;align-items:center;justify-content:space-between;max-width:1160px;margin:0 auto;width:100%}.wordmark{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:8px;text-shadow:0 0 16px #eab98a36}.wordmark>span:last-child{font-weight:400;color:#9f8c77}.logo-mark{font-size:37px;color:#f1d4b4;margin-right:4px;line-height:1}.top-status,.sound-switch{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;display:flex;align-items:center;gap:10px;color:#a59682}.top-status i,.cabinet-bottom i,.editor-bar i{width:5px;height:5px;background:#a0c48c;border-radius:50%;box-shadow:0 0 8px #9bc987;display:inline-block}.top-divider{height:12px;width:1px;background:#49382b;margin:0 10px}.sound-switch{border:1px solid #3c3025;padding:9px 11px;border-radius:3px;letter-spacing:.5px}.intro{padding:28px 0 32px;width:100%;max-width:1160px;margin:0 auto}.intro-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;letter-spacing:1.7px;color:#9d8a73;width:100%}.intro-meta>span:last-child{color:#746555;letter-spacing:1px}.intro-meta i{display:inline-block;width:3px;height:3px;background:#76614e;border-radius:50%;margin:0 9px 3px}.intro-main{display:flex;align-items:center;justify-content:space-between;margin-top:15px}h1{font:500 51px/1.08 var(--display);letter-spacing:-.6px;margin:0}h1 em{font-style:normal;color:#ab9984}.intro p{font-size:13px;color:#968573;margin:13px 0 0}.neon-sign{position:relative;transform:rotate(-3deg);border:1px solid #6a3727;padding:11px 23px 12px;border-radius:3px;text-align:center;margin:0 37px 0 30px;box-shadow:inset 0 0 12px #ff6e2715,0 0 10px #ff6e270b}.neon-sign:before,.neon-sign:after{content:'';position:absolute;top:-22px;width:1px;height:22px;background:#493026;transform:rotate(3deg)}.neon-sign:before{left:18px}.neon-sign:after{right:18px}.neon-sign span{display:block;font:500 15px/1 var(--display);letter-spacing:6px;color:#ec9c76;text-shadow:0 0 8px #ff752c}.neon-sign strong{font:500 31px/1.15 var(--display);letter-spacing:2.5px;color:#ffb28d;text-shadow:0 0 3px #ff783a,0 0 13px #ff6427,0 0 29px #ff682280;animation:neon 8s infinite}
 .launch-hero-stage{min-height:calc(100vh - 105px);min-height:calc(100dvh - 105px);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:24px 0 0;position:relative;box-sizing:border-box}
 .launch-neon-center{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;margin:auto 0;width:100%}
 .launch-artifacts-dock{margin-top:auto;width:100%;max-width:1160px;display:flex;flex-direction:column;align-items:center;overflow:visible;position:relative;z-index:10}
@@ -30,7 +30,7 @@
 .launch-tv-glass{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 16px rgba(0,0,0,.85)}
 .launch-tv-play-badge{position:absolute;bottom:8px;left:8px;font-family:var(--mono);font-size:9px;color:#fff;background:rgba(0,0,0,.7);padding:2px 6px;border-radius:2px;letter-spacing:1px;backdrop-filter:blur(4px);pointer-events:none}
 .cabinet-shell{padding:0 14px;background:repeating-linear-gradient(2deg,#2c1a11 0,#2c1a11 2px,#321d13 3px,#281910 5px,#382117 7px);border:1px solid #4f3421;border-radius:6px;box-shadow:0 30px 70px #000a,0 0 65px #a8651820,inset 2px 0 3px #6946276b,inset -2px 0 3px #100b07;position:relative}
-.launch-cabinet-stack{width:calc(100vw * (var(--shelf-width-base, 832) / 1024));max-width:none;margin-left:auto;margin-right:auto;position:relative;z-index:5;background:transparent;border:none;box-shadow:none;padding:0}
+.launch-cabinet-stack{width:min(100%, 1160px);max-width:1160px;margin-left:auto;margin-right:auto;margin-top:40px;margin-bottom:60px;scroll-margin-top:72px;position:relative;z-index:5;background:transparent;border:none;box-shadow:none;padding:0}
 .launch-cabinet-stack .stage-viewport{background:transparent}
 .shelf-rail-h{width:100%;position:relative;display:block;line-height:0;z-index:4}
 .shelf-rail-h img{width:100%;height:auto;display:block}.cabinet-top{height:33px;font:8px var(--mono);letter-spacing:1.8px;display:flex;align-items:center;justify-content:space-between;padding:0 15px;color:#a6805b;border-bottom:1px solid #5d3b2580}.cabinet-top>span:nth-child(2){color:#947255;font-size:8px}.cabinet-top i{width:5px;height:5px;border-radius:50%;background:#120c08;box-shadow:inset 0 1px #825938;position:absolute;right:8px}.stage-viewport{width:100%;position:relative;overflow:hidden;background:#16100b}.stage{width:1160px;height:728px;position:relative;transform-origin:top left}.hardware-bay{position:absolute;top:0;left:0;right:0;height:337px;background:linear-gradient(0deg,#1e140d,#130f0b 32%,#100c09 100%);box-shadow:inset 0 14px 23px #000,inset 8px 0 15px #000b}.spotlight{position:absolute;top:0;width:480px;height:335px;background:radial-gradient(ellipse at 50% 0,#bb7f3840 0,transparent 68%);pointer-events:none}.spotlight.a{left:20px}.spotlight.b{right:-30px}.wall-grid{position:absolute;width:365px;height:185px;right:31px;top:40px;background-image:radial-gradient(#57423045 1px,transparent 1px);background-size:10px 10px;mask-image:linear-gradient(90deg,transparent,#000)}.shelf-label{font:8px var(--mono);color:#836545;letter-spacing:1.5px}.hardware-label{position:absolute;left:31px;top:17px}.wall-note{position:absolute;left:666px;top:230px;font:500 11px/1.65 var(--display);letter-spacing:2px;color:#887153;transform:rotate(-4deg);border:1px solid #574531;padding:10px 16px}.cassettes{position:absolute;bottom:16px;left:683px;transform:rotate(-2deg);width:123px}.cassettes span{font:6px var(--mono);display:block;height:15px;background:#554638;border:2px solid #241c15;padding:2px 9px;color:#c1aa8e;box-shadow:0 4px 5px #0009}.cassettes span:nth-child(2){background:#222c29;color:#97a793}.cassettes span:nth-child(3){background:#705035}.shelf-rail{position:absolute;left:0;width:100%;background:repeating-linear-gradient(1deg,#3b2416 0,#3b2416 2px,#432919 3px,#302015 5px);border-top:2px solid #75502c;border-bottom:3px solid #160f09;box-shadow:0 9px 15px #000b,inset 0 3px 5px #9c6a251a;z-index:1}.shelf-rail.upper{top:337px;height:26px}.shelf-rail.lower{bottom:0;height:28px}.shelf-rail>span{font:7px var(--mono);letter-spacing:2px;position:absolute;right:23px;top:7px;color:#a48058}.shelf-rail i{position:absolute;width:4px;height:4px;background:#170e08;border-radius:50%;box-shadow:0 1px #926339;top:9px;left:12px}.shelf-rail i:last-child{left:auto;right:12px}.poster-bay{position:absolute;top:363px;bottom:28px;left:0;right:0;display:grid;grid-template-columns:repeat(5,1fr);background:#17100c}.compartment{position:relative;background:radial-gradient(ellipse at 50% -20%,#bd793643,transparent 70%),repeating-linear-gradient(90deg,#2b1c1508 0,#2b1c1508 4px,#62382309 5px,#62382309 6px);border-right:9px solid #342215;box-shadow:inset 4px 10px 18px #000a,3px 0 3px #000a}.compartment:last-child{border-right:0}.compartment>span{position:absolute;top:9px;left:11px;font:8px var(--mono);color:#5b4731}.compartment>i{position:absolute;top:0;left:50%;width:30px;height:2px;background:#cf955951;box-shadow:0 5px 30px 8px #df954029}.artifact{z-index:2}.hardware-button{display:block;padding:0;width:100%;height:100%;position:relative}.hardware-hint{font:7px var(--mono);display:flex;align-items:center;justify-content:center;gap:5px;letter-spacing:1.6px;color:#b59a76;position:absolute;bottom:-13px;left:0;right:0;opacity:.5}.hardware-button:hover .hardware-hint{opacity:1;color:#ffd4a1}
@@ -454,7 +454,7 @@
 .view-switch.active{background:#fea48022;border-color:#fea480;color:#fea480;box-shadow:0 0 10px rgba(254,164,128,.3)}
 
 /* Multi-Row Expandable Cabinet System */
-.cabinet-multi-rows{width:1160px;display:flex;flex-direction:column;gap:24px;padding:0 0 24px;background:transparent;box-sizing:border-box;margin:0 auto}
+.cabinet-multi-rows{width:1160px;max-width:100%;display:flex;flex-direction:column;gap:24px;padding:0 0 24px;background:transparent;box-sizing:border-box;margin:0 auto}
 .shelf-row-wrapper{position:relative;border-radius:4px;background:#140d09;box-shadow:0 25px 60px rgba(0,0,0,.98);overflow:hidden;display:flex;flex-direction:column}
 .shelf-row-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px;background:#100a12;border-bottom:2px solid #201424;font:10px var(--mono);color:#a480a4;letter-spacing:1px}
 .shelf-row-bar span{display:flex;align-items:center;gap:8px;color:#d8b4fe}
@@ -2394,13 +2394,15 @@
 }
 
 .cabinet-shell.launch-cabinet-stack {
-  width: calc(100vw * (var(--shelf-width-base, 832) / 1024));
-  max-width: none;
+  width: min(100%, 1160px);
+  max-width: 1160px;
   margin-left: auto;
   margin-right: auto;
-  margin-top: calc(-1 * (100vw * (var(--shelf-seam-px, 0) / 1024)));
+  margin-top: 40px;
+  margin-bottom: 60px;
+  scroll-margin-top: 72px;
   position: relative;
-  z-index: 10;
+  z-index: 5;
   padding: 0;
   background: transparent;
   border: none;
@@ -2430,22 +2432,138 @@
 .launch-cabinet-stack .stage-viewport {
   width: 100%;
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .launch-cabinet-stack .stage {
-  transform-origin: top left;
+  transform-origin: top center;
 }
 
 /* ==========================================================================
    RETRO ROOM CINEMATIC FRONT PAGE (100vw x 100vh FULL-BLEED EDGE-TO-EDGE)
    ========================================================================== */
-.os.full-bleed-mode {
-  max-width: none;
+/* ==========================================================================
+   ZENLESS ZONE ZERO TV NATIVE EMBED WORKSPACE + WORKOS CABINET SCROLL
+   ========================================================================== */
+.os.zzz-workspace-shell {
+  max-width: 100%;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   padding: 0;
-  width: 100vw;
-  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #0c0805;
+  background-image: radial-gradient(ellipse 1386px 603px at 50% 30%, rgba(6, 6, 6, 0.15) 0%, rgba(0, 0, 0, 0.92) 100%), url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');
+  background-repeat: repeat;
+  background-size: auto, 627px 627px;
+  background-position: center top, 50% 50%;
+  overflow-x: clip;
+  overflow-y: auto;
+  position: relative;
+  scroll-behavior: smooth;
+}
+
+.os.zzz-workspace-shell .topbar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  z-index: 50;
+  max-width: none;
+  width: 100%;
+  padding: 0 32px;
+  background: linear-gradient(180deg, rgba(8, 5, 10, 0.96) 0%, rgba(8, 5, 10, 0.88) 100%);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.zzz-tv-workspace {
+  width: 100%;
+  height: calc(100vh - 52px);
+  height: calc(100dvh - 52px);
+  min-height: 560px;
+  margin: 0;
+  padding: 0;
+  background: #000000;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.zzz-tv-embed-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: block;
+  background: #000000;
+  overflow: hidden;
+}
+
+/* Subtle scroll indicator at bottom of ZZZ TV hero */
+.zzz-scroll-hint {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.6px;
+  color: #a4805c;
+  background: rgba(12, 8, 5, 0.88);
+  backdrop-filter: blur(8px);
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(254, 164, 128, 0.25);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.zzz-scroll-hint:hover {
+  color: #fea480;
+  border-color: #fea480;
+  background: rgba(20, 14, 10, 0.96);
+  box-shadow: 0 0 16px rgba(254, 164, 128, 0.35);
+  transform: translateX(-50%) translateY(-1px);
+}
+
+.zzz-scroll-hint i {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fea480;
+  box-shadow: 0 0 6px #fea480;
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 0.5; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.os.full-bleed-mode {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  width: 100%;
+  overflow-x: clip;
   position: relative;
 }
 
@@ -2479,9 +2597,9 @@
 
 .retro-room-hero-section {
   position: relative;
-  width: 100vw;
-  max-width: 100vw;
-  margin: -6.6vw 0 0 0;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   padding: 0;
   background: #000;
   user-select: none;
@@ -2494,39 +2612,48 @@
   transform-style: preserve-3d;
 }
 
-/* Static room composition: the clean plate and existing design-system rig. */
+/* Static room composition: clean retro stage and media center workstation. */
 .retro-room-hero-section.retro-room-flat {
   width: 100%;
   max-width: 100%;
   margin: 0;
+  height: 100vh;
+  height: 100lvh;
+  min-height: max(720px, 100lvh);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
   transform: none;
   transform-style: flat;
   overflow: visible;
-  background: #100b15;
+  background: radial-gradient(ellipse 80% 60% at 50% 35%, #1d1424 0%, #110c17 65%, #0d0812 100%);
+  position: relative;
+  box-sizing: border-box;
+  padding-top: 52px;
 }
 
 .retro-room-flat-stage {
   position: relative;
   width: 100%;
-  height: min(56.19vw, calc(100svh - 110px));
-  overflow: hidden;
-}
-
-.retro-room-flat-backdrop {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center bottom;
-  pointer-events: none;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem 1.5rem 2rem;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
 .retro-room-flat-workstation {
-  position: absolute;
-  left: 50%;
-  bottom: 5%;
-  width: min(66%, calc((100svh - 110px) * 1.2));
-  transform: translateX(-50%);
+  position: relative;
+  left: auto;
+  bottom: auto;
+  width: min(100%, 820px);
+  margin: 0 auto;
+  transform: none;
+  filter: drop-shadow(0 20px 32px rgba(0, 0, 0, 0.85)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
 }
 
 .retro-room-flat-workstation .retro-media-center-1to1-root {
@@ -2563,8 +2690,18 @@
   z-index: 21;
   background: #170f13;
   border-top: 1px solid #58374a;
+  border-bottom: 1px solid rgba(88, 55, 74, 0.4);
   font: 11px var(--mono);
   color: #d6b5ca;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+.retro-room-flat-explore:hover {
+  background: #23151f;
+  color: #ffffff;
 }
 
 @media (max-width: 650px) {
@@ -4016,3 +4153,744 @@
   .calendar-cell:not(.is-today) { display: none; }
   .calendar-cell.is-today { font-size: 13px; min-width: 1.4em; min-height: 1.4em; }
 }
+
+/* Zenless Zone Zero 3D Wall Shelf & Cassette Tapes */
+.retro-room-wall-shelf-container {
+  position: absolute;
+  left: max(1.5rem, calc(50% - 660px));
+  top: calc(50% - 15px);
+  transform: translateY(-50%);
+  width: 290px;
+  z-index: 10;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 1240px) {
+  .retro-room-wall-shelf-container {
+    left: 1.25rem;
+    width: 260px;
+    transform: translateY(-50%) scale(0.92);
+    transform-origin: left center;
+  }
+}
+
+@media (max-width: 1060px) {
+  .retro-room-wall-shelf-container {
+    position: static;
+    transform: none;
+    width: min(100%, 340px);
+    margin: 0 auto 1.5rem;
+  }
+}
+
+.zzz-wall-shelf-card {
+  position: relative;
+  width: 100%;
+  background: rgba(18, 14, 22, 0.88);
+  border: 1px solid rgba(215, 243, 0, 0.3);
+  border-radius: 8px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.85), 0 0 24px rgba(215, 243, 0, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.zzz-wall-shelf-card:hover {
+  border-color: rgba(215, 243, 0, 0.55);
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(215, 243, 0, 0.16);
+}
+
+.zzz-shelf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(26, 20, 32, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--mono), 'IBM Plex Mono', monospace;
+}
+
+.zzz-shelf-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #d7f300;
+}
+
+.zzz-shelf-serial {
+  font-size: 8.5px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.zzz-3d-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(215, 243, 0, 0.03) 0%, transparent 70%);
+}
+
+.zzz-shelf-loading,
+.zzz-shelf-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--mono), monospace;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #ffb88c;
+}
+
+.zzz-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid rgba(215, 243, 0, 0.2);
+  border-top-color: #d7f300;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.zzz-shelf-footer {
+  padding: 8px 12px;
+  background: rgba(14, 10, 18, 0.96);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  font-family: var(--mono), monospace;
+}
+
+.zzz-tape-active-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-left: 8px;
+  border-left: 2px solid #d7f300;
+}
+
+.zzz-tape-active-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zzz-tape-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.zzz-tape-active-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.zzz-action-hint {
+  color: #d7f300;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.zzz-tape-idle-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.zzz-tape-pills {
+  display: flex;
+  gap: 5px;
+}
+
+.zzz-pill-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 4px 6px;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.zzz-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.zzz-pill-btn.active {
+  background: rgba(215, 243, 0, 0.12);
+  border-color: #d7f300;
+  color: #d7f300;
+}
+
+.zzz-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+/* ==========================================================================
+   ZZZ DESKTOP ACCESSORIES (VFD CLOCK & DESK CALENDAR MOUNTED ON MEDIA RIG)
+   ========================================================================== */
+.zzz-room-alarm-clock {
+  position: absolute;
+  right: 17%;
+  top: 5.5%;
+  width: 17.5%;
+  height: 14%;
+  z-index: 5;
+  pointer-events: auto;
+  user-select: none;
+  cursor: pointer;
+  transform: rotate(-1.5deg);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zzz-room-alarm-clock:hover {
+  transform: rotate(-1.5deg) scale(1.04);
+}
+
+.zzz-alarm-case {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(160deg, #382d24, #1c1512 60%, #0d0908);
+  border: 2px solid #5a4436;
+  border-radius: 9999px;
+  padding: 3px 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.95), inset 0 2px 3px rgba(255, 255, 255, 0.18), inset 0 -3px 5px rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.zzz-alarm-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #090605;
+  border-radius: 9999px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.98);
+}
+
+.zzz-vfd-digits {
+  font-family: var(--mono), monospace;
+  font-size: clamp(9px, 1.45cqw, 20px);
+  font-weight: 800;
+  color: #fff4db;
+  text-shadow: 0 0 6px rgba(255, 240, 200, 0.95), 0 0 14px rgba(255, 170, 70, 0.8), 0 0 28px rgba(255, 130, 30, 0.5);
+  letter-spacing: 2.5px;
+}
+
+.zzz-alarm-snooze-bar {
+  position: absolute;
+  top: -3px;
+  left: 32%;
+  width: 36%;
+  height: 3px;
+  background: #2b1f18;
+  border-radius: 2px 2px 0 0;
+  border: 1px solid #4a382c;
+  border-bottom: none;
+}
+
+.zzz-room-desk-calendar {
+  position: absolute;
+  left: 20%;
+  bottom: 18%;
+  width: 13.5%;
+  height: 25%;
+  background: #e6ded1;
+  border: 1px solid #c2b5a1;
+  border-radius: 3px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  z-index: 5;
+  pointer-events: auto;
+  user-select: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3px 4px 6px;
+  transform: rotate(-2.5deg);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zzz-room-desk-calendar:hover {
+  transform: rotate(-2.5deg) scale(1.05);
+}
+
+.zzz-cal-binding {
+  display: flex;
+  gap: 16px;
+  margin-top: -6px;
+}
+
+.zzz-cal-ring {
+  width: 5px;
+  height: 10px;
+  background: #554438;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.zzz-cal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2px;
+  line-height: 1.05;
+}
+
+.zzz-cal-year {
+  font-family: var(--mono), monospace;
+  font-size: clamp(6px, 0.75cqw, 9px);
+  color: #a83226;
+  font-weight: 700;
+}
+
+.zzz-cal-month {
+  font-family: var(--display), sans-serif;
+  font-size: clamp(7px, 0.9cqw, 11px);
+  font-weight: 700;
+  color: #a83226;
+  text-transform: uppercase;
+}
+
+.zzz-cal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 1px;
+}
+
+.zzz-cal-big-day {
+  font-family: var(--display), sans-serif;
+  font-size: clamp(14px, 2cqw, 24px);
+  font-weight: 800;
+  color: #1f1a16;
+  line-height: 1;
+}
+
+.zzz-cal-weekday {
+  font-family: var(--mono), monospace;
+  font-size: clamp(5px, 0.65cqw, 8px);
+  color: #736254;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* ==========================================================================
+   ZZZ CHANNEL 1: BOUNCING 3D LOGO (AV MODE)
+   ========================================================================== */
+.zzz-dvd-bounce-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, #1b1624 0%, #0c0812 75%, #050308 100%);
+  overflow: hidden;
+}
+
+.zzz-bouncing-logo-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 68px;
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 0 10px #ffffff);
+  will-change: transform;
+}
+
+.zzz-dvd-overlay-label {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-family: var(--mono), monospace;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: #d7f300;
+  opacity: 0.85;
+  text-shadow: 0 0 6px rgba(215, 243, 0, 0.6);
+}
+
+/* ==========================================================================
+   ZZZ CHANNEL 4: NEW ERIDU 6TH STREET WEATHER REPORT
+   ========================================================================== */
+.zzz-weather-channel {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1f162b, #110d18 70%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px 12px 6px;
+  color: #f0e6ff;
+  font-family: var(--mono), monospace;
+  box-sizing: border-box;
+}
+
+.zzz-weather-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(215, 243, 0, 0.35);
+  padding-bottom: 4px;
+}
+
+.zzz-weather-city {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #d7f300;
+  letter-spacing: 1px;
+}
+
+.zzz-weather-clock {
+  font-size: 8.5px;
+  color: #fff;
+}
+
+.zzz-weather-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1;
+  padding: 4px 0;
+}
+
+.zzz-weather-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zzz-weather-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: rgba(255, 170, 0, 0.12);
+  border: 1px solid rgba(255, 170, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zzz-weather-temp {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.zzz-weather-temp b {
+  font-size: 20px;
+  color: #fff;
+  font-weight: 800;
+}
+
+.zzz-weather-temp span {
+  font-size: 7.5px;
+  color: #d7f300;
+  letter-spacing: 0.8px;
+}
+
+.zzz-weather-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.zzz-weather-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 7.5px;
+}
+
+.zzz-weather-stat-row .label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.zzz-weather-stat-row .val {
+  color: #fff;
+  font-weight: 700;
+}
+
+.zzz-weather-stat-row .val.safe {
+  color: #5eff5e;
+}
+
+.zzz-weather-ticker {
+  overflow: hidden;
+  white-space: nowrap;
+  background: rgba(215, 243, 0, 0.12);
+  border: 1px solid rgba(215, 243, 0, 0.25);
+  border-radius: 2px;
+  padding: 2px 4px;
+}
+
+.zzz-ticker-text {
+  display: inline-block;
+  font-size: 7px;
+  color: #d7f300;
+  animation: zzz-ticker-drift 18s linear infinite;
+}
+
+@keyframes zzz-ticker-drift {
+  from { transform: translateX(100%); }
+  to { transform: translateX(-100%); }
+}
+
+/* ==========================================================================
+   ZZZ CHANNEL 5: BANGBOO JUMP ARCADE MINIGAME
+   ========================================================================== */
+.zzz-game-channel-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #221c2b;
+  overflow: hidden;
+}
+
+.zzz-game-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  cursor: pointer;
+}
+
+.zzz-game-over-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 10, 20, 0.88);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--mono), monospace;
+  color: #fff;
+  z-index: 10;
+}
+
+.zzz-game-over-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ff3b5c;
+  text-shadow: 0 0 10px rgba(255, 59, 92, 0.8);
+  letter-spacing: 1px;
+}
+
+.zzz-game-over-score {
+  font-size: 10px;
+  color: #d7f300;
+}
+
+.zzz-game-press-start {
+  font-size: 7.5px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1px;
+  margin-top: 4px;
+  animation: pulse 1s infinite alternate;
+}
+
+.zzz-game-start-prompt {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  font-family: var(--mono), monospace;
+  font-size: 7.5px;
+  color: #d7f300;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   AUTHENTIC ZZZ TV WORKSPACE HERO & SCROLLABLE CABINET INTEGRATION
+   Vercel interface guidelines + Impeccable motion & depth
+   ========================================================================== */
+html {
+  scroll-behavior: smooth;
+}
+
+.os.zzz-workspace-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 24px 60px;
+  position: relative;
+  overflow-x: clip;
+  overflow-y: visible;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pinned sticky topbar with glassmorphism blur */
+.os.zzz-workspace-shell .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: rgba(12, 8, 5, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+/* Main Hero: Zenless Zone Zero TV Workspace */
+.zzz-tv-workspace {
+  position: relative;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  height: calc(100vh - 96px);
+  height: calc(100dvh - 96px);
+  min-height: 600px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  background: #000;
+  margin-top: 12px;
+  margin-bottom: 48px;
+  flex-shrink: 0;
+}
+
+.zzz-tv-embed-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: #000;
+}
+
+/* Sleek floating scroll hint indicator */
+.zzz-scroll-hint {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: rgba(18, 14, 12, 0.85);
+  border: 1px solid rgba(254, 164, 128, 0.35);
+  border-radius: 9999px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #ffe2b7;
+  font-family: var(--mono), monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+  z-index: 25;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 15px rgba(254, 164, 128, 0.2);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: zzz-bounce-hint 2.4s ease-in-out infinite;
+  user-select: none;
+}
+
+.zzz-scroll-hint:hover {
+  background: rgba(30, 22, 18, 0.95);
+  border-color: #fea480;
+  color: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 25px rgba(254, 164, 128, 0.4);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+.zzz-scroll-hint i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5eff5e;
+  box-shadow: 0 0 8px #5eff5e;
+}
+
+@keyframes zzz-bounce-hint {
+  0%, 100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-6px);
+  }
+}
+
+/* Cabinet Section Container when scrolled */
+#ascend-cabinet-section {
+  scroll-margin-top: 96px;
+  position: relative;
+  z-index: 10;
+  margin-bottom: 60px;
+}
+
+@media (max-width: 768px) {
+  .zzz-tv-workspace {
+    height: 70vh;
+    min-height: 480px;
+    margin-top: 8px;
+    margin-bottom: 32px;
+  }
+  .zzz-scroll-hint {
+    bottom: 12px;
+    padding: 6px 14px;
+    font-size: 9px;
+  }
+}
+
+
+

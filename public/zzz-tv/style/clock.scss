@@ -1,0 +1,37 @@
+.clock-container {
+    width: 30%;
+    height: 30%;
+    position: absolute;
+    top: 4.4%;
+    left: 58%;
+    z-index: 200;
+    filter: blur(0.3px);
+    // background-color: #1b1b1b;
+  }
+  
+  #clock-image {
+    width: 32vh;
+    height: 13vh;
+    position: absolute;
+    top: 0%;
+    left: 0%;
+  }
+  
+  #clock {
+    display: grid;
+    grid-template-columns: 1ch 1ch 0.7ch 1ch 1ch;
+    font-size: 9.5vh;
+    font-family: DotMatrix;
+    color: #e4e27e;
+    position: absolute;
+    top: 10%;
+    left: 1.2%;
+    transform: perspective(100vh) rotateX(11deg) rotateY(-10deg) rotateZ(-3deg);
+  }
+  
+  .digit,
+  .separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
