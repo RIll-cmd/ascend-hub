@@ -18,6 +18,7 @@ import {
   Play,
   Plus,
   RotateCcw,
+  Scissors,
   Settings2,
   Sparkles,
   Trash2,
@@ -42,6 +43,7 @@ import {
   type RowTemplateType
 } from "./cabinet-data";
 import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../components/RetroMediaCenter";
+import { RetroRoomHero } from "../components/RetroRoomHero";
 
 const chapters = [
   { id: "core", number: "01", title: "Core Engine", eyebrow: "BUILD YOUR FOUNDATION", tag: "FOUNDATION", color: "#e9aa63", description: "A clear direction. A stronger operating system.", specs: ["Define your personal mission and values", "Create a focused progression roadmap", "Choose the principles that guide your work"], art: "engine" },
@@ -131,7 +133,7 @@ function LightItem({ item }: { item: Item }) {
   const bg = `radial-gradient(ellipse 90% 70% at 50% 0%,rgba(${r},${g},${b},${a * 0.75}) 0%,rgba(${r},${g},${b},${a * 0.35}) 35%,rgba(12,8,5,0) 80%)`;
   return (
     <div className="light-item" style={{ position: "relative", width: "100%", height: "100%", pointerEvents: "none" }}>
-      <div className="cubby-led-bar" style={{ position: "absolute", top: 0, left: 12, right: 12, height: 4, background: `linear-gradient(90deg,transparent 0%,${c} 10%,#fff 50%,${c} 90%,transparent 100%)`, boxShadow: `0 0 10px #fff, 0 0 20px ${c}, 0 4px 30px ${c}` }} />
+      <div className="cubby-led-bar" style={{ position: "absolute", top: 0, left: 12, right: 12, height: 7, borderRadius: 4, filter: "blur(5px)", mixBlendMode: "screen", opacity: 0.95, background: `linear-gradient(90deg,transparent 0%,${c} 15%,#fff 50%,${c} 85%,transparent 100%)`, boxShadow: `0 0 10px #fff, 0 0 20px ${c}, 0 4px 30px ${c}` }} />
       <div className="cubby-led-wash" style={{ background: bg }} />
       <div className="cubby-floor-bounce" />
     </div>
@@ -301,6 +303,7 @@ export default function Home() {
   const [slotPickerTarget, setSlotPickerTarget] = useState<{ rowId: string; bayId: string; slotId: string } | null>(null);
   const [rowTemplateModalOpen, setRowTemplateModalOpen] = useState(false);
   const [tvModalTab, setTvModalTab] = useState<"media-center" | "standard">("media-center");
+  const [lightingMode, setLightingMode] = useState<"amber" | "magenta">("amber");
 
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -314,6 +317,10 @@ export default function Home() {
     setLayout(saved);
     const savedRows = loadCabinetRows();
     setRows(savedRows);
+    const savedLighting = typeof window !== "undefined" ? (localStorage.getItem("ascend_shelf_lighting") as "amber" | "magenta" | null) : null;
+    if (savedLighting === "amber" || savedLighting === "magenta") {
+      setLightingMode(savedLighting);
+    }
     setReady(true);
     setDate(new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }).toUpperCase());
     let disposed = false;
@@ -352,7 +359,7 @@ export default function Home() {
   }, [rows, ready]);
 
   useEffect(() => {
-    const ro = new ResizeObserver(entries => setScale(Math.min(1, entries[0].contentRect.width / 1160)));
+    const ro = new ResizeObserver(entries => setScale(entries[0].contentRect.width / 1160));
     if (stageRef.current) ro.observe(stageRef.current);
     return () => ro.disconnect();
   }, []);
@@ -510,6 +517,15 @@ export default function Home() {
       })
     );
     synth.play("click");
+  };
+
+  const handleToggleLighting = (mode: "amber" | "magenta") => {
+    setLightingMode(mode);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ascend_shelf_lighting", mode);
+    }
+    synth.play("click");
+    notify(`Shelf ambiance set to ${mode === "amber" ? "Cozy Amber (Default)" : "CRT Magenta Spill"}`);
   };
 
   const handleAssignCollectible = (def: CollectibleDef) => {
@@ -723,11 +739,35 @@ export default function Home() {
     : 728;
 
   return (
-    <main className={edit ? "os edit-mode" : "os"} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) synth.play("click"); }}>
+    <main className={`${edit ? "os edit-mode" : presetMode === "reference" ? "os full-bleed-mode" : "os"} lighting-${lightingMode}`} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) synth.play("click"); }}>
       <header className="topbar">
         <a href="#" className="wordmark" aria-label="Ascend OS home"><span className="logo-mark">⏣</span> ASCEND <span>OS</span></a>
         <div className="top-status"><i /> SYSTEM ONLINE <span className="top-divider" /> V.1.0.26</div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div className="lighting-choice-toggle" role="radiogroup" aria-label="Shelf compartment lighting choice">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={lightingMode === "amber"}
+              className={`lighting-choice-btn ${lightingMode === "amber" ? "active amber" : ""}`}
+              onClick={() => handleToggleLighting("amber")}
+              title="Option A: Cozy Amber (Warm Incandescent)"
+            >
+              <span className="choice-dot amber" />
+              COZY AMBER
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={lightingMode === "magenta"}
+              className={`lighting-choice-btn ${lightingMode === "magenta" ? "active magenta" : ""}`}
+              onClick={() => handleToggleLighting("magenta")}
+              title="Option B: CRT Magenta (Ambient Spill)"
+            >
+              <span className="choice-dot magenta" />
+              CRT MAGENTA
+            </button>
+          </div>
           <button className={`view-switch ${presetMode === "reference" ? "active" : ""}`} onClick={() => setPresetMode(m => m === "workspace" ? "reference" : "workspace")}>
             {presetMode === "reference" ? "▣ WORKOS CABINET" : "⏣ WORKSTATION"}
           </button>
@@ -745,29 +785,48 @@ export default function Home() {
         </button>
       </header>
 
-      <section className="intro">
-        <div className="intro-meta"><span>YOUR PERSONAL OPERATING SYSTEM</span><span>EST. 2026 <i /> {date}</span></div>
-        <div className="intro-main">
-          <div><h1>Continuous <em>progression.</em></h1><p>A little more capable. Every single day.</p></div>
-          <div className="neon-sign"><span>CONTINUOUS</span><strong>PROGRESSION</strong><i /></div>
+      <section className={`intro ${presetMode === "reference" ? "shelf-hero-stage" : ""}`}>
+        <div className="intro-meta">
+          <span>YOUR PERSONAL OPERATING SYSTEM</span>
+          <span>EST. 2026 <i /> {date}</span>
         </div>
+        {presetMode !== "reference" ? (
+          <div className="launch-neon-center">
+            <div className="neon-sign">
+              <span>CONTINUOUS</span>
+              <strong>PROGRESSION</strong>
+              <i />
+            </div>
+          </div>
+        ) : (
+          <RetroRoomHero
+            initialVideoSrc={media.tv || "https://www.youtube.com/watch?v=4xDzrJKXOOY"}
+            initialPlaying={playing}
+            onExploreCabinet={() => {
+              const cab = document.querySelector(".cabinet-shell");
+              cab?.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
+        )}
       </section>
 
-      <div className="cabinet-shell">
-        <div className="cabinet-top">
-          <span>{presetMode === "reference" ? `WORKOS LAUNCH CABINET · ${rows.length} TIERS LOADED` : "THE WORKSTATION"}</span>
-          <span>∞ &nbsp; ALWAYS A WORK IN PROGRESS</span>
-          <i />
-        </div>
+      <div className={`cabinet-shell lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`}>
+        {(presetMode !== "reference" || edit) && (
+          <div className="cabinet-top">
+            <span>{presetMode === "reference" ? `WORKOS LAUNCH CABINET · ${rows.length} TIERS LOADED` : "THE WORKSTATION"}</span>
+            <span>∞ &nbsp; ALWAYS A WORK IN PROGRESS</span>
+            <i />
+          </div>
+        )}
         <div className="stage-viewport cabinet-wall-bg" ref={stageRef} style={{ height: dynamicStageHeight * scale }}>
           <div className="stage" style={{ transform: `scale(${scale})` }}>
             {presetMode === "reference" ? (
               <div className="cabinet-multi-rows">
                 {rows.map((row, rIdx) => (
                   <div key={row.id} className="shelf-row-wrapper">
-                    <div className="shelf-row-bar">
-                      <span>⏣ {row.title}</span>
-                      {edit && (
+                    {edit && (
+                      <div className="shelf-row-bar">
+                        <span>⏣ {row.title}</span>
                         <div className="shelf-row-controls">
                           <button
                             className="shelf-row-btn"
@@ -793,12 +852,15 @@ export default function Home() {
                             <Trash2 size={11} /> Remove
                           </button>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                     <div className="shelf-rail-h top" aria-hidden="true">
                       <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-horizontal.avif" alt="" draggable={false} />
                     </div>
                     <div className="shelf-row-grid">
+                      <div className="shelf-wall-v left" aria-hidden="true">
+                        <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-vertical.avif" alt="" draggable={false} />
+                      </div>
                       {row.bays.map((bay, bIdx) => {
                         const isThreeCol = row.bays.length === 3;
                         const bayStyle: CSSProperties = isThreeCol
@@ -967,6 +1029,9 @@ export default function Home() {
                           </Fragment>
                         );
                       })}
+                      <div className="shelf-wall-v right" aria-hidden="true">
+                        <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-vertical.avif" alt="" draggable={false} />
+                      </div>
                     </div>
                     <div className="shelf-rail-h bottom" aria-hidden="true">
                       <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-horizontal.avif" alt="" draggable={false} />
@@ -1000,6 +1065,30 @@ export default function Home() {
         </div>
         <div className="cabinet-bottom">
           <span><i /> ALL SYSTEMS OPERATIONAL</span>
+          <div className="lighting-choice-toggle" role="radiogroup" aria-label="Cabinet lighting ambiance">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={lightingMode === "amber"}
+              className={`lighting-choice-btn ${lightingMode === "amber" ? "active amber" : ""}`}
+              onClick={() => handleToggleLighting("amber")}
+              title="Option A: Cozy Amber"
+            >
+              <span className="choice-dot amber" />
+              COZY AMBER
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={lightingMode === "magenta"}
+              className={`lighting-choice-btn ${lightingMode === "magenta" ? "active magenta" : ""}`}
+              onClick={() => handleToggleLighting("magenta")}
+              title="Option B: CRT Magenta"
+            >
+              <span className="choice-dot magenta" />
+              CRT MAGENTA
+            </button>
+          </div>
           <span>{presetMode === "reference" ? `${rows.length} SHELF TIERS ACTIVE` : `${String(completed).padStart(2, "0")} / 05 MILESTONES COMPLETE`}</span>
           <span>DESIGNED TO EVOLVE ↗</span>
         </div>
@@ -1025,6 +1114,12 @@ export default function Home() {
           <div><i /> EDIT MODE <span>Customize shelves · Swap items · Reorder</span></div>
           {presetMode === "reference" ? (
             <>
+              <button onClick={() => {
+                const btn = document.querySelector<HTMLButtonElement>(".room-dock-btn.crop-btn");
+                if (btn) btn.click();
+              }}>
+                <Scissors size={14} /> Crop & Move Hero
+              </button>
               <button onClick={() => setRowTemplateModalOpen(true)}><Plus size={14} /> Add Shelf Row</button>
               <button onClick={handleResetCabinet}><RotateCcw size={14} /> Reset Shelves</button>
             </>
