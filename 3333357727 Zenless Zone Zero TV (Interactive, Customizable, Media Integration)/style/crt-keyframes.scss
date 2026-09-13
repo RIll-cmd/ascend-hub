@@ -1,0 +1,192 @@
+@use "sass:math";
+
+@keyframes flicker {
+  $steps: 20;
+  @for $i from 0 through $steps {
+    #{percentage($i * math.div(1, $steps))} {
+      opacity: calc(6 * random());
+    }
+  }
+}
+  
+@keyframes turn-on {
+  0% {
+    transform: scale(1, 0.8) translate3d(0, 0, 0);
+    filter: brightness(30);
+    opacity: 1;
+  }
+  3.5% {
+    transform: scale(1, 0.8) translate3d(0, 100%, 0);
+  }
+  3.6% {
+    transform: scale(1, 0.8) translate3d(0, -100%, 0);
+    opacity: 1;
+  }
+  9% {
+    transform: scale(1.3, 0.6) translate3d(0, 100%, 0);
+    filter: brightness(30);
+    opacity: 0;
+  }
+  11% {
+    transform: scale(1, 1) translate3d(0, 0, 0);
+    filter: contrast(0) brightness(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1, 1) translate3d(0, 0, 0);
+    filter: $screen-filter;
+    opacity: 1;
+  }
+}
+
+@keyframes turn-off {
+  0% {
+    transform: scale(1, 1.3) translate3d(0, 0, 0);
+    filter: brightness(1);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1.3, 0.001) translate3d(0, 0, 0);
+    filter: brightness(10);
+  }
+  100% {
+    animation-timing-function: $ease-in-quint;
+    transform: scale(0.000, 0.0001) translate3d(0, 0, 0);
+    filter: brightness(50);
+  }
+}
+
+@keyframes overlay-anim {
+  0% {
+    visibility: hidden;
+  }
+  20% {
+    visibility: hidden;
+  }
+  21% {
+    visibility: visible;
+  }
+  100% {
+    visibility: hidden;
+  }
+}
+
+@keyframes overlay-anim-switch {
+  0% {
+    visibility: hidden;
+  }
+  10% {
+    visibility: visible;
+  }
+  100% {
+    visibility: hidden;
+  }
+}
+
+@keyframes gradient {
+  0% {
+      background-position: 0% 0%;
+  }
+
+  20% {
+      background-position: 0% 50%;
+  }
+
+  40% {
+      background-position: 50% 100%;
+  }
+
+  60% {
+      background-position: 100% 50%;
+  }
+
+  80% {
+      background-position: 50% 0%;
+  }
+
+  100% {
+      background-position: 0% 0%;
+  }
+}
+
+@keyframes float {
+  0% {
+      transform: translateY(0);
+  }
+
+  50% {
+      transform: translateY(-5px);
+  }
+
+  100% {
+      transform: translateY(0);
+  }
+}
+
+
+@mixin center {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate3d(-50%, -50%, 0);
+}
+
+@mixin flexCenter {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+@mixin pseudo {
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	content: " ";
+}
+
+@mixin scan-crt($scan-crt) {
+  @if $scan-crt == true {
+    animation: scan-crt 1s steps($scan-fps) infinite;
+  }
+  @else { animation: none; }
+}
+
+@mixin scan-moving($scan-moving-line) {
+  @if $scan-moving-line == true {
+    animation: scan-moving 6s linear infinite;
+  }
+  @else { animation: none; }
+}
+
+
+
+@keyframes scan-moving {
+  0% {
+    position: absolute;
+    top: 100%;
+    // transform: translate3d(0,0,0);
+  }
+  30% {
+    position: absolute;
+    top: 100%;
+    // transform: translate3d(0,100vh,0);
+  }
+  70% {
+    position: absolute;
+    top: 0%;
+    // transform: translate3d(0,0,0);
+  }
+  100% {
+    position: absolute;
+    top: 0%;
+    // transform: translate3d(0,100vh,0);
+  }
+}
+
+@keyframes scan-crt {
+  0% {
+    background-position: 0 50%;
+  }
+}

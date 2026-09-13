@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>zzz MultiMedia Wallpaper Engine</title>
+    <link rel="stylesheet" href="style/styles.css">
+    <script src="https://www.youtube.com/iframe_api"></script>
+</head>
+
+<body>
+    <div id="wallpaper">
+        <div id="background-container">
+            <img id="background-image" src="resource/image/zzz_background_crt_cutout_blur.png" alt="crt cutout scene">
+            <div class="clock-container">
+                <img id="clock-image" src="resource/image/clock.png" alt="clock image">
+                <div id="clock">
+                    <div class="digit" id="hour-tens"></div>
+                    <div class="digit" id="hour-ones"></div>
+                    <div class="separator"></div>
+                    <div class="digit" id="minute-tens"></div>
+                    <div class="digit" id="minute-ones"></div>
+                </div>
+            </div>
+            <div class="calendar-container">
+                <img id="calendar-image" src="resource/image/calendar.png" alt="calendar image">
+                <div id="calendar">
+                    <div id="calendar-year-month"></div>
+                    <div id="calendar-header"></div>
+                    <div id="calendar-grid"></div>
+                </div>
+            </div>
+            <div class="tv-control-container">
+                <input type="checkbox" id="tv-switch" class="tv-switch-checkbox" checked>
+                <label for="tv-switch" class="switch-label"></label>
+                <button id="switch-input"></button>
+                <button id="switch-channel"></button>
+                <button id="switch-play-state"></button>
+            </div>
+            <div class="tv-container-overlay" id="tv-container-overlay"></div>
+            <div class="tv_container" id="tv-container">
+                <img id="screen-highlight" src="resource/image/screen_hightlight.png" alt="screen-highlight">
+                <!-- <img id="vignette" src="resource/image/crt-3.png" alt="vignette"> -->
+                <div class="tv-screen" id="tv-screen-id">
+                    <!-- <img id="vignette" src="resource/image/crt-3.png" alt="vignette"> -->
+                    <div class="scanlines"></div>
+                    <div class="scanlines-move"></div>
+                    <div class="crt_effect" id="crt-container">
+                        <div class="tv-info-overlay" id="tv-info-overlay">VIDEO</div>
+                        <!-- <div class="vhs-info-overlay" id="vhs-info-overlay">PLAY</div> -->
+                        <canvas id="noise-canvas" class="picture"></canvas>
+                        <div class="tv-content-container" id="tv-content-container">
+                            <!-- Your dynamic content goes here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <audio id="switch-channel-static" src="resource/sound/radio_static.mp3" preload="auto"></audio>
+        <audio id="switch-channel-switch" src="resource/sound/light_switch.mp3" preload="auto"></audio>
+        <!-- <audio id="soundEffect1" src="" preload="auto"></audio> -->
+    </div>
+
+    <!-- <svg>
+        <defs>
+            <filter id="convex-effect" color-interpolation-filters="sRGB" width="110%" height="120%">
+                <feImage id="feimage" result="10_MAP" href="resource/svg/warp_redblue_20.png" />
+                <feDisplacementMap in="SourceGraphic" in2="10_MAP" scale="20" yChannelSelector="R" />
+            </filter>
+        </defs>
+    </svg>
+    <svg width="0" height="0">
+        <filter id="crt-barrel-distortion" color-interpolation-filters="sRGB" width="110%" height="120%">
+            <feImage xlink:href="resource/svg/warp_redblue_1.png" result="image"/>
+            <feDisplacementMap in="SourceGraphic" in2="SourceAlpha" scale="20"  yChannelSelector="R"/>
+        </filter>
+    </svg> -->
+    <!-- <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script> -->
+    <script type="module" src="script/app.js"></script>
+</body>
+
+</html>

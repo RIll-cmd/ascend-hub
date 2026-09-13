@@ -311,6 +311,25 @@ export default function Home() {
   const uploadTarget = useRef("tv");
   const urls = useRef<Record<string, string>>({});
   const notify = (s: string) => setToast(s);
+  const zzzFrameRef = useRef<HTMLIFrameElement>(null);
+
+  const handleZzzLoad = () => {
+    if (zzzFrameRef.current?.contentWindow) {
+      zzzFrameRef.current.contentWindow.postMessage(
+        { type: "SET_MUTE", muted: !sound },
+        "*"
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (zzzFrameRef.current?.contentWindow) {
+      zzzFrameRef.current.contentWindow.postMessage(
+        { type: "SET_MUTE", muted: !sound },
+        "*"
+      );
+    }
+  }, [sound]);
 
   useEffect(() => {
     const saved = loadLayout();
@@ -359,7 +378,10 @@ export default function Home() {
   }, [rows, ready]);
 
   useEffect(() => {
-    const ro = new ResizeObserver(entries => setScale(entries[0].contentRect.width / 1160));
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0]?.contentRect?.width || 1160;
+      setScale(Math.min(1, w / 1160));
+    });
     if (stageRef.current) ro.observe(stageRef.current);
     return () => ro.disconnect();
   }, []);
@@ -739,9 +761,19 @@ export default function Home() {
     : 728;
 
   return (
-    <main className={`${edit ? "os edit-mode" : presetMode === "reference" ? "os full-bleed-mode" : "os"} lighting-${lightingMode}`} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) synth.play("click"); }}>
+    <div className={`os zzz-workspace-shell ${edit ? "edit-mode" : ""} ${presetMode === "reference" ? "full-bleed-mode" : ""} lighting-${lightingMode}`} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) synth.play("click"); }}>
       <header className="topbar">
-        <a href="#" className="wordmark" aria-label="Ascend OS home"><span className="logo-mark">⏣</span> ASCEND <span>OS</span></a>
+        <a
+          href="#"
+          className="wordmark"
+          aria-label="Ascend OS home"
+          onClick={e => {
+            e.preventDefault();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+        >
+          <span className="logo-mark">⏣</span> ASCEND <span>OS</span>
+        </a>
         <div className="top-status"><i /> SYSTEM ONLINE <span className="top-divider" /> V.1.0.26</div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <div className="lighting-choice-toggle" role="radiogroup" aria-label="Shelf compartment lighting choice">
@@ -768,49 +800,56 @@ export default function Home() {
               CRT MAGENTA
             </button>
           </div>
-          <button className={`view-switch ${presetMode === "reference" ? "active" : ""}`} onClick={() => setPresetMode(m => m === "workspace" ? "reference" : "workspace")}>
+          <button
+            className={`view-switch ${presetMode === "reference" ? "active" : ""}`}
+            onClick={() => {
+              const cab = document.querySelector("#ascend-cabinet-section");
+              if (cab) {
+                cab.scrollIntoView({ behavior: "smooth", block: "start" });
+              } else {
+                setPresetMode(m => m === "workspace" ? "reference" : "workspace");
+              }
+            }}
+          >
             {presetMode === "reference" ? "▣ WORKOS CABINET" : "⏣ WORKSTATION"}
           </button>
           <Link href="/design-system" className="view-switch" style={{ textDecoration: "none" }}>
             📐 DESIGN SYSTEM
           </Link>
-          {presetMode === "reference" && (
-            <button className="view-switch" onClick={() => setRowTemplateModalOpen(true)}>
-              <Plus size={11} /> ADD SHELF ROW
-            </button>
-          )}
+          <button className="view-switch" onClick={() => setRowTemplateModalOpen(true)}>
+            <Plus size={11} /> ADD SHELF ROW
+          </button>
         </div>
         <button className="sound-switch" onClick={() => { setSound(v => !v); if (!sound) synth.unlock(); }} aria-pressed={sound}>
           {sound ? <Volume2 size={15} /> : <VolumeX size={15} />} SOUND {sound ? "ON" : "OFF"}
         </button>
       </header>
 
-      <section className={`intro ${presetMode === "reference" ? "shelf-hero-stage" : ""}`}>
-        <div className="intro-meta">
-          <span>YOUR PERSONAL OPERATING SYSTEM</span>
-          <span>EST. 2026 <i /> {date}</span>
+      {/* Main clean workspace running the authentic Zenless Zone Zero TV web project */}
+      <section className="zzz-tv-workspace" id="zzz-tv-workspace">
+        <iframe
+          ref={zzzFrameRef}
+          id="zzz-tv-frame"
+          src="/zzz-tv/index.html"
+          className="zzz-tv-embed-frame"
+          title="Zenless Zone Zero TV"
+          allow="autoplay; encrypted-media; fullscreen"
+          onLoad={handleZzzLoad}
+        />
+        <div
+          className="zzz-scroll-hint"
+          onClick={() => {
+            const cab = document.querySelector("#ascend-cabinet-section");
+            cab?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+          title="Scroll down to explore WorkOS cabinet shelves"
+        >
+          <i /> SCROLL FOR WORKOS CABINET <ArrowDown size={11} />
         </div>
-        {presetMode !== "reference" ? (
-          <div className="launch-neon-center">
-            <div className="neon-sign">
-              <span>CONTINUOUS</span>
-              <strong>PROGRESSION</strong>
-              <i />
-            </div>
-          </div>
-        ) : (
-          <RetroRoomHero
-            initialVideoSrc={media.tv || "https://www.youtube.com/watch?v=4xDzrJKXOOY"}
-            initialPlaying={playing}
-            onExploreCabinet={() => {
-              const cab = document.querySelector(".cabinet-shell");
-              cab?.scrollIntoView({ behavior: "smooth" });
-            }}
-          />
-        )}
       </section>
 
-      <div className={`cabinet-shell lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`}>
+      {/* Scrollable WorkOS Multi-Tier Shelves Stack */}
+      <div className={`cabinet-shell lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`} id="ascend-cabinet-section">
         {(presetMode !== "reference" || edit) && (
           <div className="cabinet-top">
             <span>{presetMode === "reference" ? `WORKOS LAUNCH CABINET · ${rows.length} TIERS LOADED` : "THE WORKSTATION"}</span>
@@ -1114,12 +1153,6 @@ export default function Home() {
           <div><i /> EDIT MODE <span>Customize shelves · Swap items · Reorder</span></div>
           {presetMode === "reference" ? (
             <>
-              <button onClick={() => {
-                const btn = document.querySelector<HTMLButtonElement>(".room-dock-btn.crop-btn");
-                if (btn) btn.click();
-              }}>
-                <Scissors size={14} /> Crop & Move Hero
-              </button>
               <button onClick={() => setRowTemplateModalOpen(true)}><Plus size={14} /> Add Shelf Row</button>
               <button onClick={handleResetCabinet}><RotateCcw size={14} /> Reset Shelves</button>
             </>
@@ -1274,6 +1307,6 @@ export default function Home() {
       {active === "picker" && (
         <ComponentPicker onAdd={addCollectible} onClose={() => setActive(null)} />
       )}
-    </main>
+    </div>
   );
 }

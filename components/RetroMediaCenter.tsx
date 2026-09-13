@@ -8,10 +8,17 @@ import {
   CrtCalibratorHud,
   type CrtCalibrationState
 } from "./CrtScreenCalibrator";
+import { zzzAudio } from "./zzzAudio";
+import { ZzzDvdBounce } from "./ZzzDvdBounce";
+import { ZzzBangbooGame } from "./ZzzBangbooGame";
+import { ZzzWeatherChannel } from "./ZzzWeatherChannel";
+import { ZzzDesktopAccessories } from "./ZzzDesktopAccessories";
+
+export type CrtChannelType = "av" | "opening" | "video" | "weather" | "game" | "pon" | "ambient" | "static";
 
 export interface RetroMediaCenterProps {
   mode?: "all" | "tv-only" | "tv-deck" | "deck-only" | "speakers-only";
-  channel?: "pon" | "ambient" | "static" | "video";
+  channel?: CrtChannelType;
   videoSrc?: string;
   initialPlaying?: boolean;
   interactive?: boolean;
@@ -157,7 +164,7 @@ export function CrtYouTubePlayer({ videoId, isPlaying, isMuted, volume }: CrtYou
    2. UNIFIED CRT DISPLAY VIEWPORT (BEZEL LOCKED WITH YOUTUBE & MEDIA PLAYER)
    ========================================================================== */
 interface CrtViewportProps {
-  channel: "pon" | "ambient" | "static" | "video";
+  channel: CrtChannelType;
   powerOn: boolean;
   isPlaying: boolean;
   isMuted: boolean;
@@ -238,10 +245,36 @@ export function CrtViewport({
           {/* 4. Live Video / Broadcast Channels */}
           {calibMode === "video" && (
             <>
-              {/* Channel 1: PON! Anime comic */}
+              {/* Channel: AV (ZZZ 3D Bouncing Logo) */}
+              {channel === "av" && <ZzzDvdBounce isPlaying={isPlaying} />}
+
+              {/* Channel: OPENING (Native High-Res ZZZ Opening WebM) */}
+              {channel === "opening" && (
+                <div className="crt-video-wrap">
+                  <video
+                    key="zzz-opening-native"
+                    src="/videos/zzz/zzz_opening.webm"
+                    autoPlay={isPlaying}
+                    loop
+                    muted={isMuted}
+                    playsInline
+                    className="crt-video-player"
+                  />
+                  <div className="crt-scanlines video-feed-scanlines" />
+                  <div className="crt-glass-reflection" />
+                </div>
+              )}
+
+              {/* Channel: WEATHER (New Eridu Sixth Street Live Report) */}
+              {channel === "weather" && <ZzzWeatherChannel />}
+
+              {/* Channel: GAME (Playable Bangboo Arcade Runner) */}
+              {channel === "game" && <ZzzBangbooGame />}
+
+              {/* Channel: PON! Anime comic */}
               {channel === "pon" && <PonScreen isPlaying={isPlaying} />}
 
-              {/* Channel 2: Cyberpunk Ascend Synthwave Broadcast */}
+              {/* Channel: Cyberpunk Ascend Synthwave Broadcast */}
               {channel === "ambient" && (
                 <div className="ambient-screen">
                   <div className="stars" />
@@ -255,7 +288,7 @@ export function CrtViewport({
                 </div>
               )}
 
-              {/* Channel 3: CRT Analog Static Noise */}
+              {/* Channel: CRT Analog Static Noise */}
               {channel === "static" && (
                 <div className="crt-static-noise">
                   <div className="crt-scanlines" />
@@ -263,7 +296,7 @@ export function CrtViewport({
                 </div>
               )}
 
-              {/* Channel 4: Functional YouTube / Media Player */}
+              {/* Channel: Functional YouTube / Media Player */}
               {channel === "video" && (
                 <div className="crt-video-wrap">
                   {parsed.type === "youtube" ? (
@@ -709,7 +742,7 @@ export function StudioSpeaker({
    ========================================================================== */
 export function RetroMediaCenter({
   mode = "all",
-  channel = "pon",
+  channel = "av",
   videoSrc,
   initialPlaying = true,
   interactive = true,
@@ -721,7 +754,7 @@ export function RetroMediaCenter({
 }: RetroMediaCenterProps) {
   const [isPlaying, setIsPlaying] = useState(initialPlaying);
   const [powerOn, setPowerOn] = useState(true);
-  const [activeChannel, setActiveChannel] = useState<"pon" | "ambient" | "static" | "video">(channel);
+  const [activeChannel, setActiveChannel] = useState<CrtChannelType>(channel);
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(75);
   const [mediaUrl, setMediaUrl] = useState(videoSrc || "https://dotcom.workos.com/images/launch-week/summer-2026/intro.mp4");
@@ -743,7 +776,7 @@ export function RetroMediaCenter({
     if (videoSrc) setMediaUrl(videoSrc);
   }, [videoSrc]);
 
-  const channels: Array<"pon" | "ambient" | "static" | "video"> = ["pon", "ambient", "static", "video"];
+  const channels: CrtChannelType[] = ["av", "opening", "video", "weather", "game", "pon", "ambient", "static"];
 
   const triggerOsd = (text: string) => {
     setOsdText(text);
@@ -756,14 +789,19 @@ export function RetroMediaCenter({
   const handlePlayToggle = () => {
     const next = !isPlaying;
     setIsPlaying(next);
+    zzzAudio.play("click", 0.4);
     triggerOsd(next ? "▶ PLAY" : "❚❚ PAUSE");
     onPlayChange?.(next);
   };
 
   const handlePowerToggle = () => {
+    zzzAudio.play("light_switch", 0.7);
     setPowerOn(p => {
       const next = !p;
-      if (next) triggerOsd(`CH 0${channels.indexOf(activeChannel) + 1} · ONLINE`);
+      if (next) {
+        zzzAudio.play("tv_static", 0.3);
+        triggerOsd(`CH 0${channels.indexOf(activeChannel) + 1} · ONLINE`);
+      }
       return next;
     });
   };
@@ -772,11 +810,16 @@ export function RetroMediaCenter({
     const nextIdx = (channels.indexOf(activeChannel) + 1) % channels.length;
     const nextChan = channels[nextIdx];
     setActiveChannel(nextChan);
-    const names = {
-      pon: "CH 01 · PON! COMIC",
-      ambient: "CH 02 · CYBERPUNK BROADCAST",
-      static: "CH 03 · ANALOG STATIC",
-      video: "CH 04 · YOUTUBE / MEDIA"
+    zzzAudio.play("radio_static", 0.4);
+    const names: Record<CrtChannelType, string> = {
+      av: "AV 01 · RANDOM PLAY",
+      opening: "CH 02 · ZZZ OPENING TAPE",
+      video: "CH 03 · YOUTUBE / MEDIA",
+      weather: "CH 04 · NEW ERIDU WEATHER",
+      game: "CH 05 · BANGBOO JUMP ARCADE",
+      pon: "CH 06 · PON! COMIC",
+      ambient: "CH 07 · CYBERPUNK BROADCAST",
+      static: "CH 08 · ANALOG STATIC"
     };
     triggerOsd(names[nextChan]);
     onChannelChange?.(nextChan);
@@ -787,14 +830,14 @@ export function RetroMediaCenter({
 
   const handleTunerClick = () => {
     if (!interactive) return;
-    synth.play("click");
+    zzzAudio.play("click", 0.6);
     setTunerAngle(prev => (prev + 45) % 360);
     handleNextChannel();
   };
 
   const handleVHoldClick = () => {
     if (!interactive) return;
-    synth.play("click");
+    zzzAudio.play("click", 0.5);
     setVHoldAngle(prev => (prev + 30) % 360);
     handlePowerToggle();
   };
@@ -811,6 +854,8 @@ export function RetroMediaCenter({
           className={`unified-media-rig ${powerOn ? "power-on" : "power-off"}`}
           style={{ aspectRatio: "641 / 389" }}
         >
+          {/* Authentic ZZZ Desktop Accessories (Top-Right LED Clock & Left Desk Calendar) */}
+          <ZzzDesktopAccessories />
           {/* 1. CRT Display Window (Calibrated & Locked into Inner Bezel Aperture) */}
           <div
             className="rig-crt-display-window"

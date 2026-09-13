@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { RetroMediaCenter } from "./RetroMediaCenter";
+import { RetroMediaCenter, type CrtChannelType } from "./RetroMediaCenter";
+import { RetroWallShelf, type ZZZTapeInfo } from "./RetroWallShelf";
+import { zzzAudio } from "./zzzAudio";
 
 interface RetroRoomHeroProps {
   initialVideoSrc?: string;
@@ -16,25 +19,41 @@ export function RetroRoomHero({
   onExploreCabinet,
   className = "",
 }: RetroRoomHeroProps) {
+  const [videoSrc, setVideoSrc] = useState(initialVideoSrc);
+  const [channel, setChannel] = useState<CrtChannelType>("av");
+
+  const handleTapeSelect = (tape: ZZZTapeInfo) => {
+    // Tactile VHS insertion sound effect
+    zzzAudio.play("vhs_start", 0.7);
+
+    // Route CRT to video channel with authentic video playback
+    if (tape.id === "lycaon") {
+      setChannel("opening");
+    } else if (tape.id === "rina") {
+      setVideoSrc("https://dotcom.workos.com/images/launch-week/summer-2026/intro.mp4");
+      setChannel("video");
+    } else if (tape.id === "koleda") {
+      setChannel("opening");
+    }
+  };
+
   return (
     <section
       className={`retro-room-hero-section retro-room-flat ${className}`}
       aria-label="Retro room media workstation"
     >
       <div className="retro-room-flat-stage">
-        <img
-          src="/retro-media/retro-room-background-v2.png"
-          alt="Retro room with bookshelves, framed posters, a wooden speaker, and a clear desk"
-          className="retro-room-flat-backdrop"
-          draggable={false}
-          fetchPriority="high"
-        />
+        <aside className="retro-room-wall-shelf-container" aria-label="ZZZ Random Play 3D Tape Shelf">
+          <RetroWallShelf onTapeSelect={handleTapeSelect} />
+        </aside>
+
         <div className="retro-room-flat-workstation">
           <RetroMediaCenter
             mode="all"
-            channel="video"
-            videoSrc={initialVideoSrc}
+            channel={channel}
+            videoSrc={videoSrc}
             initialPlaying={initialPlaying}
+            onChannelChange={(ch) => setChannel(ch as CrtChannelType)}
           />
         </div>
       </div>

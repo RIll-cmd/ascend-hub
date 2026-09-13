@@ -1,0 +1,555 @@
+.music-player{
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+}
+
+#music-player-popup-msg{
+  position: absolute;
+  top: 30%;
+  left: 25%;
+  width: 50%;
+  height: 30%;
+  // transform: translate(-50%, -50%);
+  text-align: center;
+  font-weight: bold;
+  font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+  font-size: 2vh;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.8);
+  background-color: rgba(133, 133, 133, 0.7);
+  align-content: center;
+  align-items: center;
+  justify-content: center;
+  color: rgb(255, 204, 0);
+  padding: 10px;
+  border-radius: 5px;
+  z-index: 21;
+}
+
+#vinyl-record-container{
+  position: absolute;
+  top: 65%;
+  left: -10%;
+  width: 30%;
+  height: 39%;
+  // background-color: #ff000023;
+  z-index: 22;
+}
+
+#vinyl-record-img{
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  z-index: 23;
+  // transform: translate(-50%, -50%);
+}
+
+
+.spin-360 {
+  animation: spin 5s linear infinite;
+  animation-fill-mode: forwards;
+}
+
+#vinyl-play-icon{
+  position: absolute;
+  top: 35%;
+  left: 35%;
+  // transform: translate(-50%, -50%);
+  width: 30%;
+  height: 30%;
+  color: #ffffff;
+  z-index: 24;
+  display: none;
+}
+
+#vinyl-pause-icon{
+  position: absolute;
+  top: 35%;
+  left: 35%;
+  // transform: translate(-50%, -50%);
+  width: 30%;
+  height: 30%;
+  color: #ffffff;
+  z-index: 23;
+  display: none;
+}
+
+#vinyl-stop-icon{
+  position: absolute;
+  top: 35%;
+  left: 35%;
+  // transform: translate(-50%, -50%);
+  width: 30%;
+  height: 30%;
+  color: #ffffff;
+  z-index: 23;
+  display: none;
+}
+
+// #music-player-background{
+//   position: absolute;
+//   top: 0%;
+//   width: 100%;
+//   height: 100%;
+//   opacity: 0.9;
+//   background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(255, 0, 0, 0.1), rgba(0,0,255, 0.1));
+//   // animation: gradient 5s ease infinite;
+//   // background-size: 100% 100%;
+  
+//   // mix-blend-mode: multiply;
+//   // z-index: 10;
+//   // z-index: 2;
+
+// }
+
+// #music-player-background::before {
+//   content: '';
+//   position: absolute;
+//   top: 0;
+//   left: 0;
+//   width: 100%;
+//   height: 100%;
+//   background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(255, 0, 0, 0.1), rgba(0,0,255, 0.1)); /* Adjust the colors and opacity */ /* Color overlay */
+//   // mix-blend-mode: multiply; /* Blend mode */
+//   pointer-events: none; /* Make sure the overlay doesn't block interactions */
+// }
+
+#album-cover-container {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  // z-index: 20;
+}
+
+#visualizer-wave-canvas{
+  position: absolute;
+  top: 62.5%;
+  left: 55%;
+  width: 44%;
+  height: 18%;
+  // transform: rotateZ(121deg);
+  // transform: rotateZ(301deg);
+  // width: 100%;
+  // height: 100%;
+  // display: block;
+  // opacity: 0;
+  transition: opacity 2s ease;
+  z-index: 10;
+  // background-color: rgba(0, 255, 255, 0.459);
+}
+
+#visualizer-logo-canvas{
+  position: absolute;
+  top: 5%;
+  left: 3%;
+  width: 20%;
+  height: 24%;
+  // transform: rotateZ(121deg);
+  transform: rotateZ(-20deg);
+  // width: 100%;
+  // height: 100%;
+  // display: block;
+  z-index: 14;
+  // background-color: rgba(0, 255, 255, 0.459);
+}
+
+
+#media-title-container{
+  position: absolute;
+  top: 80%;
+  left: 0%;
+  width: 100%;
+  height: 20%;
+  overflow: hidden;
+  white-space: nowrap;
+  box-sizing: border-box;
+  border-radius: 1vh;
+  background-color: rgb(10, 10, 10);
+  z-index: 12;
+}
+
+
+#media-artist-container{
+  position: absolute;
+  top: 72%;
+  left: 0%;
+  width: 55%;
+  height: 15%;
+  overflow: hidden;
+  white-space: nowrap;
+  box-sizing: border-box;
+  border-radius: 1vh;
+  background-color: #a6ff00;
+  border-style: inset;
+  border-color: "#101010";
+  z-index: 11;
+}
+
+.expand-animation{
+  animation: expand 2s forwards;
+  // width: 0%;
+  // height: 100%;
+  // background-color: rgba(0, 0, 0, 0.7);
+  // z-index: 13;
+}
+.retract-animation{
+  animation: retract 1s forwards;
+  // width: 55%;
+}
+
+@keyframes expand{
+  0%{
+    width: 0;
+  }
+  100%{
+    width: 55%;
+  }
+  
+}
+
+@keyframes retract{
+  0%{
+    width: 55%;
+  }
+  100%{
+    width: 0;
+  }
+}
+
+// #black-music-player-bar{
+//   position: absolute;
+//   top: 0%;
+//   left: 0%;
+//   width: 10.1%;
+//   height: 100%;
+//   background-color: rgba(0, 0, 0, 1);
+//   // animation: gradient 5s ease infinite;
+//   // background-size: 100% 100%;
+//   z-index: 15;
+// }
+
+// #stripe-background{
+//   position: absolute;
+//   top: -55%;
+//   left: 0%;
+//   width: 38%;
+//   height: 100%;
+//   // background-color: rgba(0, 0, 0, 0.5);
+//   z-index: 14;
+// }
+
+// #zzz-logo{
+//   position: absolute;
+//   top: 7%;
+//   left: 0%;
+//   width: 10%;
+//   height: 18%;
+//   z-index: 16;
+// }
+
+// #music-player-text{
+//   position: absolute;
+//   top: 60%;
+//   left: -17%;
+//   font-size: 5vh;
+//   font-family: Impact, Miland, Briston;
+//   white-space: nowrap;
+//   overflow: hidden;
+//   text-overflow: ellipsis;
+//   display: block;
+//   // width: 42%;
+//   height: auto;
+//   color: #ffffff;
+//   transform: rotateZ(-90deg);
+//   z-index: 18;
+// }
+
+#nothing-background {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  background-color: rgb(0, 0, 0);
+  opacity: 1;
+  // z-index: 9;
+}
+
+#albumCoverArt {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  // width: 41.5%;
+  // height: 55%;
+  width: 100%;
+  height: 80%;
+  // box-shadow: 1vh 1vh 1vh rgba(0, 0, 0, 0.5), -1vh -1vh 1vh white inset;
+  border-radius: 1.5vh;
+  // animation: float 5s ease-in-out infinite;
+  // z-index: -1;
+  background-color: rgb(0, 0, 0);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 10;
+  // opacity: 1;
+  transition: background-image 2s ease-in-out;
+  // background-image: url("resource/image/unknow_faction.png");
+  // z-index: 3;
+}
+
+
+
+#albumCoverArt.fadeInOpacity {
+  opacity: 1;
+}
+
+#albumCoverArt.fadeOutOpacity {
+  opacity: 0;
+}
+
+// .textBox {
+//   position: absolute;
+//   top: 81%;
+//   left: 21%;
+//   width: 76%;
+//   height: 19%;
+//   display: flex;
+//   flex-direction: column;
+//   justify-content: center;
+//   z-index: 15;
+//   // z-index: 15;
+//   // z-index: 4;
+// }
+
+// .text {
+  // white-space: nowrap;
+  // overflow: hidden;
+  // text-overflow: ellipsis;
+  // display: block;
+  // text-align: left;
+  // color: rgb(255, 204, 0);
+  // // text-shadow: 5px 0px 0 #000000;
+  // color: #000000;
+  // text-shadow: 5px 0px 0 #ffcc00;
+  // z-index: 30;
+// }
+
+#trackTitle {
+  position: absolute;
+  top: 5%;
+  left: 21%;
+  font-size: 4vh;
+  font-family: Impact, Miland, Briston;
+  // white-space: nowrap;
+  // overflow: hidden;
+  display: inline-block;
+  // text-overflow: ellipsis;
+  // display: block;
+  // width: 75%;
+  height: auto;
+  text-align: left;
+  color: #cacaca;
+  transition: opacity 1.5s ease;
+  z-index: 14;
+}
+
+#artist {
+  position: absolute;
+  top: 6%;
+  // right: 2%;
+  left: 37%;
+  font-size: 2.5vh;
+  font-family: Impact, Miland, Briston;
+  // white-space: nowrap;
+  // overflow: hidden;
+  display: inline-block;
+  // text-overflow: ellipsis;
+  // display: block;
+  // width: auto;
+  // height: auto;
+  text-align: left;
+  // width: 60%;
+  height: auto;
+  // color: #ffff;
+  color: rgb(10, 10, 10);
+  z-index: 15;
+}
+
+#track-progress {
+  position: absolute;
+  top: 90%;
+  left: 20%;
+  height: 20%;
+  width: 80%;
+  text-align: center;
+  // z-index: 4;
+}
+
+// .svg-container {
+//   top: 50%;
+//   left: 0%;
+//   width: 100%;
+//   height: 50%;
+//   // background-color: #dfdddd07;
+//   position: absolute;
+//   // border-radius: 1vh;
+//   // margin: 1vh 0vh;
+//   // scale: 1vh
+//   z-index: 10;
+// }
+
+// .background-svg {
+//   width: 100%;
+//   height: 100%;
+// }
+
+// #clipPath {
+//   position: absolute;
+//   top: 0%;
+//   left: 0%;
+//   width: 100%;
+//   height: 100%;
+// }
+
+#progress-container{
+  width: 80%;
+  height: 10%;
+  // background-color: #0000008c;
+  position: absolute;
+  // border-radius: 1vh;
+  top: 94.5%;
+  left: 16%;
+  // direction: rtl;
+  // clip-path: url(#clipPath);
+  // transform: scaleY(0.2)
+  // transform: scale(0.7);
+  z-index: 15;
+}
+
+#progress-background{
+  width: 100%;
+  height: 100%;
+  background-color: #3b3b3b6c;
+  position: absolute;
+  // border-radius: 1vh;
+  top: 0%;
+  left: 0%;
+  z-index: 3;
+}
+
+#progress-bar {
+  width: 100%;
+  height: 35%;
+  background-color: #a6ff00;
+  position: absolute;
+  border-radius: 1vh;
+  top: 0%;
+  left: 0%;
+  z-index: 15;
+  // transform: rotateZ(deg);
+  // clip-path: url(#clipPath);
+  // transform: scale(0.5);
+}
+
+#time-info {
+  position: absolute;
+  top: 94.5%;
+  left: 15%;
+  width: 80%;
+  height: 10%;
+  font-size: 1.5vh;
+  color: #a6ff00;
+  -webkit-text-stroke: 0.1vh rgb(10, 10, 10);
+  // text-shadow: 5px 0px 0 #ffcc00;
+  font-family: Impact, Miland, Briston;
+  z-index: 15;
+}
+
+#time-divider{
+  text-align: center;
+  position: absolute;
+  top: 0%;
+  left: 51%;
+}
+
+#current-time {
+  text-align: right;
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 49%
+
+}
+
+#total-time {
+  text-align: left;
+  position: absolute;
+  top: 0%;
+  left: 53%;
+  width: 49%
+}
+
+
+@keyframes scroll {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.hidden {
+  transform: translateX(110%);
+  transition: transform 1.5s ease;
+}
+
+.visible {
+  transform: translateX(0%);
+  transition: transform 1.5s ease;
+}
+
+// .text-fade{
+//   opacity: 0;
+//   transition: opacity 1s ease;
+// }
+
+// .visibleText {
+//   opacity: 1;
+//   transition: opacity 1s ease;
+// }
+
+.hiddenTimeInfo {
+  transform: translateY(200%);
+  transition: transform 1.5s ease;
+}
+.visibleTimeInfo {
+  transform: translateY(0%);
+  transition: transform 1.5s ease;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotateZ(0deg);
+  }
+  100% {
+    transform: rotateZ(360deg);
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100%{
+    transform: translateX(-100%)
+  }
+}

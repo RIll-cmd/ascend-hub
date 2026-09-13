@@ -1,0 +1,119 @@
+.calendar-container {
+    position: absolute;
+    width: 15%;
+    height: 40%;
+    top: 50%;
+    left: 29.8%;
+    z-index: 200;
+    filter: sepia(0.2) blur(0.3px);
+  }
+  
+  #calendar-image {
+    width: 47%;
+    height: 78%;
+    position: absolute;
+    top: 0%;
+    left: 0%;
+  }
+  
+  #calendar {
+    position: absolute;
+    top: 0;
+    left: 0%;
+    transform: perspective(100vh) rotateX(-10deg) rotateY(25deg) rotateZ(0.5deg);
+    // display: flex;
+    flex-direction: column;
+    z-index: 3;
+    height: 80%;
+    width: 55%;
+    opacity: 0.8;
+    filter: sepia(0.1);
+  }
+  
+  #calendar-year-month {
+    position: absolute;
+    top: 7%;
+    left: 5%;
+    // display: flex;
+    font-size: 3.5vh;
+    height: auto;
+    width: 80%;
+    // justify-content: center;
+    // align-items: center;
+    text-align: center;
+    color: rgb(104, 0, 0);
+    font-weight: 900;
+    font-family: VanillaCake;
+  }
+  
+  #calendar-header {
+    position: absolute;
+    top: 32%;
+    left: 10%;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    row-gap: 2%;
+    column-gap: 4%;
+    font-size: 1.5vh;
+    color: #272626;
+    font-family: VanillaCake;
+  }
+  
+  #calendar-grid {
+    position: absolute;
+    top: 40%;
+    left: 10%;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    column-gap: 2%;
+    row-gap: 2%;
+  }
+  
+  #calendar .day {
+    // display: flex;
+    top: 0%;
+    left: 0%;
+    height: 100%;
+    width: 100%;
+    text-align: center;
+    // object-fit: contain;
+    color: #000000;
+    font-size: 2.5vh;
+    font-weight: 900;
+    font-family: VanillaCake;
+  }
+  
+  #calendar .today {
+    position: relative;
+  } 
+  
+  #calendar .today::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120%;
+    height: 120%;
+    transform: translate(-50%, -50%);
+    // justify-content: center;
+    // align-items: center;
+    // text-align: center;
+    font-weight: bold;
+    // object-fit: cover;
+    background: var(--circle-image) no-repeat center center;
+    // background-size: cover;
+    background-position: center;
+    // pointer-events: none;
+    opacity: 0.9;
+    // stroke-width: 5px
+  }
+
+
+  // #today-circle {
+  //   background-image: var(--circle-image);
+  //   stroke-width: var(--circle-stroke-width, 5px);
+  //   stroke: var(--circle-stroke-color, red);
+  //   background-size: cover;
+  //   background-position: center;
+  //   // fill: var(--circle-fill-color);
+  // }

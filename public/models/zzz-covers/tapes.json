@@ -1,0 +1,68 @@
+[
+  {
+    "name": "lycaon",
+    "title": "And the True Heroes Are Always Behind the Scenes",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/40/Chapter_Von_Lycaon_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/d/d0/Chapter_Von_Lycaon_1_Tape_Spine.png"
+  },
+  {
+    "name": "rina",
+    "title": "Until Your Memory Fades",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/42/Chapter_Alexandrina_Sebastiane_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/5/57/Chapter_Alexandrina_Sebastiane_1_Tape_Spine.png"
+  },
+  {
+    "name": "koleda",
+    "title": "Mole in the Hole",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/c/cd/Chapter_Koleda_Belobog_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/9/94/Chapter_Koleda_Belobog_1_Tape_Spine.png"
+  },
+  {
+    "name": "trigger",
+    "title": "Out of Sight",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/f/f4/Chapter_Trigger_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/1/1d/Chapter_Trigger_1_Tape_Spine.png"
+  },
+  {
+    "name": "nekomata",
+    "title": "Cat and Mouse Game",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/8/81/Chapter_Nekomiya_Mana_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/b2/Chapter_Nekomiya_Mana_1_Tape_Spine.png"
+  },
+  {
+    "name": "burnice",
+    "title": "Burnice White",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/d/da/Chapter_Burnice_White_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/4e/Chapter_Burnice_White_1_Tape_Spine.png"
+  },
+  {
+    "name": "ellen",
+    "title": "Ellen Joe",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/3/30/Chapter_Ellen_Joe_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/e/e8/Chapter_Ellen_Joe_1_Tape_Spine.png"
+  },
+  {
+    "name": "random_play",
+    "title": "Just Another Day at the Video Store",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/b/bd/Chapter_Just_Another_Day_at_the_Video_Store_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/f/fc/Chapter_Just_Another_Day_at_the_Video_Store_Tape_Spine.png"
+  },
+  {
+    "name": "soldier11",
+    "title": "Soldier 11",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/d/db/Chapter_Soldier_11_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/e/e6/Chapter_Soldier_11_1_Tape_Spine.png"
+  },
+  {
+    "name": "grace",
+    "title": "Grace Howard",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/4/46/Chapter_Grace_Howard_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/9/9c/Chapter_Grace_Howard_1_Tape_Spine.png"
+  },
+  {
+    "name": "qingyi",
+    "title": "Qingyi",
+    "front": "https://static.wikia.nocookie.net/zenless-zone-zero/images/9/97/Chapter_Qingyi_1_Tape_Cover_Front.png",
+    "spine": "https://static.wikia.nocookie.net/zenless-zone-zero/images/5/5e/Chapter_Qingyi_1_Tape_Spine.png"
+  }
+]

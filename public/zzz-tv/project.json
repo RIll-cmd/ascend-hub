@@ -1,0 +1,355 @@
+{
+	"contentrating" : "Everyone",
+	"description" : "Wallpaper Engine theme inspired by the Zenless Zone Zero login screen. It includes a functional calendar and clock, along with a working TV. The TV also features weather report and media integration. You can also customize the images and videos that play on the TV to your heart's content.\n[hr][/hr]\n[b]Important Note![/b] All settings take approximately 5 seconds to apply. If you modify a setting while it is being applied, the timer will reset. Please avoid repeatedly changing the setting and assuming it's broken.\n[hr][/hr]\n[h3]Basic Controls[/h3]\n[list]\n    [*]On/Off button: Switch On/Off the TV\n    [*]Upper Knob: Switch between \"Inputs\"\n    [*]Lower Knob: Switch between \"Channels\"\n\t[*]Play/Pause Button: Control video playback\n\t[*]Choose which \"Input\" to display by toggling them on or off in the settings page\n[/list]\n\n[h3]Music[/h3]\n[list]\n    [*]The TV can display the music you're listening to or watching on platforms like YouTube and Spotify through Windows Media Integration. This feature is available only on Windows 10 or higher.\n    [*]If nothing is showing, your media integration feature might be turned off. To enable this feature inside the Wallpaper Engine, go to Wallpaper Engine Settings and navigate to General -> Windows -> Media Integration Support.\n    [*]You can block any programs from displaying on the TV by using the Media blocklist in the settings page if you don't want certain content to appear.\n\t[*]To prevent the TV from showing media information from any specific program, use the Media blocklist in the settings page.\n[/list]\n\n[h3]Weather[/h3]\n[list]\n\t[*]The TV can display current weather conditions and provide weather forecasts using the OpenWeather API.\n\t[*]To access weather information, you need an OpenWeather API key. Follow these steps to obtain one:\n\t\t[olist]\n\t\t\t[*]Visit https://home.openweathermap.org/users/sign_up and create an account.\n\t\t\t[*]Go to the API Key page, where a default key should be assigned to your account.\n\t\t\t[*]Open Wallpaper Engine and navigate to the settings page for this wallpaper.\n\t\t\t[*]Paste the API Key into the API Key input box.\n\t\t[/olist]\n[/list]\nNote: The API Key may take up to 1 hour to activate.\n\n[h3]Video[/h3]\n[list]\n\t[*]Play videos on the TV using a URL link or by selecting a folder containing the videos.\n\t[*]Only WebM and Ogg video formats are supported.\n\t[*]To include multiple Videos via URL, separate each URLs with a comma(,).\n[/list]\n\n[h3]Image[/h3]\n[list]\n\t[*]Display images on the TV using a URL link or by selecting a folder containing the images.\n\t[*]To include multiple Images via URL, separate each URLs with a comma(,).\n[/list]\nNote: If the folder contains more than 10 images, only 10 images will be randomly chosen.\n\n[h3]YouTube[/h3]\n[list]\n\t[*]Supports YouTube playback and live streams via video IDs. You can obtain video ID by visiting the video you want the TV to play and copying the random letters after '?v=' from the URL.\n\t[*]To include multiple videos, separate each ID with a comma(,).\n\t[*]If the video does not display, it means the content creator or organization has restricted the video to be played only on YouTube and does not allow it to be played in an embedded frame.\n[/list]\n\n[h3]GIF[/h3]\n[list]\n\t[*]Display GIFs on the TV using a URL link.\n\t[*]To include multiple GIFs via URL, separate each URLs with a comma(,).\n[/list]",
+	"file" : "index.html",
+	"general" : 
+	{
+		"properties" : 
+		{
+			"content_fitting" : 
+			{
+				"index" : 3,
+				"order" : 103,
+				"text" : "<h4><strong>>> Content Fitting</strong></h4>"
+			},
+			"divider" : 
+			{
+				"index" : 1,
+				"order" : 101,
+				"text" : "<font color=\"gray\">────────────────────────────</font>"
+			},
+			"game_channel" : 
+			{
+				"index" : 29,
+				"order" : 129,
+				"text" : "<h4><strong>>> Game</strong></h4>",
+				"type" : "bool",
+				"value" : true
+			},
+			"gif_channel" : 
+			{
+				"index" : 25,
+				"order" : 125,
+				"text" : "<h4><strong>>> GIF</strong></h4>",
+				"type" : "bool",
+				"value" : true
+			},
+			"gif_dir" : 
+			{
+				"condition" : "git_channel.value == true",
+				"index" : 28,
+				"mode" : "ondemand",
+				"order" : 128,
+				"text" : "├─ Local",
+				"type" : "directory",
+				"value" : ""
+			},
+			"gif_url" : 
+			{
+				"condition" : "gif_channel.value == true",
+				"index" : 27,
+				"order" : 127,
+				"text" : "└─ Url",
+				"type" : "textinput",
+				"value" : "https://fastcdn.hoyoverse.com/mi18n/nap_global/m03111446031031/upload/fbced05af4f87a50f17c1a42e26adaa8_6939632208878191557.gif"
+			},
+			"image_channel" : 
+			{
+				"index" : 18,
+				"order" : 118,
+				"text" : "<h4><strong>>> Image</strong></h4>",
+				"type" : "bool",
+				"value" : true
+			},
+			"image_dir" : 
+			{
+				"condition" : "image_channel.value == true",
+				"index" : 20,
+				"mode" : "ondemand",
+				"order" : 120,
+				"text" : "├─ Local",
+				"type" : "directory",
+				"value" : ""
+			},
+			"image_url" : 
+			{
+				"condition" : "image_channel.value == true",
+				"index" : 21,
+				"order" : 121,
+				"text" : "└─ Url",
+				"type" : "textinput",
+				"value" : "https://fastcdn.hoyoverse.com/content-v2/nap/102370/0a3fab8aa62d35d4cb0013bcb90253d6_390791847830884978.png"
+			},
+			"important_note" : 
+			{
+				"index" : 0,
+				"order" : 100,
+				"text" : "<h4><strong>Important!</strong></h4>All settings take approximately 5 seconds to apply. If you modify a setting while it is being applied, the timer will reset. Please avoid repeatedly changing the setting and assuming it's broken."
+			},
+			"music" : 
+			{
+				"index" : 6,
+				"order" : 106,
+				"text" : "<h4><strong>>> Music</strong></h4>"
+			},
+			"music_visualizer_style" : 
+			{
+				"index" : 7,
+				"options" : 
+				[
+					{
+						"label" : "Radial Bars (Default)",
+						"value" : "radialBars"
+					},
+					{
+						"label" : "Radial Bars2",
+						"value" : "radialBars2"
+					},
+					{
+						"label" : "Lissajous Curve",
+						"value" : "lissajousCurve"
+					},
+					{
+						"label" : "Circular Wave",
+						"value" : "circularWave"
+					},
+					{
+						"label" : "Mirror Bar",
+						"value" : "mirrorBar"
+					},
+					{
+						"label" : "Gooey",
+						"value" : "gooey"
+					},
+					{
+						"label" : "Circular Pulse",
+						"value" : "circularPulse"
+					},
+					{
+						"label" : "Gooey Wave",
+						"value" : "gooeyWave"
+					},
+					{
+						"label" : "Round Bar",
+						"value" : "roundBar"
+					},
+					{
+						"label" : "Waveform",
+						"value" : "waveform"
+					},
+					{
+						"label" : "Inverse Wave",
+						"value" : "inverseWave"
+					},
+					{
+						"label" : "Inverse Smooth Wave",
+						"value" : "inverseSmoothWave"
+					},
+					{
+						"label" : "Dot Wave",
+						"value" : "dotWave"
+					}
+				],
+				"order" : 107,
+				"text" : "└─ Visualizer Style",
+				"type" : "combo",
+				"value" : "radialBars"
+			},
+			"note4content_fitting" : 
+			{
+				"index" : 4,
+				"order" : 104,
+				"text" : "│ <font color=\"gray\"><small>Note: chose how the contents is fitted inside the</small></font><br>│ <font color=\"gray\"><small>TV.</small></font>"
+			},
+			"note4gif" : 
+			{
+				"condition" : "gif_channel.value == true",
+				"index" : 26,
+				"order" : 126,
+				"text" : "│ <font color=\"gray\"><small>Note: To include multiple GIFs, separate each ID</small></font><br>│ <font color=\"gray\"><small>with a comma.</small></font>"
+			},
+			"note4image" : 
+			{
+				"condition" : "image_channel.value == true",
+				"index" : 19,
+				"order" : 119,
+				"text" : "│ <font color=\"gray\"><small>Note: Only 10 images will be randomly chosen</small></font><br>│ <font color=\"gray\"><small>and displayed if there are more then 10 images</small></font><br>│ <font color=\"gray\"><small> in selected folder.</small></font>"
+			},
+			"note4video" : 
+			{
+				"condition" : "video_channel.value == true",
+				"index" : 15,
+				"order" : 115,
+				"text" : "│ <font color=\"gray\"><small>Note: Only WebM and Ogg file formats are</small></font><br>│ <font color=\"gray\"><small>supported. To include multiple Videos, separate</small></font><br>│ <font color=\"gray\"><small>each ID with a comma.</small></font>"
+			},
+			"note4weather" : 
+			{
+				"condition" : "weather_channel.value == true",
+				"index" : 9,
+				"order" : 109,
+				"text" : "│ <font color=\"gray\"><small>Note: You need a OpenWeather API key to use</small></font><br>│ <font color=\"gray\"><small>the feature. Visit</small></font><br>│ <font color=\"gray\"><small>https://home.openweathermap.org/users/sign_up</small></font><br>│ <font color=\"gray\"><small>and sign up to get your API key.</small></font><br>│ <font color=\"gray\"><small>You can find your latitude and longitude by visiting</small></font><br>│ <font color=\"gray\"><small>Google Map and copying parts of the url.</small></font>"
+			},
+			"note4yt" : 
+			{
+				"condition" : "youtube_channel.value == true",
+				"index" : 23,
+				"order" : 123,
+				"text" : "│ <font color=\"gray\"><small>Note: Input only the video IDs (the random letters</small></font><br>│ <font color=\"gray\"><small>after '?v='). To include multiple videos, separate</small></font><br>│ <font color=\"gray\"><small>each ID with a comma.</small></font>"
+			},
+			"object_fit" : 
+			{
+				"condition" : "",
+				"index" : 5,
+				"options" : 
+				[
+					{
+						"label" : "Cover",
+						"value" : "cover"
+					},
+					{
+						"label" : "Contain",
+						"value" : "contain"
+					}
+				],
+				"order" : 105,
+				"text" : "└─ Fitting Mode",
+				"type" : "combo",
+				"value" : "cover"
+			},
+			"schemecolor" : 
+			{
+				"order" : 0,
+				"text" : "ui_browse_properties_scheme_color",
+				"type" : "color",
+				"value" : "0 0 0"
+			},
+			"tips" : 
+			{
+				"index" : 2,
+				"order" : 102,
+				"text" : "<h4><strong>/// Basic Control</strong><h4><small><li>The upper knob lets you switch between \"Inputs\", while the lower knob allows you to switch between \"Channels\".</li><br><li>You can choose which \"Input\" to show by toggling them on or off below.</li><br><li>The Play/Pause button let you control the video playback.</li></small>"
+			},
+			"version_num" : 
+			{
+				"index" : 30,
+				"order" : 130,
+				"text" : "<h6><font color=\"gray\">V: 1.0.5</font></h6>"
+			},
+			"video_channel" : 
+			{
+				"index" : 14,
+				"order" : 114,
+				"text" : "<h4><strong>>> Video</strong>",
+				"type" : "bool",
+				"value" : true
+			},
+			"video_dir" : 
+			{
+				"condition" : "video_channel.value == true",
+				"fileType" : "video",
+				"index" : 16,
+				"mode" : "fetchall",
+				"order" : 116,
+				"text" : "├─ Local",
+				"type" : "directory",
+				"value" : ""
+			},
+			"video_url" : 
+			{
+				"condition" : "video_channel.value == true",
+				"index" : 17,
+				"order" : 117,
+				"text" : "└─ Url",
+				"type" : "textinput",
+				"value" : "https://dl6.webmfiles.org/big-buck-bunny_trailer.webm"
+			},
+			"weather_api" : 
+			{
+				"condition" : "weather_channel.value == true",
+				"index" : 10,
+				"order" : 110,
+				"text" : "├─ API Key",
+				"type" : "textinput",
+				"value" : "input api key"
+			},
+			"weather_channel" : 
+			{
+				"index" : 8,
+				"order" : 108,
+				"text" : "<h4><strong>>> Weather</strong>",
+				"type" : "bool",
+				"value" : true
+			},
+			"weather_latitude" : 
+			{
+				"condition" : "weather_channel.value == true",
+				"index" : 12,
+				"order" : 112,
+				"text" : "├─ Latitude",
+				"type" : "textinput",
+				"value" : "51.4768563"
+			},
+			"weather_longitude" : 
+			{
+				"condition" : "weather_channel.value == true",
+				"index" : 13,
+				"order" : 113,
+				"text" : "└─ Longitude",
+				"type" : "textinput",
+				"value" : "-0.0030751"
+			},
+			"weatherunit" : 
+			{
+				"condition" : "weather_channel.value == true",
+				"index" : 11,
+				"options" : 
+				[
+					{
+						"label" : "Metric",
+						"value" : "metric"
+					},
+					{
+						"label" : "Kelvin",
+						"value" : "kelvin"
+					},
+					{
+						"label" : "Imperial",
+						"value" : "imperial"
+					}
+				],
+				"order" : 111,
+				"text" : "├─ Unit",
+				"type" : "combo",
+				"value" : "metric"
+			},
+			"youtube_channel" : 
+			{
+				"index" : 22,
+				"order" : 122,
+				"text" : "<h4><strong>>> Youtube</strong></h4>",
+				"type" : "bool",
+				"value" : true
+			},
+			"youtube_url" : 
+			{
+				"condition" : "youtube_channel.value == true",
+				"index" : 24,
+				"order" : 124,
+				"text" : "└─ Url",
+				"type" : "textinput",
+				"value" : "wEZFS5aert8,BaMbpTXSm0M,iOW8XhUce38"
+			}
+		},
+		"supportsaudioprocessing" : true
+	},
+	"preview" : "preview.gif",
+	"ratingsex" : "none",
+	"ratingviolence" : "none",
+	"tags" : [ "Game" ],
+	"title" : "Zenless Zone Zero TV (Interactive, Customizable, Media Integration)",
+	"type" : "Web",
+	"version" : 5,
+	"visibility" : "public",
+	"workshopid" : "3333357727",
+	"workshopurl" : "steam://url/CommunityFilePage/3333357727"
+}

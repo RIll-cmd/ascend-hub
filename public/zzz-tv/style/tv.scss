@@ -1,0 +1,383 @@
+$scan-width: 0.2%;
+$scan-crt: true;
+$scan-fps: 10;
+$scan-color: rgba(#000000, 0.25);
+$scan-z-index: 60;
+$scan-moving-line: true;
+$scan-opacity: 0.6;
+
+$snow-opacity: 0.06;
+
+$screen-filter: contrast(1.1) brightness(0.9) saturate(1.3) sepia(0.1) hue-rotate(-10deg) blur(0.5px);
+
+$ease-out-quint: cubic-bezier(0.230, 1.000, 0.320, 1.000);
+$ease-in-quint: cubic-bezier(0.755, 0.050, 0.855, 0.060);
+$screen-background: #121010;
+
+@import "crt-keyframes";
+
+
+.tv-container-overlay{
+  position: absolute;
+  top: 23.5%;
+  left: 40%;
+  width: 20%;
+  height: 49%;  
+  z-index: 300;
+  background: rgba(0, 0, 0, 0); /* Invisible */
+  pointer-events: auto;
+}
+
+.tv_container {
+  position: absolute;
+  top: 23.5%;
+  left: 40%;
+  width: 20%;
+  height: 49%;
+  z-index: 80;
+  // filter: url(#crt-barrel-distortion);
+  // transform-style: preserve-3d;
+  // transition: transform 0.3s ease;
+  // transform: scale(1.2) translateZ(-50px) rotateX(15deg) rotateY(15deg);
+  // filter: url(#convex-effect)
+  // pointer-events: none;
+  // transform-style: preserve-3d;
+}
+
+#starting-video{
+  position: absolute;
+  top: -25%;
+  left: 0%;
+  width: 100%;
+  height: 150%;
+  object-fit: cover;
+  z-index: 79;
+  pointer-events: none;
+}
+
+svg {
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  // object-fit: cover;
+}
+
+#screen-highlight {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  mix-blend-mode: screen;
+  opacity: 0.6;
+  z-index: 70;
+}
+
+#vignette {
+  position: absolute;
+  left: 0%;
+  top: 0%;
+  width: 100%;
+  height: 100%;
+  opacity: 0.4;
+  z-index: 65;
+}
+
+.tv-screen {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  z-index: 60;
+  filter: $screen-filter
+  // filter;
+  
+}
+
+.crt_effect {
+  left: 0%;
+  position: absolute;
+  top: 0%;
+  height: 100%;
+  width: 100%;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  // &::after {
+  //   content: "";
+  //   position: absolute;
+  //   top: 0;
+  //   left: 0;
+  //   width: 100%;
+  //   height: 100%;
+  //   z-index: 56;
+  //   pointer-events: none;
+  //   opacity: 1;
+  //   background: repeating-linear-gradient(
+  //     to bottom,
+  //     #ff0 0,
+  //     #0ff 1px,
+  //     #f0f 2px
+  //   );
+  //   mix-blend-mode: overlay;
+  // }
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 55;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+    background: linear-gradient(
+        transparentize($screen-background, 1) 50%,
+        transparentize(darken($screen-background, 10), 0.75) 50%
+      ),
+      linear-gradient(
+        90deg,
+        transparentize(#ff0000, 0.94),
+        transparentize(#00ff00, 0.98),
+        transparentize(#0000ff, 0.94)
+      );
+    background-size: 100% 2px, 3px 100%;
+  }
+}
+
+.scanlines {
+  &:before,
+  &:after {
+    display: block;
+    pointer-events: none;
+    content: "";
+    position: absolute;
+  }
+
+  // &:before {
+  //   position: absolute;
+  //   top: 0;
+  //   left: 0;
+  //   width: 100%;
+  //   height: $scan-width * 1;
+  //   z-index: $scan-z-index + 1;
+  //   opacity: $scan-opacity;
+  //   background: $scan-color;
+  //   @include scan-moving($scan-moving-line);
+  // }
+
+  &:after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: $scan-z-index;
+    background: linear-gradient(to bottom, transparent 50%, $scan-color 51%);
+    background-size: 100% $scan-width * 2;
+    @include scan-crt($scan-crt);
+  }
+}
+
+.scanlines-move{
+
+  display: block;
+  pointer-events: none;
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: $scan-width * 1;
+  z-index: $scan-z-index + 1;
+  opacity: $scan-opacity;
+  background: $scan-color;
+  @include scan-moving($scan-moving-line);
+}
+
+.tv-info-overlay {
+  color: #00ff00;
+  position: absolute;
+  top: 3%;
+  left: 10%;
+  font-size: 4vh;
+  visibility: hidden;
+  pointer-events: none;
+  text-shadow: 2px 2px black, -2px -2px black, -2px 2px black, 2px -2px black;
+  font-family: monospace;
+  text-align: left;
+  z-index: 50;
+  // transform: perspective(800vh) rotateX(10deg) rotateY(10deg) rotateZ(-1deg);
+}
+
+.switch-tv-info-overlay {
+  animation: overlay-anim-switch 5s linear;
+  animation-fill-mode: forwards;
+}
+
+.switch-tv-on {
+  animation: turn-on 4s linear;
+  animation-fill-mode: forwards;
+}
+
+.switch-tv-off {
+  animation: turn-off 0.55s ease-out;
+  animation-fill-mode: forwards;
+}
+
+#noise-canvas {
+  width: 100%;
+  height: 100%;
+  z-index: 40;
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  opacity: $snow-opacity;
+  // background-color: rgba(0, 0, 0, $snow-opacity);
+}
+
+@keyframes noise-switch {
+  0% {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 1);
+  }
+  99% {
+    opacity: 1;
+    background-color: rgba(255, 255, 255, 1);
+  }
+  100% {
+    opacity: $snow-opacity;
+    background-color: rgba(255, 255, 255, $snow-opacity);
+  }
+}
+
+.noise-switch-ani {
+  animation: noise-switch 0.5s linear;
+  animation-fill-mode: forwards;
+}
+
+.tv-content-container {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  z-index: 10;
+  // filter: url(#convex-effect);
+  
+}
+
+.backgroundVideo-container {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  background-color: #000000;
+}
+
+#backgroundVideo {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gif-container {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+}
+
+.gif-class {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.youtube-container {
+  position: absolute;
+  top: 0%;
+  left: -15%;
+  width: 130%;
+  height: 100%;
+  display: none;
+  z-index: 15;
+}
+
+#youtube-player {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: none;
+}
+
+.twitch-container {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+}
+
+#twitch-player {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: none;
+}
+
+.game-canvas{
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+  font-family: 'Minecraft';
+  background-color: #000000;
+  // background-color: rgb(68, 68, 68);
+  // pointer-events: auto;
+}
+
+
+.rtsp-container {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+}
+
+#rtsp-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: none;
+}
+
+.image-container {
+  position: absolute;
+  top: 0%;
+  left: 0%;
+  width: 100%;
+  height: 100%;
+}
+#image-content {
+  width: 100%;
+  height: 100%;
+  background-color: #000000;
+  object-fit: cover;
+}
