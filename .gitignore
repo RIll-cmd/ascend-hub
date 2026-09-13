@@ -46,3 +46,13 @@ next-env.d.ts
 /work/
 /*-qa.png
 /*.tsbuildinfo
+
+# scratch and inspection artifacts
+/scratch/
+*.bak
+/*crop*.png
+/*alignment*.png
+/trial_screen_crop.png
+/border-h.avif
+/room_tv_crop.png
+/tv_screen_im1_crop.png
