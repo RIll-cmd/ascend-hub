@@ -458,6 +458,206 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
   opacity: 1 !important;
   filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.95)) brightness(1.05);
 }
+
+/* ==========================================================================
+   INTERACTIVE CRT TELEVISIONS & IMAC VIDEO SCREENS
+   ========================================================================== */
+.cubby-prop.cubby-crt-interactive {
+  cursor: default;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+}
+.cubby-prop.cubby-crt-interactive:hover,
+.cubby-cell:hover .cubby-prop.cubby-crt-interactive {
+  transform: none !important;
+  filter: none !important;
+}
+.crt-tv-wrapper {
+  position: relative;
+  height: 90%;
+  aspect-ratio: 1 / 1;
+  max-width: 90%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  margin: auto;
+}
+.cubby-prop .crt-tv-frame,
+.crt-tv-frame {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: fill;
+  display: block;
+  pointer-events: none;
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.9));
+}
+.crt-screen {
+  position: absolute;
+  overflow: hidden;
+  cursor: pointer;
+  background: #05070a;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.95);
+  transition: filter 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
+  outline: none;
+  z-index: 3;
+}
+.crt-screen:hover,
+.crt-screen.screen-hovered,
+.crt-screen:focus-visible {
+  filter: brightness(1.06) contrast(1.05);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.9), 0 0 12px rgba(220, 240, 255, 0.18);
+}
+.crt-screen:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.45);
+  outline-offset: -1px;
+}
+.crt-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+.crt-effects {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+.crt-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.015) 0px,
+    rgba(255, 255, 255, 0.015) 1px,
+    rgba(0, 0, 0, 0.05) 2px,
+    rgba(0, 0, 0, 0.05) 3px
+  );
+  mix-blend-mode: overlay;
+}
+.crt-glass-reflection {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 25% 5%,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.04) 20%,
+    transparent 35%
+  );
+  mix-blend-mode: screen;
+}
+.crt-vignette {
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 14px rgba(0, 0, 0, 0.85), inset 0 0 5px rgba(0, 0, 0, 0.95);
+  border-radius: inherit;
+}
+.crt-inner-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    transparent 60%,
+    rgba(0, 0, 0, 0.4) 100%
+  );
+  mix-blend-mode: multiply;
+}
+.crt-osd {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.crt-play-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s ease;
+  pointer-events: none;
+}
+.crt-play-badge.hidden {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.92);
+}
+.crt-play-text {
+  font-family: var(--mono, "SF Mono", monospace);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.88);
+  background: rgba(10, 14, 20, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 3px 8px;
+  border-radius: 2px;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), inset 0 0 6px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(2px);
+  display: inline-block;
+  white-space: nowrap;
+}
+.crt-sound-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 17px;
+  height: 17px;
+  background: rgba(10, 14, 20, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+  color: rgba(255, 255, 255, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+.crt-sound-btn:hover {
+  background: rgba(22, 30, 42, 0.9);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.crt-progress-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.crt-progress-fill {
+  height: 100%;
+  background: rgba(255, 230, 180, 0.75);
+  box-shadow: 0 0 5px rgba(255, 230, 180, 0.6);
+  position: relative;
+  transition: width 0.1s linear;
+}
+.crt-progress-dot {
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.9);
+}
+
 .view-switch{display:flex;align-items:center;gap:7px;font:9px var(--mono);padding:6px 12px;background:#241b14;border:1px solid #483321;border-radius:3px;color:#cfaa71;cursor:pointer;transition:all .15s ease}
 .view-switch:hover{background:#38281a;color:#ffe2b7;border-color:#75502c}
 .view-switch.active{background:#fea48022;border-color:#fea480;color:#fea480;box-shadow:0 0 10px rgba(254,164,128,.3)}

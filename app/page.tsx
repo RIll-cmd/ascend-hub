@@ -45,6 +45,8 @@ import {
 import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../components/RetroMediaCenter";
 import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
+import { CrtTvDisplay } from "../components/CrtTvDisplay";
+import { findCrtConfigByCollectibleId } from "../components/crt-tv-config";
 
 const chapters = [
   { id: "core", number: "01", title: "Core Engine", eyebrow: "BUILD YOUR FOUNDATION", tag: "FOUNDATION", color: "#e9aa63", description: "A clear direction. A stronger operating system.", specs: ["Define your personal mission and values", "Create a focused progression roadmap", "Choose the principles that guide your work"], art: "engine" },
@@ -170,6 +172,15 @@ function CollectibleItem({ item }: { item: Item }) {
     return (
       <div className="collectible-item-custom studio-monitors-desk">
         <StudioSpeaker position="left" className="shelf-fit-speaker" />
+      </div>
+    );
+  }
+
+  const crtConfig = findCrtConfigByCollectibleId(def.id);
+  if (crtConfig) {
+    return (
+      <div className="collectible-item-custom crt-tv-collectible">
+        <CrtTvDisplay config={crtConfig} />
       </div>
     );
   }
@@ -1120,6 +1131,10 @@ export default function Home() {
                                         ) : def.id === "studio-monitors" ? (
                                           <div className="cubby-prop cubby-speaker">
                                             <StudioSpeaker position="left" className="shelf-fit-speaker" />
+                                          </div>
+                                        ) : findCrtConfigByCollectibleId(def.id) ? (
+                                          <div className="cubby-prop cubby-crt-interactive">
+                                            <CrtTvDisplay config={findCrtConfigByCollectibleId(def.id)!} />
                                           </div>
                                         ) : (
                                           <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`}>
