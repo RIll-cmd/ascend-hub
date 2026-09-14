@@ -1,28 +1,52 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { Volume2, VolumeX, Play, Pause } from "lucide-react";
-import type { CrtTvItem } from "./crt-tv-config";
+import { Volume2, VolumeX, Radio } from "lucide-react";
+import { CRT_VIDEO_CHANNELS, type CrtModelProfile } from "./crt-tv-config";
 
 interface CrtTvDisplayProps {
-  config: CrtTvItem;
+  instanceId?: string;
+  profile?: CrtModelProfile;
+  config?: any; // For backward compatibility
+  videoSrc?: string;
+  onVideoChange?: (newSrc: string) => void;
   className?: string;
 }
 
-export function CrtTvDisplay({ config, className = "" }: CrtTvDisplayProps) {
+export function CrtTvDisplay({
+  instanceId,
+  profile,
+  config,
+  videoSrc,
+  onVideoChange,
+  className = ""
+}: CrtTvDisplayProps) {
+  const model = profile || config;
+  const uniqueId = instanceId || model?.id || model?.collectibleId || "crt-instance";
+  const defaultVideo = model?.defaultVideo || model?.video || "/videos/tv-1.mp4";
+
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const [currentSrc, setCurrentSrc] = useState(videoSrc || defaultVideo);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Synchronize playback across multiple CRT TVs: pause this video if another TV plays
+  // Sync external videoSrc prop if it changes
+  useEffect(() => {
+    if (videoSrc) {
+      setCurrentSrc(videoSrc);
+    }
+  }, [videoSrc]);
+
+  // Synchronize playback across multiple CRT TVs: pause this video if another instance plays
   useEffect(() => {
     const handleRemotePlay = (e: Event) => {
-      const customEvent = e as CustomEvent<{ id: string }>;
-      if (customEvent.detail?.id !== config.id) {
+      const customEvent = e as CustomEvent<{ instanceId: string }>;
+      if (customEvent.detail?.instanceId !== uniqueId) {
         if (videoRef.current && !videoRef.current.paused) {
           videoRef.current.pause();
           setIsPlaying(false);
@@ -34,7 +58,7 @@ export function CrtTvDisplay({ config, className = "" }: CrtTvDisplayProps) {
     return () => {
       window.removeEventListener("ascend-crt-play", handleRemotePlay);
     };
-  }, [config.id]);
+  }, [uniqueId]);
 
   // IntersectionObserver: automatically pause video if scrolled out of the viewport
   useEffect(() => {
@@ -64,16 +88,16 @@ export function CrtTvDisplay({ config, className = "" }: CrtTvDisplayProps) {
 
     if (video.paused) {
       try {
-        // Broadcast to pause any other active TV
+        // Broadcast to pause any other active TV instance
         window.dispatchEvent(
-          new CustomEvent("ascend-crt-play", { detail: { id: config.id } })
+          new CustomEvent("ascend-crt-play", { detail: { instanceId: uniqueId } })
         );
 
         video.muted = isMuted;
         await video.play();
         setIsPlaying(true);
       } catch {
-        // Browser autoplay restriction fallback: play muted if unmuted fails
+        // Fallback to muted playback if browser policy blocks unmuted autoplay
         try {
           video.muted = true;
           setIsMuted(true);
@@ -87,7 +111,7 @@ export function CrtTvDisplay({ config, className = "" }: CrtTvDisplayProps) {
       video.pause();
       setIsPlaying(false);
     }
-  }, [config.id, isMuted]);
+  }, [uniqueId, isMuted]);
 
   // Toggle sound without toggling play/pause
   const toggleMute = useCallback((e: React.MouseEvent) => {
@@ -100,7 +124,30 @@ export function CrtTvDisplay({ config, className = "" }: CrtTvDisplayProps) {
     setIsMuted(nextMuted);
   }, []);
 
-  // Keyboard navigation for accessibility
+  // Cycle video channel / feed input
+  const cycleChannel = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const currentIdx = CRT_VIDEO_CHANNELS.findIndex(ch => ch.src === currentSrc);
+      const nextIdx = (currentIdx + 1) % CRT_VIDEO_CHANNELS.length;
+      const nextChannel = CRT_VIDEO_CHANNELS[nextIdx];
+
+      setCurrentSrc(nextChannel.src);
+      onVideoChange?.(nextChannel.src);
+
+      // If already playing, immediately resume playback on new channel
+      if (videoRef.current) {
+        videoRef.current.src = nextChannel.src;
+        videoRef.current.load();
+        if (isPlaying) {
+          videoRef.current.play().catch(() => {});
+        }
+      }
+    },
+    [currentSrc, isPlaying, onVideoChange]
+  );
+
+  // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === " " || e.key === "Enter") {
       e.preventDefault();
@@ -112,10 +159,17 @@ export function CrtTvDisplay({ config, className = "" }: CrtTvDisplayProps) {
         video.muted = !video.muted;
         setIsMuted(video.muted);
       }
+    } else if (e.key === "c" || e.key === "C") {
+      e.preventDefault();
+      cycleChannel(e as any);
     }
   };
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const currentChannelIndex = CRT_VIDEO_CHANNELS.findIndex(ch => ch.src === currentSrc);
+  const channelBadgeText = currentChannelIndex >= 0 ? `CH 0${currentChannelIndex + 1}` : "INPUT";
+
+  if (!model) return null;
 
   return (
     <div
@@ -127,8 +181,8 @@ export function CrtTvDisplay({ config, className = "" }: CrtTvDisplayProps) {
       {/* Authentic Physical TV Frame (100% Unmodified PNG Artwork) */}
       <img
         className="crt-tv-frame"
-        src={config.image}
-        alt={config.label}
+        src={model.image}
+        alt={model.label}
         draggable={false}
       />
 
@@ -138,25 +192,25 @@ export function CrtTvDisplay({ config, className = "" }: CrtTvDisplayProps) {
           isHovered ? "screen-hovered" : ""
         }`}
         style={{
-          top: config.screen.top,
-          left: config.screen.left,
-          width: config.screen.width,
-          height: config.screen.height,
-          borderRadius: config.screen.radius
+          top: model.screen.top,
+          left: model.screen.left,
+          width: model.screen.width,
+          height: model.screen.height,
+          borderRadius: model.screen.radius
         }}
         onClick={togglePlayback}
         onKeyDown={handleKeyDown}
         tabIndex={0}
         role="button"
-        aria-label={`${config.label} interactive CRT display. ${
+        aria-label={`${model.label} interactive CRT display (${uniqueId}). ${
           isPlaying ? "Playing video" : "Video paused"
-        }. Click or press Space to ${isPlaying ? "pause" : "play"}.`}
+        }. Click or press Space to ${isPlaying ? "pause" : "play"}. Press C to cycle channel.`}
       >
         {/* HTML5 Native Video Element */}
         <video
           ref={videoRef}
           className="crt-video"
-          src={config.video}
+          src={currentSrc}
           playsInline
           preload="metadata"
           loop
@@ -175,6 +229,18 @@ export function CrtTvDisplay({ config, className = "" }: CrtTvDisplayProps) {
 
         {/* Retro Terminal Minimal OSD Controls */}
         <div className="crt-osd" aria-hidden="true">
+          {/* Subtle Top Channel Switcher Badge */}
+          <button
+            type="button"
+            className="crt-channel-badge"
+            onClick={cycleChannel}
+            title="Click to switch video input channel (or press C)"
+            aria-label="Switch video channel"
+          >
+            <span className="crt-channel-dot" />
+            <span>{channelBadgeText}</span>
+          </button>
+
           {/* Centered Minimal Retro Monospace Play/Pause Indicator */}
           <div className={`crt-play-badge ${isPlaying && !isHovered ? "hidden" : ""}`}>
             <span className="crt-play-text">
