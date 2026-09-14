@@ -488,7 +488,7 @@ export function RetroTv({
   interactive = true,
   className = ""
 }: {
-  channel?: "pon" | "ambient" | "static" | "video";
+  channel?: CrtChannelType;
   isPlaying?: boolean;
   powerOn?: boolean;
   videoSrc?: string;

@@ -18,7 +18,13 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: rgb(0, 0, 0);
+  background-color: #0c0805;
+  background-image:
+    radial-gradient(ellipse 1386px 603px at 50% 30%, rgba(6, 6, 6, 0) 0%, rgba(0, 0, 0, 0.8) 100%),
+    url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');
+  background-repeat: no-repeat, repeat;
+  background-size: auto, 627px 627px;
+  background-position: 50% 30%, 50% 50%;
   overflow: hidden;
 }
 
