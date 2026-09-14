@@ -25,6 +25,7 @@ import {
   Upload,
   Volume2,
   VolumeX,
+  Tv,
   X
 } from "lucide-react";
 import { synth } from "./synth";
@@ -46,7 +47,7 @@ import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../componen
 import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
-import { findCrtConfigByCollectibleId } from "../components/crt-tv-config";
+import { findCrtConfigByCollectibleId, getCrtProfile } from "../components/crt-tv-config";
 
 const chapters = [
   { id: "core", number: "01", title: "Core Engine", eyebrow: "BUILD YOUR FOUNDATION", tag: "FOUNDATION", color: "#e9aa63", description: "A clear direction. A stronger operating system.", specs: ["Define your personal mission and values", "Create a focused progression roadmap", "Choose the principles that guide your work"], art: "engine" },
@@ -176,11 +177,14 @@ function CollectibleItem({ item }: { item: Item }) {
     );
   }
 
-  const crtConfig = findCrtConfigByCollectibleId(def.id);
-  if (crtConfig) {
+  const crtProfile = getCrtProfile(def.id);
+  if (crtProfile) {
     return (
       <div className="collectible-item-custom crt-tv-collectible">
-        <CrtTvDisplay config={crtConfig} />
+        <CrtTvDisplay
+          instanceId={`item-${item.collectibleId || "tv"}`}
+          profile={crtProfile}
+        />
       </div>
     );
   }
@@ -665,6 +669,27 @@ export default function Home() {
     synth.play("click");
   };
 
+  const handleSetSlotVideo = (rowId: string, bayId: string, slotId: string, newSrc: string) => {
+    setRows(prev =>
+      prev.map(row => {
+        if (row.id !== rowId) return row;
+        return {
+          ...row,
+          bays: row.bays.map(bay => {
+            if (bay.id !== bayId) return bay;
+            return {
+              ...bay,
+              slots: bay.slots.map(slot => {
+                if (slot.id !== slotId) return slot;
+                return { ...slot, customVideo: newSrc };
+              })
+            };
+          })
+        };
+      })
+    );
+  };
+
   const handleToggleLighting = (mode: "amber" | "magenta") => {
     setLightingMode(mode);
     if (typeof window !== "undefined") {
@@ -1132,9 +1157,14 @@ export default function Home() {
                                           <div className="cubby-prop cubby-speaker">
                                             <StudioSpeaker position="left" className="shelf-fit-speaker" />
                                           </div>
-                                        ) : findCrtConfigByCollectibleId(def.id) ? (
+                                        ) : getCrtProfile(def.id) ? (
                                           <div className="cubby-prop cubby-crt-interactive">
-                                            <CrtTvDisplay config={findCrtConfigByCollectibleId(def.id)!} />
+                                            <CrtTvDisplay
+                                              instanceId={slot.id}
+                                              profile={getCrtProfile(def.id)!}
+                                              videoSrc={slot.customVideo}
+                                              onVideoChange={(newSrc) => handleSetSlotVideo(row.id, bay.id, slot.id, newSrc)}
+                                            />
                                           </div>
                                         ) : (
                                           <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`}>
@@ -1202,6 +1232,23 @@ export default function Home() {
                                             {slot.ledOn === false ? <LightbulbOff size={11} /> : <Lightbulb size={11} />}
                                             {slot.ledOn === false ? "LED On" : "LED Off"}
                                           </button>
+                                          {def && getCrtProfile(def.id) && (
+                                            <button
+                                              className="cubby-action-btn secondary"
+                                              onClick={() => {
+                                                const channels = ["/videos/tv-1.mp4", "/videos/tv-2.mp4", "/videos/tv-3.mp4", "/videos/tv-4.mp4"];
+                                                const curSrc = slot.customVideo || getCrtProfile(def.id)!.defaultVideo;
+                                                const curIdx = channels.indexOf(curSrc);
+                                                const nextSrc = channels[(curIdx + 1) % channels.length];
+                                                handleSetSlotVideo(row.id, bay.id, slot.id, nextSrc);
+                                                synth.play("click");
+                                                notify(`Video feed changed to Channel 0${((curIdx + 1) % channels.length) + 1}`);
+                                              }}
+                                              title="Switch video feed on this CRT"
+                                            >
+                                              <Tv size={11} /> Next Feed (CH)
+                                            </button>
+                                          )}
                                           {(slot.collectibleId || slot.isPoster) && (
                                             <button
                                               className="cubby-action-btn secondary"

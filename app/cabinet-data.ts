@@ -7,6 +7,7 @@ export interface CubbySlot {
   collectibleId?: string;
   customImage?: string;
   customTitle?: string;
+  customVideo?: string;
   isPoster?: boolean;
   ledOn?: boolean;
   ledIntensity?: number;
@@ -68,7 +69,7 @@ export const DEFAULT_SHELF_ROWS: ShelfRow[] = [
         layout: "tall",
         flex: 1,
         slots: [
-          { id: "slot-2-1-m", collectibleId: "crt-vhf-uhf", ledOn: true, ledIntensity: 0.85 }
+          { id: "slot-2-1-m", collectibleId: "crt-dual-knob", customVideo: "/videos/tv-3.mp4", ledOn: true, ledIntensity: 0.85 }
         ]
       },
       {
@@ -76,8 +77,8 @@ export const DEFAULT_SHELF_ROWS: ShelfRow[] = [
         layout: "split",
         flex: 1,
         slots: [
-          { id: "slot-2-2-t", collectibleId: "imac-g3-angled", ledOn: true, ledIntensity: 0.85 },
-          { id: "slot-2-2-b", collectibleId: "crt-dual-knob", ledOn: true, ledIntensity: 0.85 }
+          { id: "slot-2-2-t", collectibleId: "imac-g3-bondi", customVideo: "/videos/tv-1.mp4", ledOn: true, ledIntensity: 0.85 },
+          { id: "slot-2-2-b", collectibleId: "crt-studio-monitor", customVideo: "/videos/tv-4.mp4", ledOn: true, ledIntensity: 0.85 }
         ]
       },
       {
@@ -85,7 +86,7 @@ export const DEFAULT_SHELF_ROWS: ShelfRow[] = [
         layout: "tall",
         flex: 1.85,
         slots: [
-          { id: "slot-2-3-m", collectibleId: "crt-dual-knob", customTitle: "Vintage Dual-Knob CRT TV", ledOn: true, ledIntensity: 0.85 }
+          { id: "slot-2-3-m", collectibleId: "crt-dual-knob", customTitle: "Vintage Dual-Knob CRT TV", customVideo: "/videos/tv-2.mp4", ledOn: true, ledIntensity: 0.85 }
         ]
       }
     ]

@@ -471,6 +471,7 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
   box-sizing: border-box;
   width: 100%;
   height: 100%;
+  container-type: size;
 }
 .cubby-prop.cubby-crt-interactive:hover,
 .cubby-cell:hover .cubby-prop.cubby-crt-interactive {
@@ -479,9 +480,9 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
 }
 .crt-tv-wrapper {
   position: relative;
-  height: 90%;
+  width: min(84cqw, 84cqh);
+  height: min(84cqw, 84cqh);
   aspect-ratio: 1 / 1;
-  max-width: 90%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -607,6 +608,42 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
   backdrop-filter: blur(2px);
   display: inline-block;
   white-space: nowrap;
+}
+.crt-channel-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  height: 17px;
+  padding: 0 6px;
+  background: rgba(10, 14, 20, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  color: #fea480;
+  font-family: var(--mono, "SF Mono", monospace);
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.crt-channel-badge:hover {
+  background: rgba(26, 36, 50, 0.9);
+  color: #fff;
+  border-color: rgba(254, 164, 128, 0.6);
+  box-shadow: 0 0 8px rgba(254, 164, 128, 0.3);
+}
+.crt-channel-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fea480;
+  box-shadow: 0 0 5px #fea480;
+  display: inline-block;
 }
 .crt-sound-btn {
   position: absolute;
