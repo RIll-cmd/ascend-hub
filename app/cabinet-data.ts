@@ -29,15 +29,15 @@ export interface ShelfRow {
 export const DEFAULT_SHELF_ROWS: ShelfRow[] = [
   {
     id: "row-1",
-    title: "TIER 01 · HAIL MARY & HARDWARE",
+    title: "TIER 01 · HAIL MARY & RETRO DISPLAYS",
     bays: [
       {
         id: "bay-1-1",
         layout: "split",
         flex: 1,
         slots: [
-          { id: "slot-1-1-t", collectibleId: "science-kit", ledOn: true, ledIntensity: 0.85 },
-          { id: "slot-1-1-b", collectibleId: "3d-printer", ledOn: true, ledIntensity: 0.85 }
+          { id: "slot-1-1-t", collectibleId: "imac-g3-bondi", ledOn: true, ledIntensity: 0.85 },
+          { id: "slot-1-1-b", collectibleId: "crt-vintage-1", ledOn: true, ledIntensity: 0.85 }
         ]
       },
       {
@@ -53,22 +53,22 @@ export const DEFAULT_SHELF_ROWS: ShelfRow[] = [
         layout: "split",
         flex: 1,
         slots: [
-          { id: "slot-1-3-t", collectibleId: "imac", ledOn: true, ledIntensity: 0.85 },
-          { id: "slot-1-3-b", collectibleId: "ship", ledOn: true, ledIntensity: 0.85 }
+          { id: "slot-1-3-t", collectibleId: "imac-g3-astronaut", ledOn: true, ledIntensity: 0.85 },
+          { id: "slot-1-3-b", collectibleId: "crt-studio-monitor", ledOn: true, ledIntensity: 0.85 }
         ]
       }
     ]
   },
   {
     id: "row-2",
-    title: "TIER 02 · ORBITAL & PROPULSION",
+    title: "TIER 02 · VINTAGE BROADCAST & WORKSTATIONS",
     bays: [
       {
         id: "bay-2-1",
         layout: "tall",
         flex: 1,
         slots: [
-          { id: "slot-2-1-m", collectibleId: "rockets", ledOn: true, ledIntensity: 0.85 }
+          { id: "slot-2-1-m", collectibleId: "crt-vhf-uhf", ledOn: true, ledIntensity: 0.85 }
         ]
       },
       {
@@ -76,8 +76,8 @@ export const DEFAULT_SHELF_ROWS: ShelfRow[] = [
         layout: "split",
         flex: 1,
         slots: [
-          { id: "slot-2-2-t", collectibleId: "helmet", ledOn: true, ledIntensity: 0.85 },
-          { id: "slot-2-2-b", collectibleId: "spaceship", ledOn: true, ledIntensity: 0.85 }
+          { id: "slot-2-2-t", collectibleId: "imac-g3-angled", ledOn: true, ledIntensity: 0.85 },
+          { id: "slot-2-2-b", collectibleId: "crt-dual-knob", ledOn: true, ledIntensity: 0.85 }
         ]
       },
       {
@@ -85,7 +85,7 @@ export const DEFAULT_SHELF_ROWS: ShelfRow[] = [
         layout: "tall",
         flex: 1.85,
         slots: [
-          { id: "slot-2-3-m", collectibleId: "delorean", customTitle: "DeLorean Time Vehicle", ledOn: true, ledIntensity: 0.85 }
+          { id: "slot-2-3-m", collectibleId: "crt-dual-knob", customTitle: "Vintage Dual-Knob CRT TV", ledOn: true, ledIntensity: 0.85 }
         ]
       }
     ]
@@ -123,7 +123,7 @@ export const DEFAULT_SHELF_ROWS: ShelfRow[] = [
   }
 ];
 
-const STORAGE_KEY = "ascend-cabinet-rows-v2";
+const STORAGE_KEY = "ascend-cabinet-rows-v3";
 
 export function loadCabinetRows(): ShelfRow[] {
   if (typeof window === "undefined") return DEFAULT_SHELF_ROWS;

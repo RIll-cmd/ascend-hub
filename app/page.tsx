@@ -44,6 +44,7 @@ import {
 } from "./cabinet-data";
 import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../components/RetroMediaCenter";
 import { RetroRoomHero } from "../components/RetroRoomHero";
+import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
 
 const chapters = [
   { id: "core", number: "01", title: "Core Engine", eyebrow: "BUILD YOUR FOUNDATION", tag: "FOUNDATION", color: "#e9aa63", description: "A clear direction. A stronger operating system.", specs: ["Define your personal mission and values", "Create a focused progression roadmap", "Choose the principles that guide your work"], art: "engine" },
@@ -304,6 +305,86 @@ export default function Home() {
   const [rowTemplateModalOpen, setRowTemplateModalOpen] = useState(false);
   const [tvModalTab, setTvModalTab] = useState<"media-center" | "standard">("media-center");
   const [lightingMode, setLightingMode] = useState<"amber" | "magenta">("amber");
+  const [shelfOffsetY, setShelfOffsetY] = useState<number>(-2);
+  const [wallCoverHeight, setWallCoverHeight] = useState<number>(21);
+  const [wallWidth, setWallWidth] = useState<number>(610);
+  const [wallWidthMode, setWallWidthMode] = useState<"full" | "shelf" | "custom">("custom");
+  const [wallOffsetX, setWallOffsetX] = useState<number>(-870);
+  const [shelfTopCrop, setShelfTopCrop] = useState<number>(0);
+  const [shelfCalibratorOpen, setShelfCalibratorOpen] = useState<boolean>(false);
+  const [showTrimGuides, setShowTrimGuides] = useState<boolean>(false);
+
+  const handleShelfOffsetChange = (val: number) => {
+    setShelfOffsetY(val);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ascend_shelf_offset_y", String(val));
+    }
+  };
+
+  const handleWallCoverChange = (val: number) => {
+    const clamped = Math.max(0, Math.min(650, val));
+    setWallCoverHeight(clamped);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ascend_wall_cover_height", String(clamped));
+    }
+  };
+
+  const handleWallWidthChange = (val: number) => {
+    const clamped = Math.max(100, Math.min(2600, val));
+    setWallWidth(clamped);
+    setWallWidthMode("custom");
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ascend_wall_width", String(clamped));
+      localStorage.setItem("ascend_wall_width_mode", "custom");
+    }
+  };
+
+  const handleWallWidthModeChange = (mode: "full" | "shelf" | "custom") => {
+    setWallWidthMode(mode);
+    if (mode === "shelf") {
+      setWallWidth(1160);
+      setWallOffsetX(0);
+    }
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ascend_wall_width_mode", mode);
+    }
+  };
+
+  const handleWallOffsetXChange = (val: number) => {
+    const clamped = Math.max(-1400, Math.min(1400, val));
+    setWallOffsetX(clamped);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ascend_wall_offset_x", String(clamped));
+    }
+  };
+
+  const handleShelfTopCropChange = (val: number) => {
+    const clamped = Math.max(0, Math.min(150, val));
+    setShelfTopCrop(clamped);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("ascend_shelf_top_crop", String(clamped));
+    }
+  };
+
+  const handleResetAllTrim = () => {
+    handleWallCoverChange(21);
+    handleWallWidthChange(610);
+    handleWallWidthModeChange("custom");
+    handleWallOffsetXChange(-870);
+    handleShelfOffsetChange(-2);
+    handleShelfTopCropChange(0);
+    notify("Trim restored to CB calibrated values");
+  };
+
+  const handleCopyTrimValues = () => {
+    const text = `Wall Height: ${wallCoverHeight}px | Width: ${wallWidthMode === "full" ? "100%" : `${wallWidth}px`} | Offset X: ${wallOffsetX}px | Shelf Y: ${shelfOffsetY}px`;
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      notify("Trim calibration values copied to clipboard!");
+    } else {
+      notify(text);
+    }
+  };
 
   const stageRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -339,6 +420,37 @@ export default function Home() {
     const savedLighting = typeof window !== "undefined" ? (localStorage.getItem("ascend_shelf_lighting") as "amber" | "magenta" | null) : null;
     if (savedLighting === "amber" || savedLighting === "magenta") {
       setLightingMode(savedLighting);
+    }
+    const savedShelfOffset = typeof window !== "undefined" ? localStorage.getItem("ascend_shelf_offset_y") : null;
+    if (savedShelfOffset !== null) {
+      const parsed = parseInt(savedShelfOffset, 10);
+      if (!isNaN(parsed)) setShelfOffsetY(parsed);
+    }
+    const savedWallCover = typeof window !== "undefined" ? localStorage.getItem("ascend_wall_cover_height") : null;
+    if (savedWallCover !== null) {
+      const parsed = parseInt(savedWallCover, 10);
+      if (!isNaN(parsed)) setWallCoverHeight(parsed);
+    }
+    const savedTopCrop = typeof window !== "undefined" ? localStorage.getItem("ascend_shelf_top_crop") : null;
+    if (savedTopCrop !== null) {
+      const parsed = parseInt(savedTopCrop, 10);
+      if (!isNaN(parsed)) setShelfTopCrop(parsed);
+    }
+    const savedWallWidth = typeof window !== "undefined" ? localStorage.getItem("ascend_wall_width") : null;
+    if (savedWallWidth !== null) {
+      const parsed = parseInt(savedWallWidth, 10);
+      if (!isNaN(parsed)) setWallWidth(parsed);
+    }
+    const savedWallWidthMode = typeof window !== "undefined" ? (localStorage.getItem("ascend_wall_width_mode") as "full" | "shelf" | "custom" | null) : null;
+    if (savedWallWidthMode) setWallWidthMode(savedWallWidthMode);
+    const savedWallOffsetX = typeof window !== "undefined" ? localStorage.getItem("ascend_wall_offset_x") : null;
+    if (savedWallOffsetX !== null) {
+      const parsed = parseInt(savedWallOffsetX, 10);
+      if (!isNaN(parsed)) setWallOffsetX(parsed);
+    }
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("trim") === "true" || params.get("trim") === "1" || params.get("dev") === "true") {
+      setShelfCalibratorOpen(true);
     }
     setReady(true);
     setDate(new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }).toUpperCase());
@@ -378,10 +490,7 @@ export default function Home() {
   }, [rows, ready]);
 
   useEffect(() => {
-    const ro = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect?.width || 1160;
-      setScale(Math.min(1, w / 1160));
-    });
+    const ro = new ResizeObserver(entries => setScale(entries[0].contentRect.width / 1160));
     if (stageRef.current) ro.observe(stageRef.current);
     return () => ro.disconnect();
   }, []);
@@ -392,6 +501,10 @@ export default function Home() {
         e.preventDefault();
         setActive(null);
         setEdit(v => !v);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        setShelfCalibratorOpen(v => !v);
       }
     };
     window.addEventListener("keydown", fn);
@@ -836,20 +949,42 @@ export default function Home() {
           allow="autoplay; encrypted-media; fullscreen"
           onLoad={handleZzzLoad}
         />
-        <div
-          className="zzz-scroll-hint"
-          onClick={() => {
-            const cab = document.querySelector("#ascend-cabinet-section");
-            cab?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
-          title="Scroll down to explore WorkOS cabinet shelves"
-        >
-          <i /> SCROLL FOR WORKOS CABINET <ArrowDown size={11} />
-        </div>
+        {/* Authentic Background Wood Wall Extension to freely cover bottom of top workplace */}
+        {wallCoverHeight > 0 && (
+          <div
+            className={`workplace-wall-extension ${wallWidthMode !== "full" ? "custom-width" : ""}`}
+            style={{
+              height: `${wallCoverHeight}px`,
+              ...(wallWidthMode === "full"
+                ? { left: 0, right: 0, width: "100%" }
+                : wallWidthMode === "shelf"
+                ? { width: "min(1160px, 96vw)", left: "50%", transform: `translateX(calc(-50% + ${wallOffsetX}px))` }
+                : { width: `${wallWidth}px`, left: "50%", transform: `translateX(calc(-50% + ${wallOffsetX}px))` }),
+            }}
+            aria-hidden="true"
+          >
+            {showTrimGuides && (
+              <>
+                <div className="workplace-wall-seam-bar" />
+                <div className="workplace-wall-guide-badge">
+                  <span>WALL: {wallWidthMode === "full" ? "FULL (100%)" : wallWidthMode === "shelf" ? "SHELF (1160px)" : `${wallWidth}px`} × {wallCoverHeight}px {wallOffsetX !== 0 ? `(X: ${wallOffsetX > 0 ? `+${wallOffsetX}` : wallOffsetX}px)` : ""}</span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </section>
 
-      {/* Scrollable WorkOS Multi-Tier Shelves Stack */}
-      <div className={`cabinet-shell lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`} id="ascend-cabinet-section">
+      {/* Scrollable WorkOS Multi-Tier Shelves Stack (100% Uncovered & Clean) */}
+      <div
+        className={`cabinet-shell lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`}
+        id="ascend-cabinet-section"
+        style={{
+          marginTop: `${shelfOffsetY}px`,
+          position: "relative",
+          zIndex: 15,
+        }}
+      >
         {(presetMode !== "reference" || edit) && (
           <div className="cabinet-top">
             <span>{presetMode === "reference" ? `WORKOS LAUNCH CABINET · ${rows.length} TIERS LOADED` : "THE WORKSTATION"}</span>
@@ -987,9 +1122,11 @@ export default function Home() {
                                             <StudioSpeaker position="left" className="shelf-fit-speaker" />
                                           </div>
                                         ) : (
-                                          <div className="cubby-prop">
+                                          <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`}>
                                             <img className="prop-off" src={def.offSrc} alt={def.label} draggable={false} />
-                                            <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
+                                            {def.onSrc !== def.offSrc && (
+                                              <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
+                                            )}
                                           </div>
                                         )
                                       ) : slot.isPoster ? (
@@ -1153,6 +1290,12 @@ export default function Home() {
           <div><i /> EDIT MODE <span>Customize shelves · Swap items · Reorder</span></div>
           {presetMode === "reference" ? (
             <>
+              <button onClick={() => {
+                const btn = document.querySelector<HTMLButtonElement>(".room-dock-btn.crop-btn");
+                if (btn) btn.click();
+              }}>
+                <Scissors size={14} /> Crop & Move Hero
+              </button>
               <button onClick={() => setRowTemplateModalOpen(true)}><Plus size={14} /> Add Shelf Row</button>
               <button onClick={handleResetCabinet}><RotateCcw size={14} /> Reset Shelves</button>
             </>
@@ -1169,11 +1312,26 @@ export default function Home() {
         </aside>
       )}
 
-      {!edit && (
-        <button className="floating-edit" onClick={toggleEdit}>
-          <Settings2 size={16} /> Edit workspace <kbd>Ctrl E</kbd>
-        </button>
-      )}
+      <ShelfTrimEditor
+        open={shelfCalibratorOpen}
+        onClose={() => setShelfCalibratorOpen(false)}
+        wallCoverHeight={wallCoverHeight}
+        wallWidthMode={wallWidthMode}
+        wallWidth={wallWidth}
+        wallOffsetX={wallOffsetX}
+        shelfOffsetY={shelfOffsetY}
+        shelfTopCrop={shelfTopCrop}
+        showTrimGuides={showTrimGuides}
+        onWallCoverChange={handleWallCoverChange}
+        onWallWidthModeChange={handleWallWidthModeChange}
+        onWallWidthChange={handleWallWidthChange}
+        onWallOffsetXChange={handleWallOffsetXChange}
+        onShelfOffsetChange={handleShelfOffsetChange}
+        onShelfTopCropChange={handleShelfTopCropChange}
+        onToggleTrimGuides={setShowTrimGuides}
+        onResetAll={handleResetAllTrim}
+        onCopyValues={handleCopyTrimValues}
+      />
 
       <input ref={inputRef} type="file" hidden onChange={e => { handleUpload(e.target.files?.[0]); e.target.value = ""; }} />
       {toast && <div className="toast" role="status">{toast}</div>}

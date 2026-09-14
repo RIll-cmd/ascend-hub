@@ -22,6 +22,13 @@ export const COLLECTIBLES:CollectibleDef[]=[
  {id:"retro-tv-pon",name:"retro-tv-pon",label:"PON! CRT Television",offSrc:"/retro-media/tv-isolated.png",onSrc:"/retro-media/tv-isolated.png",category:"hardware"},
  {id:"oxo-dvd-deck",name:"oxo-dvd-deck",label:"OXO DVD/VCR Deck",offSrc:"/retro-media/dvd-isolated.png",onSrc:"/retro-media/dvd-isolated.png",category:"hardware"},
  {id:"studio-monitors",name:"studio-monitors",label:"Studio Monitor Speaker",offSrc:"/retro-media/speaker-left-isolated.png",onSrc:"/retro-media/speaker-left-isolated.png",category:"hardware"},
+ {id:"crt-vintage-1",name:"crt-vintage-1",label:"Vintage Wood-Trim CRT",offSrc:"/crt-tvs-and-imac/crt1-removebg-preview.png",onSrc:"/crt-tvs-and-imac/crt1-removebg-preview.png",category:"hardware"},
+ {id:"crt-dual-knob",name:"crt-dual-knob",label:"Dual-Knob CRT TV",offSrc:"/crt-tvs-and-imac/crt2-removebg-preview.png",onSrc:"/crt-tvs-and-imac/crt2-removebg-preview.png",category:"hardware"},
+ {id:"crt-studio-monitor",name:"crt-studio-monitor",label:"Studio Pushbutton CRT",offSrc:"/crt-tvs-and-imac/crt3-removebg-preview.png",onSrc:"/crt-tvs-and-imac/crt3-removebg-preview.png",category:"hardware"},
+ {id:"crt-vhf-uhf",name:"crt-vhf-uhf",label:"Classic VHF/UHF CRT TV",offSrc:"/crt-tvs-and-imac/crt4-removebg-preview.png",onSrc:"/crt-tvs-and-imac/crt4-removebg-preview.png",category:"hardware"},
+ {id:"imac-g3-bondi",name:"imac-g3-bondi",label:"Bondi Blue iMac G3",offSrc:"/crt-tvs-and-imac/imac1-removebg-preview.png",onSrc:"/crt-tvs-and-imac/imac1-removebg-preview.png",category:"hardware"},
+ {id:"imac-g3-astronaut",name:"imac-g3-astronaut",label:"iMac G3 & Astronaut",offSrc:"/crt-tvs-and-imac/imac2-removebg-preview.png",onSrc:"/crt-tvs-and-imac/imac2-removebg-preview.png",category:"hardware"},
+ {id:"imac-g3-angled",name:"imac-g3-angled",label:"iMac G3 Profile",offSrc:"/crt-tvs-and-imac/imac3-removebg-preview.png",onSrc:"/crt-tvs-and-imac/imac3-removebg-preview.png",category:"hardware"},
 ];
 export const COLLECTIBLE_CATEGORIES=["all","hardware","sci-fi","apparel","misc"] as const;
 export type CollectibleCategory=typeof COLLECTIBLE_CATEGORIES[number];

@@ -73,7 +73,7 @@ export function RetroWallShelf({ onTapeSelect, className = "" }: RetroWallShelfP
   const handleSelectTape = useCallback(
     (tape: ZZZTapeInfo) => {
       setActiveTape(tape);
-      synth.play("snap");
+      synth.play("click");
       onTapeSelect?.(tape);
     },
     [onTapeSelect]
@@ -413,9 +413,9 @@ export function RetroWallShelf({ onTapeSelect, className = "" }: RetroWallShelfP
                   key={t.id}
                   type="button"
                   onClick={() => handleSelectTape(t)}
-                  className={`zzz-pill-btn ${activeTape?.id === t.id ? "active" : ""}`}
+                  className={`zzz-pill-btn ${(activeTape as ZZZTapeInfo | null)?.id === t.id ? "active" : ""}`}
                   style={{
-                    borderColor: activeTape?.id === t.id ? t.accentColor : undefined,
+                    borderColor: (activeTape as ZZZTapeInfo | null)?.id === t.id ? t.accentColor : undefined,
                   }}
                 >
                   <span

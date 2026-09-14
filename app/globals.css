@@ -1,7 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
-:root{--coffee:#0a0806;--walnut:#2b1810;--amber:#ff7a45;--green:#5eff5e;--cyan:#00f0ff;--cream:#ddd3c3;--muted:#918171;--mono:'IBM Plex Mono',monospace;--display:'Barlow Condensed',sans-serif;--body:'DM Sans',sans-serif;--retro-font:'Fredoka','DM Sans',sans-serif;color-scheme:dark}
-*{box-sizing:border-box}html,body{overflow-x:clip;max-width:100%}body{margin:0;background-color:#0c0805;background-image:radial-gradient(ellipse 1386px 603px at 50% 30%,rgba(6,6,6,.15) 0%,rgba(0,0,0,.92) 100%),url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');background-repeat:repeat;background-size:auto,627px 627px;background-position:center top,50% 50%;color:var(--cream);font-family:var(--body);font-size:14px}button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;transition:color .18s,background .18s}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--amber);outline-offset:5px}input:focus-visible{outline:2px solid var(--cyan)}button svg{flex-shrink:0}button:hover{color:#fff4e6}button:active{translate:0 1px}::selection{background:#8b492d;color:#fff}.os{max-width:1440px;margin:auto;padding:0 30px 40px;position:relative;background:transparent;overflow-x:clip}.topbar{height:81px;border-bottom:1px solid #2d241c80;display:flex;align-items:center;justify-content:space-between;max-width:1160px;margin:0 auto;width:100%}.wordmark{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:8px;text-shadow:0 0 16px #eab98a36}.wordmark>span:last-child{font-weight:400;color:#9f8c77}.logo-mark{font-size:37px;color:#f1d4b4;margin-right:4px;line-height:1}.top-status,.sound-switch{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;display:flex;align-items:center;gap:10px;color:#a59682}.top-status i,.cabinet-bottom i,.editor-bar i{width:5px;height:5px;background:#a0c48c;border-radius:50%;box-shadow:0 0 8px #9bc987;display:inline-block}.top-divider{height:12px;width:1px;background:#49382b;margin:0 10px}.sound-switch{border:1px solid #3c3025;padding:9px 11px;border-radius:3px;letter-spacing:.5px}.intro{padding:28px 0 32px;width:100%;max-width:1160px;margin:0 auto}.intro-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;letter-spacing:1.7px;color:#9d8a73;width:100%}.intro-meta>span:last-child{color:#746555;letter-spacing:1px}.intro-meta i{display:inline-block;width:3px;height:3px;background:#76614e;border-radius:50%;margin:0 9px 3px}.intro-main{display:flex;align-items:center;justify-content:space-between;margin-top:15px}h1{font:500 51px/1.08 var(--display);letter-spacing:-.6px;margin:0}h1 em{font-style:normal;color:#ab9984}.intro p{font-size:13px;color:#968573;margin:13px 0 0}.neon-sign{position:relative;transform:rotate(-3deg);border:1px solid #6a3727;padding:11px 23px 12px;border-radius:3px;text-align:center;margin:0 37px 0 30px;box-shadow:inset 0 0 12px #ff6e2715,0 0 10px #ff6e270b}.neon-sign:before,.neon-sign:after{content:'';position:absolute;top:-22px;width:1px;height:22px;background:#493026;transform:rotate(3deg)}.neon-sign:before{left:18px}.neon-sign:after{right:18px}.neon-sign span{display:block;font:500 15px/1 var(--display);letter-spacing:6px;color:#ec9c76;text-shadow:0 0 8px #ff752c}.neon-sign strong{font:500 31px/1.15 var(--display);letter-spacing:2.5px;color:#ffb28d;text-shadow:0 0 3px #ff783a,0 0 13px #ff6427,0 0 29px #ff682280;animation:neon 8s infinite}
+:root{--color-background:#0c0805;--color-foreground:#f4f1ff;--color-accent:#ff7a45;--coffee:#0a0806;--walnut:#2b1810;--amber:#ff7a45;--green:#5eff5e;--cyan:#00f0ff;--cream:#ddd3c3;--muted:#918171;--mono:'IBM Plex Mono',monospace;--display:'Barlow Condensed',sans-serif;--body:'DM Sans',sans-serif;--retro-font:'Fredoka','DM Sans',sans-serif;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background-color:#130508;background-image:linear-gradient(to bottom,rgba(24,6,10,0.55),rgba(16,4,8,0.65)),radial-gradient(ellipse 1386px 603px at 50% 30%,rgba(6,6,6,0.12) 0%,rgba(0,0,0,.8) 100%),url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');background-repeat:no-repeat,no-repeat,repeat;background-position:0 0,50% 30%,50% 50%;background-size:100% 100%,100% 100%,627px 627px;background-attachment:fixed,fixed,scroll;color:var(--cream);font-family:var(--body);font-size:14px}
+/* Wood background texture layer from ascend-hub */
+.wood-bg {
+  z-index: 0;
+  background-color: #130508;
+  background-image:
+    linear-gradient(to bottom, rgba(24, 6, 10, 0.55), rgba(16, 4, 8, 0.65)),
+    url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');
+  background-position: 0 0, 50% 50%;
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 100%, 627px 627px;
+}
+/* Hero spotlight vignette from ascend-hub */
+.hero-overlay {
+  background-image: radial-gradient(ellipse 1386px 603px at 50% 30%, rgba(6, 6, 6, 0) 0%, rgba(0, 0, 0, 0.8) 100%);
+  background-repeat: no-repeat;
+}
+button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;transition:color .18s,background .18s}a{color:inherit;text-decoration:none}button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--amber);outline-offset:5px}input:focus-visible{outline:2px solid var(--cyan)}button svg{flex-shrink:0}button:hover{color:#fff4e6}button:active{translate:0 1px}::selection{background:#8b492d;color:#fff}.os{max-width:1440px;margin:auto;padding:0 30px 40px;position:relative;background:transparent}.topbar{height:81px;border-bottom:1px solid #2d241c80;display:flex;align-items:center;justify-content:space-between;max-width:1160px;margin:0 auto;width:100%}.wordmark{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:8px;text-shadow:0 0 16px #eab98a36}.wordmark>span:last-child{font-weight:400;color:#9f8c77}.logo-mark{font-size:37px;color:#f1d4b4;margin-right:4px;line-height:1}.top-status,.sound-switch{font-family:var(--mono);font-size:10px;letter-spacing:1.3px;display:flex;align-items:center;gap:10px;color:#a59682}.top-status i,.cabinet-bottom i,.editor-bar i{width:5px;height:5px;background:#a0c48c;border-radius:50%;box-shadow:0 0 8px #9bc987;display:inline-block}.top-divider{height:12px;width:1px;background:#49382b;margin:0 10px}.sound-switch{border:1px solid #3c3025;padding:9px 11px;border-radius:3px;letter-spacing:.5px}.intro{padding:28px 0 32px;width:100%;max-width:1160px;margin:0 auto}.intro-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;letter-spacing:1.7px;color:#9d8a73;width:100%}.intro-meta>span:last-child{color:#746555;letter-spacing:1px}.intro-meta i{display:inline-block;width:3px;height:3px;background:#76614e;border-radius:50%;margin:0 9px 3px}.intro-main{display:flex;align-items:center;justify-content:space-between;margin-top:15px}h1{font:500 51px/1.08 var(--display);letter-spacing:-.6px;margin:0}h1 em{font-style:normal;color:#ab9984}.intro p{font-size:13px;color:#968573;margin:13px 0 0}.neon-sign{position:relative;transform:rotate(-3deg);border:1px solid #6a3727;padding:11px 23px 12px;border-radius:3px;text-align:center;margin:0 37px 0 30px;box-shadow:inset 0 0 12px #ff6e2715,0 0 10px #ff6e270b}.neon-sign:before,.neon-sign:after{content:'';position:absolute;top:-22px;width:1px;height:22px;background:#493026;transform:rotate(3deg)}.neon-sign:before{left:18px}.neon-sign:after{right:18px}.neon-sign span{display:block;font:500 15px/1 var(--display);letter-spacing:6px;color:#ec9c76;text-shadow:0 0 8px #ff752c}.neon-sign strong{font:500 31px/1.15 var(--display);letter-spacing:2.5px;color:#ffb28d;text-shadow:0 0 3px #ff783a,0 0 13px #ff6427,0 0 29px #ff682280;animation:neon 8s infinite}
 .launch-hero-stage{min-height:calc(100vh - 105px);min-height:calc(100dvh - 105px);display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:24px 0 0;position:relative;box-sizing:border-box}
 .launch-neon-center{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;margin:auto 0;width:100%}
 .launch-artifacts-dock{margin-top:auto;width:100%;max-width:1160px;display:flex;flex-direction:column;align-items:center;overflow:visible;position:relative;z-index:10}
@@ -30,10 +47,10 @@
 .launch-tv-glass{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 16px rgba(0,0,0,.85)}
 .launch-tv-play-badge{position:absolute;bottom:8px;left:8px;font-family:var(--mono);font-size:9px;color:#fff;background:rgba(0,0,0,.7);padding:2px 6px;border-radius:2px;letter-spacing:1px;backdrop-filter:blur(4px);pointer-events:none}
 .cabinet-shell{padding:0 14px;background:repeating-linear-gradient(2deg,#2c1a11 0,#2c1a11 2px,#321d13 3px,#281910 5px,#382117 7px);border:1px solid #4f3421;border-radius:6px;box-shadow:0 30px 70px #000a,0 0 65px #a8651820,inset 2px 0 3px #6946276b,inset -2px 0 3px #100b07;position:relative}
-.launch-cabinet-stack{width:min(100%, 1160px);max-width:1160px;margin-left:auto;margin-right:auto;margin-top:40px;margin-bottom:60px;scroll-margin-top:72px;position:relative;z-index:5;background:transparent;border:none;box-shadow:none;padding:0}
+.launch-cabinet-stack{width:calc(100vw * (var(--shelf-width-base, 832) / 1024));max-width:none;margin-left:auto;margin-right:auto;position:relative;z-index:5;background:transparent;border:none;box-shadow:none;padding:0}
 .launch-cabinet-stack .stage-viewport{background:transparent}
 .shelf-rail-h{width:100%;position:relative;display:block;line-height:0;z-index:4}
-.shelf-rail-h img{width:100%;height:auto;display:block}.cabinet-top{height:33px;font:8px var(--mono);letter-spacing:1.8px;display:flex;align-items:center;justify-content:space-between;padding:0 15px;color:#a6805b;border-bottom:1px solid #5d3b2580}.cabinet-top>span:nth-child(2){color:#947255;font-size:8px}.cabinet-top i{width:5px;height:5px;border-radius:50%;background:#120c08;box-shadow:inset 0 1px #825938;position:absolute;right:8px}.stage-viewport{width:100%;position:relative;overflow:hidden;background:#16100b}.stage{width:1160px;height:728px;position:relative;transform-origin:top left}.hardware-bay{position:absolute;top:0;left:0;right:0;height:337px;background:linear-gradient(0deg,#1e140d,#130f0b 32%,#100c09 100%);box-shadow:inset 0 14px 23px #000,inset 8px 0 15px #000b}.spotlight{position:absolute;top:0;width:480px;height:335px;background:radial-gradient(ellipse at 50% 0,#bb7f3840 0,transparent 68%);pointer-events:none}.spotlight.a{left:20px}.spotlight.b{right:-30px}.wall-grid{position:absolute;width:365px;height:185px;right:31px;top:40px;background-image:radial-gradient(#57423045 1px,transparent 1px);background-size:10px 10px;mask-image:linear-gradient(90deg,transparent,#000)}.shelf-label{font:8px var(--mono);color:#836545;letter-spacing:1.5px}.hardware-label{position:absolute;left:31px;top:17px}.wall-note{position:absolute;left:666px;top:230px;font:500 11px/1.65 var(--display);letter-spacing:2px;color:#887153;transform:rotate(-4deg);border:1px solid #574531;padding:10px 16px}.cassettes{position:absolute;bottom:16px;left:683px;transform:rotate(-2deg);width:123px}.cassettes span{font:6px var(--mono);display:block;height:15px;background:#554638;border:2px solid #241c15;padding:2px 9px;color:#c1aa8e;box-shadow:0 4px 5px #0009}.cassettes span:nth-child(2){background:#222c29;color:#97a793}.cassettes span:nth-child(3){background:#705035}.shelf-rail{position:absolute;left:0;width:100%;background:repeating-linear-gradient(1deg,#3b2416 0,#3b2416 2px,#432919 3px,#302015 5px);border-top:2px solid #75502c;border-bottom:3px solid #160f09;box-shadow:0 9px 15px #000b,inset 0 3px 5px #9c6a251a;z-index:1}.shelf-rail.upper{top:337px;height:26px}.shelf-rail.lower{bottom:0;height:28px}.shelf-rail>span{font:7px var(--mono);letter-spacing:2px;position:absolute;right:23px;top:7px;color:#a48058}.shelf-rail i{position:absolute;width:4px;height:4px;background:#170e08;border-radius:50%;box-shadow:0 1px #926339;top:9px;left:12px}.shelf-rail i:last-child{left:auto;right:12px}.poster-bay{position:absolute;top:363px;bottom:28px;left:0;right:0;display:grid;grid-template-columns:repeat(5,1fr);background:#17100c}.compartment{position:relative;background:radial-gradient(ellipse at 50% -20%,#bd793643,transparent 70%),repeating-linear-gradient(90deg,#2b1c1508 0,#2b1c1508 4px,#62382309 5px,#62382309 6px);border-right:9px solid #342215;box-shadow:inset 4px 10px 18px #000a,3px 0 3px #000a}.compartment:last-child{border-right:0}.compartment>span{position:absolute;top:9px;left:11px;font:8px var(--mono);color:#5b4731}.compartment>i{position:absolute;top:0;left:50%;width:30px;height:2px;background:#cf955951;box-shadow:0 5px 30px 8px #df954029}.artifact{z-index:2}.hardware-button{display:block;padding:0;width:100%;height:100%;position:relative}.hardware-hint{font:7px var(--mono);display:flex;align-items:center;justify-content:center;gap:5px;letter-spacing:1.6px;color:#b59a76;position:absolute;bottom:-13px;left:0;right:0;opacity:.5}.hardware-button:hover .hardware-hint{opacity:1;color:#ffd4a1}
+.shelf-rail-h img{width:100%;height:auto;display:block}.cabinet-top{height:33px;font:8px var(--mono);letter-spacing:1.8px;display:flex;align-items:center;justify-content:space-between;padding:0 15px;color:#a6805b;border-bottom:1px solid #5d3b2580}.cabinet-top>span:nth-child(2){color:#947255;font-size:8px}.cabinet-top i{width:5px;height:5px;border-radius:50%;background:#120c08;box-shadow:inset 0 1px #825938;position:absolute;right:8px}.stage-viewport{width:100%;position:relative;overflow:hidden;background:transparent}.stage{width:1160px;height:728px;position:relative;transform-origin:top left}.hardware-bay{position:absolute;top:0;left:0;right:0;height:337px;background:linear-gradient(0deg,#1e140d,#130f0b 32%,#100c09 100%);box-shadow:inset 0 14px 23px #000,inset 8px 0 15px #000b}.spotlight{position:absolute;top:0;width:480px;height:335px;background:radial-gradient(ellipse at 50% 0,#bb7f3840 0,transparent 68%);pointer-events:none}.spotlight.a{left:20px}.spotlight.b{right:-30px}.wall-grid{position:absolute;width:365px;height:185px;right:31px;top:40px;background-image:radial-gradient(#57423045 1px,transparent 1px);background-size:10px 10px;mask-image:linear-gradient(90deg,transparent,#000)}.shelf-label{font:8px var(--mono);color:#836545;letter-spacing:1.5px}.hardware-label{position:absolute;left:31px;top:17px}.wall-note{position:absolute;left:666px;top:230px;font:500 11px/1.65 var(--display);letter-spacing:2px;color:#887153;transform:rotate(-4deg);border:1px solid #574531;padding:10px 16px}.cassettes{position:absolute;bottom:16px;left:683px;transform:rotate(-2deg);width:123px}.cassettes span{font:6px var(--mono);display:block;height:15px;background:#554638;border:2px solid #241c15;padding:2px 9px;color:#c1aa8e;box-shadow:0 4px 5px #0009}.cassettes span:nth-child(2){background:#222c29;color:#97a793}.cassettes span:nth-child(3){background:#705035}.shelf-rail{position:absolute;left:0;width:100%;background:repeating-linear-gradient(1deg,#3b2416 0,#3b2416 2px,#432919 3px,#302015 5px);border-top:2px solid #75502c;border-bottom:3px solid #160f09;box-shadow:0 9px 15px #000b,inset 0 3px 5px #9c6a251a;z-index:1}.shelf-rail.upper{top:337px;height:26px}.shelf-rail.lower{bottom:0;height:28px}.shelf-rail>span{font:7px var(--mono);letter-spacing:2px;position:absolute;right:23px;top:7px;color:#a48058}.shelf-rail i{position:absolute;width:4px;height:4px;background:#170e08;border-radius:50%;box-shadow:0 1px #926339;top:9px;left:12px}.shelf-rail i:last-child{left:auto;right:12px}.poster-bay{position:absolute;top:363px;bottom:28px;left:0;right:0;display:grid;grid-template-columns:repeat(5,1fr);background:#17100c}.compartment{position:relative;background:radial-gradient(ellipse at 50% -20%,#bd793643,transparent 70%),repeating-linear-gradient(90deg,#2b1c1508 0,#2b1c1508 4px,#62382309 5px,#62382309 6px);border-right:9px solid #342215;box-shadow:inset 4px 10px 18px #000a,3px 0 3px #000a}.compartment:last-child{border-right:0}.compartment>span{position:absolute;top:9px;left:11px;font:8px var(--mono);color:#5b4731}.compartment>i{position:absolute;top:0;left:50%;width:30px;height:2px;background:#cf955951;box-shadow:0 5px 30px 8px #df954029}.artifact{z-index:2}.hardware-button{display:block;padding:0;width:100%;height:100%;position:relative}.hardware-hint{font:7px var(--mono);display:flex;align-items:center;justify-content:center;gap:5px;letter-spacing:1.6px;color:#b59a76;position:absolute;bottom:-13px;left:0;right:0;opacity:.5}.hardware-button:hover .hardware-hint{opacity:1;color:#ffd4a1}
 .television{width:100%;height:100%;padding-bottom:19px;filter:drop-shadow(0 11px 7px #000b);position:relative}.tv-body{height:calc(100% - 7px);padding:14px 11px 13px 14px;border-radius:15px 17px 9px 9px;background:linear-gradient(135deg,#55524a,#34342e 16%,#24241f 70%,#1e211d);border:2px solid #5e5b4a;box-shadow:inset 0 3px 3px #a7a08433,inset -5px -6px 10px #080b0890;display:flex;gap:12px}.tv-bezel{flex:1;min-width:0;padding:9px;background:linear-gradient(145deg,#181c16,#414136);border-radius:16% / 12%;box-shadow:inset 2px 2px 6px #090b08,0 1px 1px #85857365}.crt-screen{height:100%;border-radius:12% / 11%;overflow:hidden;position:relative;background:#060f10;box-shadow:0 0 10px #8edfb42a}.crt-screen video{width:100%;height:100%;object-fit:cover}.scanlines{position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(18,16,16,0) 50%,rgba(0,0,0,.35) 50%);background-size:100% 3px;z-index:5;animation:flicker .01667s infinite alternate;opacity:.7}.glass{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 28px 11px #0009;background:radial-gradient(ellipse at center,transparent 45%,#0009 100%),linear-gradient(135deg,#fff2,transparent 25%);z-index:6;border-radius:inherit}.tv-panel{width:41px;display:flex;align-items:center;flex-direction:column;gap:12px;padding-top:6px}.tv-panel>b{font:600 7px var(--body);letter-spacing:1px;color:#aaa99a}.dial{width:30px;height:30px;border-radius:50%;background:repeating-conic-gradient(#252721 0deg 8deg,#57594a 9deg 13deg);padding:5px;box-shadow:1px 3px 3px #0009,-1px -1px 1px #a4a18d80;position:relative}.dial i{display:block;border-radius:50%;background:linear-gradient(135deg,#535447,#1a1e17);width:100%;height:100%;border:1px solid #747463}.dial i:after{content:'';position:absolute;left:14px;top:5px;width:2px;height:8px;background:#b6b1a0;transform:rotate(20deg)}.dial.small{width:24px;height:24px}.dial.small i:after{left:11px}.speaker{flex:1;width:30px;background:repeating-linear-gradient(0deg,#141912 0 2px,#4a4d3e 2px 4px);min-height:25px}.tv-power{font:4px var(--mono);color:#a09e8d;display:flex;gap:4px;align-items:center}.tv-power i{width:4px;height:4px;background:#a4f098;border-radius:50%;box-shadow:0 0 4px #9cff75}.tv-foot{height:7px;margin:0 21px;background:#191b15;border-bottom:2px solid #373a2b}.tv-caption{position:absolute;left:21px;right:18px;bottom:5px;font:5px var(--mono);letter-spacing:1px;color:#8d8976;display:flex;justify-content:space-between}.ambient{position:absolute;inset:0;background:linear-gradient(#0c1a21,#183b41 52%,#8d9e74 69%,#092128 70%);overflow:hidden}.stars{position:absolute;inset:0;background-image:radial-gradient(#bedcb799 1px,transparent 1px);background-size:37px 31px;opacity:.4}.orb{position:absolute;width:78px;height:78px;border-radius:50%;background:linear-gradient(#d7d3a0,#a7bea0);top:19%;left:37%;box-shadow:0 0 45px #c4e6a044}.mountains{position:absolute;left:-20%;right:-20%;bottom:20%;height:65%;clip-path:polygon(0% 100%,0 70%,9% 79%,22% 30%,35% 61%,43% 19%,60% 70%,69% 43%,84% 74%,94% 31%,100% 75%,100% 100%);background:linear-gradient(140deg,#254647,#496967 48%,#112c31 49%)}.mountains.front{bottom:13%;height:45%;background:linear-gradient(130deg,#284748,#41676a 45%,#0a242c 46%);transform:scaleX(-1)}.horizon-grid{position:absolute;bottom:-38%;left:-50%;right:-50%;height:70%;background:linear-gradient(#70ae9766 1px,transparent 1px),linear-gradient(90deg,#70ae9755 1px,transparent 1px);background-size:26px 20px;transform:perspective(90px) rotateX(47deg);animation:grid-drift 6s linear infinite;animation-delay:calc(-1 * var(--offset,0s))}.transmission{position:absolute;top:34%;width:100%;text-align:center;font:600 41px/.9 var(--display);letter-spacing:6px;color:#edf4d8;text-shadow:-1px 0 #00f0ff60,1px 0 #ff783a88,0 0 10px #b5f7d780}.transmission>span{display:block;font:5px var(--mono);letter-spacing:2px;margin-top:12px}.screen-channel,.screen-bottom{position:absolute;left:12px;right:12px;top:10px;font:5px var(--mono);color:#d4eace;display:flex;justify-content:space-between;letter-spacing:1px}.screen-bottom{top:auto;bottom:10px;font-size:4px}.screen-bottom>span{font-size:9px}.paused *{animation-play-state:paused!important}
 .clock-case{height:100%;padding:10px 17px;background:linear-gradient(165deg,#37392d,#171b15 70%);border:2px solid #515241;border-radius:4px;box-shadow:2px 7px 8px #0008,inset 0 1px #93907833}.clock-label,.clock-bottom{font:5px var(--mono);letter-spacing:1px;color:#aaa98a;display:flex;justify-content:space-between}.clock-label span{color:#707963}.clock-digits{margin:7px 0 6px;position:relative;background:#070f08;padding:1px 9px;border-radius:2px;border-top:1px solid #060b04;font:400 37px/1.15 var(--mono);letter-spacing:-1.5px;white-space:nowrap;color:#a5ff8b;text-shadow:0 0 6px #87ff7190}.clock-digits time{position:relative}.ghost{position:absolute;opacity:.085}.clock-bottom{font-size:4px;letter-spacing:.55px;align-items:center}.clock-bottom i{height:3px;width:3px;border-radius:50%;background:#83be68}.terminal{height:100%;width:100%;position:relative;filter:drop-shadow(6px 10px 8px #000a)}.terminal-shell{height:78%;width:90%;margin:auto;background:linear-gradient(120deg,#80b5b14d,#317b7780 35%,#123f3be6 75%);border:2px solid #71a29a80;border-radius:43% 43% 15% 15% / 20% 25% 16% 16%;padding:14px 18px 10px 10px;box-shadow:inset -14px 0 15px #7ca19a33,inset 0 5px 4px #c1e0ce26}.terminal-face{width:95%;height:100%;background:linear-gradient(135deg,#c4c4aa,#a6ac94 45%,#748d7a);border-radius:15px 15px 28px 28px;padding:11px 12px 0;border:1px solid #d8d8b3;box-shadow:1px 2px 4px #04261c}.terminal-screen{height:78%;background:#0b2018;color:#a7ce96;border:7px solid #536759;border-radius:10px;position:relative;overflow:hidden;padding:8px;text-align:left;box-shadow:inset 0 0 14px #000}.terminal-screen>span{font:5px var(--mono);border-bottom:1px solid #69966b66;padding-bottom:3px;display:block;letter-spacing:1px}.terminal-screen pre{font:5px/1.6 var(--mono);margin-top:7px;text-shadow:0 0 4px #9cffa833}.terminal-chin{height:20%;display:flex;align-items:center;justify-content:center;color:#365955;font-size:14px;position:relative}.terminal-chin i{position:absolute;right:8px;width:4px;height:4px;background:#cdd780;border:1px solid #698659;border-radius:50%}.terminal-base{height:13px;width:45%;margin:0 auto;background:linear-gradient(#345f57,#699890);border-radius:0 0 50% 50%;border:1px solid #679e9480}.keyboard{position:absolute;bottom:13px;left:0;right:20px;height:26px;border-radius:5px 5px 9px 9px;background:repeating-linear-gradient(90deg,transparent 0 8px,#4e655c88 9px 11px),repeating-linear-gradient(0deg,#adb8a1 0 4px,#758577 5px 7px);border:5px solid #547f76;transform:perspective(100px) rotateX(18deg);box-shadow:2px 3px 0 #203f37}.terminal-label{position:absolute;bottom:-1px;left:0;right:0;font:5px var(--mono);letter-spacing:1px;color:#7c8570}.turret-button{height:100%;width:100%;padding:0;position:relative}.turret{height:calc(100% - 13px);position:relative;filter:drop-shadow(3px 6px 4px #000a)}.turret-head{position:absolute;top:0;left:38%;width:45%;height:38%;background:linear-gradient(145deg,#8f8d79,#5a6253 40%,#2a372d);clip-path:polygon(10% 0,100% 10%,89% 89%,20% 100%,0 50%);border-top:3px solid #9ba08c;transform:rotate(-8deg)}.turret-head i{position:absolute;left:7px;top:15px;width:20px;height:8px;background:#172c24;border-top:2px solid #414f40;box-shadow:0 0 2px #000}.turret-head span{position:absolute;left:8px;top:17px;width:3px;height:3px;background:#edb65b;box-shadow:0 0 7px #ff9e26}.turret-head b{position:absolute;right:1px;top:14px;width:19px;height:14px;border:3px solid #686f5a;transform:rotate(10deg);background:#354532}.turret-neck{position:absolute;top:34%;left:53%;height:19%;width:12%;background:linear-gradient(90deg,#343e30,#7e8770,#283326);transform:rotate(-10deg)}.turret-leg{position:absolute;top:47%;height:47%;width:12%;background:linear-gradient(90deg,#38412f,#7d8667,#303d2d);clip-path:polygon(0 0,100% 0,65% 48%,100% 90%,100% 100%,0 100%,0 90%,25% 48%)}.turret-leg.left{left:38%;transform:rotate(15deg)}.turret-leg.right{left:63%;transform:rotate(-12deg)}.turret-platform{position:absolute;bottom:0;left:19%;width:80%;height:10%;border-radius:50%;background:linear-gradient(#72755b,#252a1d);border-bottom:4px solid #111a12}.prop-label{font:5px var(--mono);letter-spacing:1px;color:#a1977a}.laser-beam{position:absolute;top:21%;right:50%;height:2px;width:950px;background:#d3ffff;box-shadow:0 0 4px 2px #00f0ff,0 0 15px 5px #00f0ff60;animation:laser .4s both;pointer-events:none}.firing .turret-head{transform:rotate(-13deg)}
 .poster-wrap{width:100%;height:100%;position:relative}.poster{display:flex;flex-direction:column;width:100%;height:calc(100% - 33px);position:relative;overflow:hidden;padding:14px 12px 10px;text-align:left;color:var(--poster-color);border:1px solid #af885340;border-radius:1px;background:radial-gradient(ellipse at 45% 60%,#b48a4322,transparent 70%),#30251c;box-shadow:3px 6px 8px #000a,0 0 0 3px #08080566,inset 0 0 20px #0005;transition:transform .15s ease-out;will-change:transform}.poster-skills{background-color:#17271e}.poster-habits{background-color:#302a1c}.poster-quests{background-color:#372118}.poster-analytics{background-color:#1b2a2d}.poster:after{position:absolute;inset:0;content:'';pointer-events:none;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23ffffff' opacity='.12' filter='url(%23n)' d='M0 0h180v180H0z'/%3E%3C/svg%3E");opacity:.36;mix-blend-mode:soft-light}.poster-top{display:flex;justify-content:space-between;font:4.5px var(--mono);letter-spacing:1px;border-bottom:1px solid currentColor;padding-bottom:7px;opacity:.55}.poster-eyebrow{font:4.5px var(--mono);letter-spacing:1.3px;margin-top:17px;opacity:.8}.poster h2{font:600 28px/1 var(--display);margin:5px 0 0;letter-spacing:-.2px;color:var(--poster-color)}.poster-art{width:100%;flex:1;min-height:0;overflow:visible;color:var(--poster-color)}.poster-bottom{display:flex;justify-content:space-between;align-items:center;font:5px var(--mono);letter-spacing:1.4px;border-top:1px solid #a4a07d50;padding-top:7px}.poster-bottom>span:last-child{font-size:13px}.poster-edition{font:3.5px var(--mono);letter-spacing:.75px;opacity:.5;margin-top:4px}.poster-glare{position:absolute;inset:0;background:radial-gradient(circle at var(--glare-x,50%) var(--glare-y,0%),#ffedd326,transparent 65%);pointer-events:none;mix-blend-mode:screen}.poster-label{display:flex;align-items:center;gap:8px;height:33px;padding-top:4px;font:9px var(--display);letter-spacing:.4px;color:#d6c1a3}.poster-label>.module-number{font:7px var(--mono);color:#95815f;border:1px solid #63492b;padding:3px}.poster-label>span:nth-child(2){flex:1;font-size:11px}.poster-label button{padding:0;color:#9c825e}.poster-label input{width:125px;background:#18100a;border:1px solid var(--amber);color:#eee;font:11px var(--body)}.custom-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.completed-stamp{position:absolute;right:9px;bottom:28px;background:#16291e;color:#b5e899;border:1px solid #8aaa65;padding:5px;font:7px var(--mono);transform:rotate(-8deg)}.cabinet-bottom{height:36px;display:flex;align-items:center;justify-content:space-between;font:7px var(--mono);letter-spacing:1px;color:#a38a67;padding:0 12px}.cabinet-bottom>span{display:flex;align-items:center;gap:7px}.cabinet-bottom>span:nth-child(2){color:#967a56}.cabinet-bottom>span:last-child{color:#795f40}.below-shelf{padding:29px 3px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #292016;position:relative}.below-shelf:before{position:absolute;content:'';height:50px;left:15%;right:15%;top:0;background:linear-gradient(#8a4e2810,transparent);filter:blur(10px);pointer-events:none}.below-shelf>div:first-child{display:flex;align-items:center;gap:13px}.tiny-cross{font:22px var(--mono);color:#86613c}.below-shelf p{font-size:10px;line-height:1.6;color:#907c66;margin:0}.below-shelf strong{font-weight:400;color:#c4ae92}.interaction-note{display:flex;align-items:center;gap:8px;font:8px var(--mono)!important;letter-spacing:.1px}.below-shelf details{max-width:320px;position:relative}.below-shelf summary{display:flex;align-items:center;gap:17px;font:8px var(--mono);letter-spacing:.6px;cursor:pointer;color:#c1a78a;list-style:none}.below-shelf summary::-webkit-details-marker{display:none}.below-shelf summary span{font-size:7px;border:1px solid #463421;padding:4px;color:#897053}.changelog{position:absolute;bottom:34px;right:0;width:310px;z-index:12;background:#1e160f;border:1px solid #6b4d2f;padding:18px;box-shadow:0 8px 35px #000}.changelog b{font:12px var(--mono)}.changelog p{margin-top:12px;font-size:13px}.page-footer{display:flex;justify-content:space-between;align-items:center;margin-top:20px;font:7px var(--mono);letter-spacing:1px;color:#77614a}.page-footer button{font:7px var(--mono);display:flex;align-items:center;gap:7px;letter-spacing:.7px}
@@ -76,14 +93,13 @@
 
 /* WorkOS Architectural Cabinet & Authentic Photographic Textures */
 .cabinet-wall-bg {
-  background-color: #120d0b;
+  background-color: #0c0805;
   background-image:
-    radial-gradient(ellipse 1386px 603px at 50% 30%, rgba(38, 24, 18, 0.55) 0%, rgba(12, 8, 6, 0.95) 100%),
+    radial-gradient(ellipse 1386px 603px at 50% 30%, rgba(6, 6, 6, 0) 0%, rgba(0, 0, 0, 0.8) 100%),
     url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');
-  background-repeat: repeat;
+  background-repeat: no-repeat, repeat;
   background-size: auto, 627px 627px;
-  background-position: center top, 50% 50%;
-  background-blend-mode: multiply, normal;
+  background-position: 50% 30%, 50% 50%;
 }
 .cabinet-view {
   width: 100%;
@@ -100,28 +116,14 @@
 /* Cubby Cell & Architectural Depth */
 .cubby-cell {
   position: relative;
-  background-color: #17121b;
-  background-image:
-    linear-gradient(90deg, rgba(8, 6, 10, 0.85) 0%, rgba(8, 6, 10, 0.15) 15%, transparent 30%, transparent 70%, rgba(8, 6, 10, 0.15) 85%, rgba(8, 6, 10, 0.85) 100%),
-    linear-gradient(180deg, rgba(8, 6, 10, 0.8) 0%, rgba(8, 6, 10, 0.2) 20%, transparent 45%),
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.015) 0px, rgba(255, 255, 255, 0.015) 1px, transparent 1px, transparent 32px),
-    linear-gradient(145deg, #191420 0%, #130f18 45%, #1c1524 100%);
+  background-color: transparent;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 35px rgba(5, 3, 7, 0.95);
 }
 .cubby-cell::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(to bottom, rgba(10, 7, 12, 0.65) 0%, transparent 35%),
-    linear-gradient(to top, rgba(10, 7, 12, 0.55) 0%, transparent 25%),
-    radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(8, 5, 10, 0.7) 100%);
-  pointer-events: none;
-  z-index: 6;
+  display: none;
 }
 .cubby-bg-layer {
   position: absolute;
@@ -147,8 +149,8 @@
 }
 .cubby-bg-on {
   z-index: 2;
-  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  filter: var(--cubby-bg-on-filter, brightness(0.9) saturate(1.15) sepia(0.12));
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: none;
 }
 
 /* Authentic Photographic Wooden Divider Rails & Mantel Lip */
@@ -181,7 +183,7 @@
   height: 100%;
   object-fit: fill;
   display: block;
-  filter: brightness(0.58) contrast(1.15) saturate(0.92) sepia(0.22) hue-rotate(-8deg);
+  filter: none;
 }
 .shelf-wall-v,
 .shelf-divider-v {
@@ -199,7 +201,7 @@
   height: 100%;
   object-fit: fill;
   display: block;
-  filter: brightness(0.58) contrast(1.15) saturate(0.92) sepia(0.22) hue-rotate(-8deg);
+  filter: none;
 }
 .shelf-divider-h {
   width: 100%;
@@ -215,7 +217,7 @@
   height: 100%;
   object-fit: fill;
   display: block;
-  filter: brightness(0.58) contrast(1.15) saturate(0.92) sepia(0.22) hue-rotate(-8deg);
+  filter: none;
 }
 
 /* ==========================================================================
@@ -229,7 +231,7 @@
   --shelf-light-bar-core: rgba(255, 215, 140, 0.68);
   --shelf-light-wash: linear-gradient(to bottom, rgba(230, 140, 60, 0.18), transparent 65%);
   --shelf-floor-bounce: radial-gradient(ellipse 85% 45% at 50% 100%, rgba(230, 140, 60, 0.14) 0%, transparent 75%);
-  --cubby-bg-on-filter: brightness(0.9) saturate(1.15) sepia(0.12);
+  --cubby-bg-on-filter: none;
   --shelf-light-accent: #fea480;
 }
 
@@ -244,11 +246,7 @@
 
 /* Diffuse Optical Wash Fixture & Volumetric Bleed */
 .cubby-led-strip {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 10;
-  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  display: none;
 }
 
 .cubby-led-bar {
@@ -413,9 +411,12 @@
   width: 100%;
   height: 100%;
   display: grid;
+  grid-template-columns: 100%;
+  grid-template-rows: 100%;
   place-items: center;
-  padding: 18px;
+  padding: 16px;
   cursor: pointer;
+  box-sizing: border-box;
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), filter 0.22s ease;
 }
 .cubby-prop:hover,
@@ -425,8 +426,8 @@
 }
 .cubby-prop img {
   grid-area: 1 / 1;
-  max-width: 86%;
-  max-height: 86%;
+  max-width: 82%;
+  max-height: 82%;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -449,12 +450,20 @@
 .cubby-cell:hover .prop-on {
   opacity: 1;
 }
+.cubby-prop.single-prop-img .prop-off {
+  opacity: 1 !important;
+}
+.cubby-prop.single-prop-img:hover .prop-off,
+.cubby-cell:hover .cubby-prop.single-prop-img .prop-off {
+  opacity: 1 !important;
+  filter: drop-shadow(0 14px 26px rgba(0, 0, 0, 0.95)) brightness(1.05);
+}
 .view-switch{display:flex;align-items:center;gap:7px;font:9px var(--mono);padding:6px 12px;background:#241b14;border:1px solid #483321;border-radius:3px;color:#cfaa71;cursor:pointer;transition:all .15s ease}
 .view-switch:hover{background:#38281a;color:#ffe2b7;border-color:#75502c}
 .view-switch.active{background:#fea48022;border-color:#fea480;color:#fea480;box-shadow:0 0 10px rgba(254,164,128,.3)}
 
 /* Multi-Row Expandable Cabinet System */
-.cabinet-multi-rows{width:1160px;max-width:100%;display:flex;flex-direction:column;gap:24px;padding:0 0 24px;background:transparent;box-sizing:border-box;margin:0 auto}
+.cabinet-multi-rows{width:1160px;display:flex;flex-direction:column;gap:24px;padding:0 0 24px;background:transparent;box-sizing:border-box;margin:0 auto}
 .shelf-row-wrapper{position:relative;border-radius:4px;background:#140d09;box-shadow:0 25px 60px rgba(0,0,0,.98);overflow:hidden;display:flex;flex-direction:column}
 .shelf-row-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 18px;background:#100a12;border-bottom:2px solid #201424;font:10px var(--mono);color:#a480a4;letter-spacing:1px}
 .shelf-row-bar span{display:flex;align-items:center;gap:8px;color:#d8b4fe}
@@ -2394,15 +2403,13 @@
 }
 
 .cabinet-shell.launch-cabinet-stack {
-  width: min(100%, 1160px);
-  max-width: 1160px;
+  width: calc(100vw * (var(--shelf-width-base, 832) / 1024));
+  max-width: none;
   margin-left: auto;
   margin-right: auto;
-  margin-top: 40px;
-  margin-bottom: 60px;
-  scroll-margin-top: 72px;
+  margin-top: calc(-1 * (100vw * (var(--shelf-seam-px, 0) / 1024)));
   position: relative;
-  z-index: 5;
+  z-index: 10;
   padding: 0;
   background: transparent;
   border: none;
@@ -2432,138 +2439,22 @@
 .launch-cabinet-stack .stage-viewport {
   width: 100%;
   display: flex;
-  justify-content: center;
-  overflow: hidden;
+  justify-content: flex-start;
 }
 
 .launch-cabinet-stack .stage {
-  transform-origin: top center;
+  transform-origin: top left;
 }
 
 /* ==========================================================================
    RETRO ROOM CINEMATIC FRONT PAGE (100vw x 100vh FULL-BLEED EDGE-TO-EDGE)
    ========================================================================== */
-/* ==========================================================================
-   ZENLESS ZONE ZERO TV NATIVE EMBED WORKSPACE + WORKOS CABINET SCROLL
-   ========================================================================== */
-.os.zzz-workspace-shell {
-  max-width: 100%;
-  width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  background-color: #0c0805;
-  background-image: radial-gradient(ellipse 1386px 603px at 50% 30%, rgba(6, 6, 6, 0.15) 0%, rgba(0, 0, 0, 0.92) 100%), url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');
-  background-repeat: repeat;
-  background-size: auto, 627px 627px;
-  background-position: center top, 50% 50%;
-  overflow-x: clip;
-  overflow-y: auto;
-  position: relative;
-  scroll-behavior: smooth;
-}
-
-.os.zzz-workspace-shell .topbar {
-  position: sticky;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 52px;
-  z-index: 50;
-  max-width: none;
-  width: 100%;
-  padding: 0 32px;
-  background: linear-gradient(180deg, rgba(8, 5, 10, 0.96) 0%, rgba(8, 5, 10, 0.88) 100%);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  flex-shrink: 0;
-}
-
-.zzz-tv-workspace {
-  width: 100%;
-  height: calc(100vh - 52px);
-  height: calc(100dvh - 52px);
-  min-height: 560px;
-  margin: 0;
-  padding: 0;
-  background: #000000;
-  overflow: hidden;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.zzz-tv-embed-frame {
-  width: 100%;
-  height: 100%;
-  border: none;
-  margin: 0;
-  padding: 0;
-  display: block;
-  background: #000000;
-  overflow: hidden;
-}
-
-/* Subtle scroll indicator at bottom of ZZZ TV hero */
-.zzz-scroll-hint {
-  position: absolute;
-  bottom: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 1.6px;
-  color: #a4805c;
-  background: rgba(12, 8, 5, 0.88);
-  backdrop-filter: blur(8px);
-  padding: 6px 16px;
-  border-radius: 20px;
-  border: 1px solid rgba(254, 164, 128, 0.25);
-  pointer-events: auto;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  user-select: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
-
-.zzz-scroll-hint:hover {
-  color: #fea480;
-  border-color: #fea480;
-  background: rgba(20, 14, 10, 0.96);
-  box-shadow: 0 0 16px rgba(254, 164, 128, 0.35);
-  transform: translateX(-50%) translateY(-1px);
-}
-
-.zzz-scroll-hint i {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #fea480;
-  box-shadow: 0 0 6px #fea480;
-  animation: pulse-dot 2s infinite ease-in-out;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 0.5; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
-}
-
 .os.full-bleed-mode {
-  max-width: 100%;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 0;
-  width: 100%;
-  overflow-x: clip;
+  width: 100vw;
+  overflow-x: hidden;
   position: relative;
 }
 
@@ -2597,9 +2488,9 @@
 
 .retro-room-hero-section {
   position: relative;
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
+  width: 100vw;
+  max-width: 100vw;
+  margin: -6.6vw 0 0 0;
   padding: 0;
   background: #000;
   user-select: none;
@@ -2612,48 +2503,45 @@
   transform-style: preserve-3d;
 }
 
-/* Static room composition: clean retro stage and media center workstation. */
+/* Static room composition: the clean plate and existing design-system rig. */
 .retro-room-hero-section.retro-room-flat {
   width: 100%;
   max-width: 100%;
   margin: 0;
-  height: 100vh;
-  height: 100lvh;
-  min-height: max(720px, 100lvh);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
   transform: none;
   transform-style: flat;
   overflow: visible;
-  background: radial-gradient(ellipse 80% 60% at 50% 35%, #1d1424 0%, #110c17 65%, #0d0812 100%);
-  position: relative;
-  box-sizing: border-box;
-  padding-top: 52px;
+  background-color: #0c0805;
+  background-image:
+    radial-gradient(ellipse 1386px 603px at 50% 30%, rgba(6, 6, 6, 0) 0%, rgba(0, 0, 0, 0.8) 100%),
+    url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');
+  background-repeat: no-repeat, repeat;
+  background-size: auto, 627px 627px;
+  background-position: 50% 30%, 50% 50%;
 }
 
 .retro-room-flat-stage {
   position: relative;
   width: 100%;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1.5rem 1.5rem 2rem;
-  box-sizing: border-box;
-  overflow: visible;
+  height: min(56.19vw, calc(100svh - 110px));
+  overflow: hidden;
+}
+
+.retro-room-flat-backdrop {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+  pointer-events: none;
 }
 
 .retro-room-flat-workstation {
-  position: relative;
-  left: auto;
-  bottom: auto;
-  width: min(100%, 820px);
-  margin: 0 auto;
-  transform: none;
-  filter: drop-shadow(0 20px 32px rgba(0, 0, 0, 0.85)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+  position: absolute;
+  left: 50%;
+  bottom: 5%;
+  width: min(66%, calc((100svh - 110px) * 1.2));
+  transform: translateX(-50%);
 }
 
 .retro-room-flat-workstation .retro-media-center-1to1-root {
@@ -2690,18 +2578,8 @@
   z-index: 21;
   background: #170f13;
   border-top: 1px solid #58374a;
-  border-bottom: 1px solid rgba(88, 55, 74, 0.4);
   font: 11px var(--mono);
   color: #d6b5ca;
-  cursor: pointer;
-  transition: background 0.18s ease, color 0.18s ease;
-  margin-top: auto;
-  flex-shrink: 0;
-}
-
-.retro-room-flat-explore:hover {
-  background: #23151f;
-  color: #ffffff;
 }
 
 @media (max-width: 650px) {
@@ -2720,7 +2598,13 @@
   width: 100%;
   perspective: 1200px;
   transform-style: preserve-3d;
-  background: #100b15;
+  background-color: #0c0805;
+  background-image:
+    radial-gradient(ellipse 1386px 603px at 50% 30%, rgba(6, 6, 6, 0) 0%, rgba(0, 0, 0, 0.8) 100%),
+    url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');
+  background-repeat: no-repeat, repeat;
+  background-size: auto, 627px 627px;
+  background-position: 50% 30%, 50% 50%;
 }
 
 .retro-room-hero-section::after {
@@ -4154,613 +4038,9 @@
   .calendar-cell.is-today { font-size: 13px; min-width: 1.4em; min-height: 1.4em; }
 }
 
-/* Zenless Zone Zero 3D Wall Shelf & Cassette Tapes */
-.retro-room-wall-shelf-container {
-  position: absolute;
-  left: max(1.5rem, calc(50% - 660px));
-  top: calc(50% - 15px);
-  transform: translateY(-50%);
-  width: 290px;
-  z-index: 10;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@media (max-width: 1240px) {
-  .retro-room-wall-shelf-container {
-    left: 1.25rem;
-    width: 260px;
-    transform: translateY(-50%) scale(0.92);
-    transform-origin: left center;
-  }
-}
-
-@media (max-width: 1060px) {
-  .retro-room-wall-shelf-container {
-    position: static;
-    transform: none;
-    width: min(100%, 340px);
-    margin: 0 auto 1.5rem;
-  }
-}
-
-.zzz-wall-shelf-card {
-  position: relative;
-  width: 100%;
-  background: rgba(18, 14, 22, 0.88);
-  border: 1px solid rgba(215, 243, 0, 0.3);
-  border-radius: 8px;
-  backdrop-filter: blur(16px);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.85), 0 0 24px rgba(215, 243, 0, 0.08);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.zzz-wall-shelf-card:hover {
-  border-color: rgba(215, 243, 0, 0.55);
-  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(215, 243, 0, 0.16);
-}
-
-.zzz-shelf-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: rgba(26, 20, 32, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  font-family: var(--mono), 'IBM Plex Mono', monospace;
-}
-
-.zzz-shelf-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #d7f300;
-}
-
-.zzz-shelf-serial {
-  font-size: 8.5px;
-  letter-spacing: 0.1em;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.zzz-3d-canvas-wrapper {
-  position: relative;
-  width: 100%;
-  height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at center, rgba(215, 243, 0, 0.03) 0%, transparent 70%);
-}
-
-.zzz-shelf-loading,
-.zzz-shelf-error {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-family: var(--mono), monospace;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  color: #ffb88c;
-}
-
-.zzz-spinner {
-  width: 22px;
-  height: 22px;
-  border: 2px solid rgba(215, 243, 0, 0.2);
-  border-top-color: #d7f300;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.zzz-shelf-footer {
-  padding: 8px 12px;
-  background: rgba(14, 10, 18, 0.96);
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  font-family: var(--mono), monospace;
-}
-
-.zzz-tape-active-info {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding-left: 8px;
-  border-left: 2px solid #d7f300;
-}
-
-.zzz-tape-active-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.zzz-tape-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.zzz-tape-active-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.zzz-action-hint {
-  color: #d7f300;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
-.zzz-tape-idle-info {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 8px;
-  color: rgba(255, 255, 255, 0.45);
-}
-
-.zzz-tape-pills {
-  display: flex;
-  gap: 5px;
-}
-
-.zzz-pill-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 4px;
-  padding: 4px 6px;
-  color: rgba(255, 255, 255, 0.75);
-  font-family: inherit;
-  font-size: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.zzz-pill-btn:hover {
-  background: rgba(255, 255, 255, 0.09);
-  color: #fff;
-}
-
-.zzz-pill-btn.active {
-  background: rgba(215, 243, 0, 0.12);
-  border-color: #d7f300;
-  color: #d7f300;
-}
-
-.zzz-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-}
-
 /* ==========================================================================
-   ZZZ DESKTOP ACCESSORIES (VFD CLOCK & DESK CALENDAR MOUNTED ON MEDIA RIG)
-   ========================================================================== */
-.zzz-room-alarm-clock {
-  position: absolute;
-  right: 17%;
-  top: 5.5%;
-  width: 17.5%;
-  height: 14%;
-  z-index: 5;
-  pointer-events: auto;
-  user-select: none;
-  cursor: pointer;
-  transform: rotate(-1.5deg);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.zzz-room-alarm-clock:hover {
-  transform: rotate(-1.5deg) scale(1.04);
-}
-
-.zzz-alarm-case {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(160deg, #382d24, #1c1512 60%, #0d0908);
-  border: 2px solid #5a4436;
-  border-radius: 9999px;
-  padding: 3px 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.95), inset 0 2px 3px rgba(255, 255, 255, 0.18), inset 0 -3px 5px rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.zzz-alarm-screen {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: #090605;
-  border-radius: 9999px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.98);
-}
-
-.zzz-vfd-digits {
-  font-family: var(--mono), monospace;
-  font-size: clamp(9px, 1.45cqw, 20px);
-  font-weight: 800;
-  color: #fff4db;
-  text-shadow: 0 0 6px rgba(255, 240, 200, 0.95), 0 0 14px rgba(255, 170, 70, 0.8), 0 0 28px rgba(255, 130, 30, 0.5);
-  letter-spacing: 2.5px;
-}
-
-.zzz-alarm-snooze-bar {
-  position: absolute;
-  top: -3px;
-  left: 32%;
-  width: 36%;
-  height: 3px;
-  background: #2b1f18;
-  border-radius: 2px 2px 0 0;
-  border: 1px solid #4a382c;
-  border-bottom: none;
-}
-
-.zzz-room-desk-calendar {
-  position: absolute;
-  left: 20%;
-  bottom: 18%;
-  width: 13.5%;
-  height: 25%;
-  background: #e6ded1;
-  border: 1px solid #c2b5a1;
-  border-radius: 3px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  z-index: 5;
-  pointer-events: auto;
-  user-select: none;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3px 4px 6px;
-  transform: rotate(-2.5deg);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.zzz-room-desk-calendar:hover {
-  transform: rotate(-2.5deg) scale(1.05);
-}
-
-.zzz-cal-binding {
-  display: flex;
-  gap: 16px;
-  margin-top: -6px;
-}
-
-.zzz-cal-ring {
-  width: 5px;
-  height: 10px;
-  background: #554438;
-  border-radius: 3px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.zzz-cal-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 2px;
-  line-height: 1.05;
-}
-
-.zzz-cal-year {
-  font-family: var(--mono), monospace;
-  font-size: clamp(6px, 0.75cqw, 9px);
-  color: #a83226;
-  font-weight: 700;
-}
-
-.zzz-cal-month {
-  font-family: var(--display), sans-serif;
-  font-size: clamp(7px, 0.9cqw, 11px);
-  font-weight: 700;
-  color: #a83226;
-  text-transform: uppercase;
-}
-
-.zzz-cal-body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 1px;
-}
-
-.zzz-cal-big-day {
-  font-family: var(--display), sans-serif;
-  font-size: clamp(14px, 2cqw, 24px);
-  font-weight: 800;
-  color: #1f1a16;
-  line-height: 1;
-}
-
-.zzz-cal-weekday {
-  font-family: var(--mono), monospace;
-  font-size: clamp(5px, 0.65cqw, 8px);
-  color: #736254;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-/* ==========================================================================
-   ZZZ CHANNEL 1: BOUNCING 3D LOGO (AV MODE)
-   ========================================================================== */
-.zzz-dvd-bounce-container {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background: radial-gradient(ellipse at center, #1b1624 0%, #0c0812 75%, #050308 100%);
-  overflow: hidden;
-}
-
-.zzz-bouncing-logo-img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 68px;
-  height: auto;
-  pointer-events: none;
-  filter: drop-shadow(0 0 10px #ffffff);
-  will-change: transform;
-}
-
-.zzz-dvd-overlay-label {
-  position: absolute;
-  top: 10px;
-  left: 12px;
-  font-family: var(--mono), monospace;
-  font-size: 8px;
-  letter-spacing: 1.5px;
-  color: #d7f300;
-  opacity: 0.85;
-  text-shadow: 0 0 6px rgba(215, 243, 0, 0.6);
-}
-
-/* ==========================================================================
-   ZZZ CHANNEL 4: NEW ERIDU 6TH STREET WEATHER REPORT
-   ========================================================================== */
-.zzz-weather-channel {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #1f162b, #110d18 70%);
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 10px 12px 6px;
-  color: #f0e6ff;
-  font-family: var(--mono), monospace;
-  box-sizing: border-box;
-}
-
-.zzz-weather-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(215, 243, 0, 0.35);
-  padding-bottom: 4px;
-}
-
-.zzz-weather-city {
-  font-size: 8.5px;
-  font-weight: 700;
-  color: #d7f300;
-  letter-spacing: 1px;
-}
-
-.zzz-weather-clock {
-  font-size: 8.5px;
-  color: #fff;
-}
-
-.zzz-weather-body {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex: 1;
-  padding: 4px 0;
-}
-
-.zzz-weather-main {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.zzz-weather-icon-box {
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  background: rgba(255, 170, 0, 0.12);
-  border: 1px solid rgba(255, 170, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.zzz-weather-temp {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-}
-
-.zzz-weather-temp b {
-  font-size: 20px;
-  color: #fff;
-  font-weight: 800;
-}
-
-.zzz-weather-temp span {
-  font-size: 7.5px;
-  color: #d7f300;
-  letter-spacing: 0.8px;
-}
-
-.zzz-weather-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  background: rgba(0, 0, 0, 0.4);
-  padding: 6px 8px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.zzz-weather-stat-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 7.5px;
-}
-
-.zzz-weather-stat-row .label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.zzz-weather-stat-row .val {
-  color: #fff;
-  font-weight: 700;
-}
-
-.zzz-weather-stat-row .val.safe {
-  color: #5eff5e;
-}
-
-.zzz-weather-ticker {
-  overflow: hidden;
-  white-space: nowrap;
-  background: rgba(215, 243, 0, 0.12);
-  border: 1px solid rgba(215, 243, 0, 0.25);
-  border-radius: 2px;
-  padding: 2px 4px;
-}
-
-.zzz-ticker-text {
-  display: inline-block;
-  font-size: 7px;
-  color: #d7f300;
-  animation: zzz-ticker-drift 18s linear infinite;
-}
-
-@keyframes zzz-ticker-drift {
-  from { transform: translateX(100%); }
-  to { transform: translateX(-100%); }
-}
-
-/* ==========================================================================
-   ZZZ CHANNEL 5: BANGBOO JUMP ARCADE MINIGAME
-   ========================================================================== */
-.zzz-game-channel-container {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background: #221c2b;
-  overflow: hidden;
-}
-
-.zzz-game-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-  image-rendering: pixelated;
-  cursor: pointer;
-}
-
-.zzz-game-over-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 10, 20, 0.88);
-  backdrop-filter: blur(4px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-family: var(--mono), monospace;
-  color: #fff;
-  z-index: 10;
-}
-
-.zzz-game-over-title {
-  font-size: 13px;
-  font-weight: 800;
-  color: #ff3b5c;
-  text-shadow: 0 0 10px rgba(255, 59, 92, 0.8);
-  letter-spacing: 1px;
-}
-
-.zzz-game-over-score {
-  font-size: 10px;
-  color: #d7f300;
-}
-
-.zzz-game-press-start {
-  font-size: 7.5px;
-  color: rgba(255, 255, 255, 0.6);
-  letter-spacing: 1px;
-  margin-top: 4px;
-  animation: pulse 1s infinite alternate;
-}
-
-.zzz-game-start-prompt {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  font-family: var(--mono), monospace;
-  font-size: 7.5px;
-  color: #d7f300;
-  background: rgba(0, 0, 0, 0.7);
-  padding: 2px 6px;
-  border-radius: 2px;
-  pointer-events: none;
-}
-
-/* ==========================================================================
-   AUTHENTIC ZZZ TV WORKSPACE HERO & SCROLLABLE CABINET INTEGRATION
-   Vercel interface guidelines + Impeccable motion & depth
+   AUTHENTIC ZZZ TV HERO & WORKOS CABINET WORKSPACE (IMAGE 2 RESTORATION)
+   Impeccable viewport containment + fixed glassmorphism topbar
    ========================================================================== */
 html {
   scroll-behavior: smooth;
@@ -4769,44 +4049,56 @@ html {
 .os.zzz-workspace-shell {
   min-height: 100vh;
   min-height: 100dvh;
-  max-width: 1440px;
-  margin: 0 auto;
-  padding: 0 24px 60px;
+  width: 100vw;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
   position: relative;
-  overflow-x: clip;
-  overflow-y: visible;
-  display: flex;
-  flex-direction: column;
+  overflow-x: hidden;
+  background: transparent;
 }
 
-/* Pinned sticky topbar with glassmorphism blur */
+/* Fixed / Sticky Topbar overlaying the top of the room */
 .os.zzz-workspace-shell .topbar {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 60;
-  background: rgba(12, 8, 5, 0.88);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  left: 0;
+  right: 0;
+  height: 54px;
+  z-index: 50;
+  max-width: none;
+  width: 100%;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(180deg, rgba(8, 5, 10, 0.92) 0%, rgba(8, 5, 10, 0.5) 65%, transparent 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
-/* Main Hero: Zenless Zone Zero TV Workspace */
+/* Main Hero: Authentic Zenless Zone Zero TV Workspace fitting 100vh */
 .zzz-tv-workspace {
   position: relative;
-  width: 100%;
-  max-width: 1240px;
-  margin: 0 auto;
-  height: calc(100vh - 96px);
-  height: calc(100dvh - 96px);
-  min-height: 600px;
-  border-radius: 12px;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.06);
-  background: #000;
-  margin-top: 12px;
-  margin-bottom: 48px;
-  flex-shrink: 0;
+  background-color: #130508;
+  background-image:
+    linear-gradient(to bottom, rgba(24, 6, 10, 0.55), rgba(16, 4, 8, 0.65)),
+    radial-gradient(ellipse 1386px 603px at 50% 30%, rgba(6, 6, 6, 0.12) 0%, rgba(0, 0, 0, 0.8) 100%),
+    url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: 100% 100%, auto, 627px 627px;
+  background-position: 0 0, 50% 30%, 50% 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .zzz-tv-embed-frame {
@@ -4814,13 +4106,13 @@ html {
   height: 100%;
   border: none;
   display: block;
-  background: #000;
+  background: transparent;
 }
 
 /* Sleek floating scroll hint indicator */
 .zzz-scroll-hint {
   position: absolute;
-  bottom: 18px;
+  bottom: 85px;
   left: 50%;
   transform: translateX(-50%);
   display: inline-flex;
@@ -4870,27 +4162,448 @@ html {
   }
 }
 
-/* Cabinet Section Container when scrolled */
+/* Cabinet Section Container cleanly docked right below the hero desk */
 #ascend-cabinet-section {
-  scroll-margin-top: 96px;
+  scroll-margin-top: 54px;
   position: relative;
   z-index: 10;
-  margin-bottom: 60px;
+  min-height: 100vh;
+  margin-top: -2px;
+  padding-top: 0px;
+  padding-bottom: 80px;
+  background: transparent;
 }
 
 @media (max-width: 768px) {
-  .zzz-tv-workspace {
-    height: 70vh;
-    min-height: 480px;
-    margin-top: 8px;
-    margin-bottom: 32px;
+  .os.zzz-workspace-shell .topbar {
+    padding: 0 16px;
+    height: 48px;
   }
   .zzz-scroll-hint {
-    bottom: 12px;
+    bottom: 14px;
     padding: 6px 14px;
     font-size: 9px;
   }
 }
 
+/* ==========================================================================
+   INTERACTIVE SHELF Y-POSITION CALIBRATOR HUD (Vercel & Impeccable Standards)
+   ========================================================================== */
+.shelf-calibrator-hud {
+  position: fixed;
+  bottom: 22px;
+  left: 24px;
+  z-index: 100;
+  width: 320px;
+  background: rgba(16, 11, 8, 0.94);
+  border: 1px solid rgba(254, 164, 128, 0.45);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95), 0 0 20px rgba(254, 164, 128, 0.15);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 12px 14px;
+  color: #ffe2b7;
+  font-family: var(--mono), monospace;
+  box-sizing: border-box;
+  animation: modal-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.shelf-calibrator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 6px;
+}
+
+.shelf-calibrator-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: #fea480;
+  font-weight: 700;
+}
+
+.shelf-calibrator-title .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #5eff5e;
+  box-shadow: 0 0 8px #5eff5e;
+}
+
+.shelf-calibrator-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.shelf-offset-badge {
+  background: rgba(254, 164, 128, 0.18);
+  border: 1px solid rgba(254, 164, 128, 0.4);
+  color: #fff;
+  font-weight: 800;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.8px;
+}
+
+.shelf-calibrator-close {
+  background: none;
+  border: none;
+  color: #a59682;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.shelf-calibrator-close:hover {
+  color: #ff5555;
+}
+
+.shelf-calibrator-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.slider-limit {
+  font-size: 8px;
+  color: #8c7866;
+  white-space: nowrap;
+}
+
+.shelf-offset-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 5px;
+  border-radius: 3px;
+  background: #2a1d15;
+  outline: none;
+  cursor: pointer;
+}
+
+.shelf-offset-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fea480;
+  box-shadow: 0 0 10px #fea480;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.shelf-offset-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.shelf-calibrator-buttons {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.shelf-calibrator-buttons button {
+  background: #231912;
+  border: 1px solid #4a3423;
+  color: #d6c1a3;
+  font-size: 9px;
+  padding: 5px 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.shelf-calibrator-buttons button:hover {
+  background: #3a281c;
+  border-color: #fea480;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(254, 164, 128, 0.25);
+}
+
+.shelf-calibrator-buttons .reset-btn {
+  grid-column: span 1;
+  background: rgba(254, 164, 128, 0.1);
+  color: #fea480;
+  border-color: rgba(254, 164, 128, 0.35);
+}
+
+.floating-shelf-toggle {
+  position: fixed;
+  bottom: 23px;
+  left: 24px;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(254, 164, 128, 0.4);
+  background: rgba(20, 14, 10, 0.92);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8), 0 0 12px rgba(254, 164, 128, 0.15);
+  border-radius: 5px;
+  padding: 10px 14px;
+  font: 10px var(--mono);
+  color: #fea480;
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.floating-shelf-toggle:hover {
+  background: rgba(30, 20, 15, 0.98);
+  border-color: #fea480;
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.9), 0 0 20px rgba(254, 164, 128, 0.3);
+}
+
+/* ==========================================================================
+   AUTHENTIC WOOD WALL EXTENSION COVERING TOP WORKPLACE
+   ========================================================================== */
+.workplace-wall-extension {
+  position: absolute;
+  bottom: 0;
+  background-color: #17060a;
+  background-image:
+    linear-gradient(to bottom, rgba(26, 7, 11, 0.58), rgba(18, 5, 9, 0.68)),
+    url('https://dotcom.workos.com/images/launch-week/summer-2026/wood-bg.webp');
+  background-repeat: no-repeat, repeat;
+  background-size: 100% 100%, 627px 627px;
+  background-position: 0 0, 50% 50%;
+  z-index: 10; /* In front of iframe (z-index 1), behind cabinet stack if overlapped */
+  pointer-events: none;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.85);
+  border-top: 2px solid #230b10;
+  transition: height 0.08s ease-out, width 0.08s ease-out;
+}
+
+.workplace-wall-extension.custom-width {
+  border-left: 2px solid #230b10;
+  border-right: 2px solid #230b10;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.9), -8px 0 20px rgba(0, 0, 0, 0.5), 8px 0 20px rgba(0, 0, 0, 0.5);
+}
+
+.trim-preset-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.trim-preset-btn {
+  flex: 1;
+  background: #231912;
+  border: 1px solid #4a3423;
+  color: #c9b399;
+  font-family: var(--mono), monospace;
+  font-size: 8px;
+  padding: 5px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.trim-preset-btn:hover {
+  background: #352317;
+  border-color: #fea480;
+  color: #fff;
+}
+
+.trim-preset-btn.active {
+  background: rgba(254, 164, 128, 0.2);
+  border-color: #fea480;
+  color: #fff;
+  font-weight: 700;
+}
+
+.workplace-wall-guide-badge {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 12, 8, 0.94);
+  border: 1px dashed #fea480;
+  color: #fea480;
+  font-family: var(--mono), monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 3px 12px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.85);
+}
+
+.workplace-wall-seam-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: #fea480;
+  box-shadow: 0 0 10px #fea480, 0 0 20px rgba(254, 164, 128, 0.6);
+  pointer-events: none;
+}
+
+.workplace-wall-seam-pill {
+  position: absolute;
+  top: -12px;
+  right: 32px;
+  background: #fea480;
+  color: #1a0f08;
+  font-family: var(--mono), monospace;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+/* Expanded Wall & Shelf Trim Editor HUD */
+.shelf-calibrator-hud.expanded-wall-editor {
+  width: 380px;
+  padding: 14px 16px;
+  background: rgba(16, 11, 8, 0.96);
+}
+
+.shelf-calibrator-pill-btn {
+  background: rgba(254, 164, 128, 0.15);
+  border: 1px solid rgba(254, 164, 128, 0.4);
+  color: #ffe2b7;
+  font-family: var(--mono), monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.shelf-calibrator-pill-btn:hover {
+  background: rgba(254, 164, 128, 0.3);
+  color: #fff;
+  border-color: #fea480;
+}
+
+.trim-stats-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.trim-stat-badge {
+  background: #201610;
+  border: 1px solid #3d291b;
+  border-radius: 5px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trim-stat-badge:hover {
+  border-color: #704b32;
+  background: #2a1c14;
+}
+
+.trim-stat-badge.active {
+  background: rgba(254, 164, 128, 0.14);
+  border-color: #fea480;
+  box-shadow: 0 0 12px rgba(254, 164, 128, 0.2);
+}
+
+.trim-stat-badge .stat-label {
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: #a4805c;
+  font-weight: 600;
+}
+
+.trim-stat-badge.active .stat-label {
+  color: #fea480;
+}
+
+.trim-stat-badge .stat-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.trim-tab-instruction {
+  font-size: 9px;
+  color: #c9b399;
+  margin-bottom: 8px;
+  letter-spacing: 0.4px;
+}
+
+.trim-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.trim-guide-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  color: #a4805c;
+  cursor: pointer;
+}
+
+.trim-guide-toggle input {
+  accent-color: #fea480;
+  cursor: pointer;
+}
+
+.trim-reset-all-btn {
+  background: rgba(255, 85, 85, 0.12);
+  border: 1px solid rgba(255, 85, 85, 0.35);
+  color: #ff9999;
+  font-family: var(--mono), monospace;
+  font-size: 9px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trim-reset-all-btn:hover {
+  background: rgba(255, 85, 85, 0.25);
+  color: #fff;
+  border-color: #ff5555;
+}
+
+@media (max-width: 650px) {
+  .shelf-calibrator-hud,
+  .shelf-calibrator-hud.expanded-wall-editor {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: 75px;
+  }
+  .floating-shelf-toggle {
+    left: 12px;
+    bottom: 75px;
+  }
+}
 
 
