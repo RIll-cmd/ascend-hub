@@ -4843,4 +4843,68 @@ html {
   }
 }
 
+/* Live Status Shelf — an operations bank built from Core's normalized snapshot. */
+.status-shelf {
+  position: relative;
+  z-index: 3;
+  width: min(1160px, calc(100% - 32px));
+  margin: 18px auto 24px;
+  padding: 18px 20px 20px;
+  overflow: hidden;
+  color: #e8d9c3;
+  border: 1px solid #4c3829;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(73, 42, 30, .87), rgba(19, 13, 15, .96)),
+    repeating-linear-gradient(90deg, transparent 0 45px, rgba(255, 213, 159, .025) 46px 47px);
+  box-shadow: inset 0 1px rgba(255, 234, 202, .09), 0 12px 30px rgba(0, 0, 0, .28);
+}
+.status-shelf::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .35;
+  background: repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 4px);
+}
+.status-shelf__header, .status-shelf__grid, .status-shelf__empty, .status-shelf__stale-note { position: relative; z-index: 1; }
+.status-shelf__header { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.status-shelf__eyebrow { margin: 0 0 4px; color: #c48a57; font: 700 10px var(--mono); letter-spacing: .18em; }
+.status-shelf h2 { margin: 0; color: #f1ddbf; font: 700 20px var(--display); letter-spacing: .08em; text-transform: uppercase; }
+.status-shelf__feed { max-width: 48%; margin: 0; color: #a8c496; font: 10px var(--mono); letter-spacing: .07em; text-align: right; }
+.status-shelf__feed::before { content: "●"; margin-right: 7px; color: #a8c496; }
+.status-shelf__feed--stale { color: #f0ba70; }
+.status-shelf__feed--stale::before { content: "!"; color: #f0ba70; }
+.status-shelf__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(214px, 1fr)); gap: 14px; }
+.status-service-tv { min-width: 0; padding: 9px; border: 1px solid #5a4231; border-radius: 5px; background: linear-gradient(145deg, #37251f, #171114 72%); box-shadow: inset 0 1px rgba(255,255,255,.08), 0 5px 14px rgba(0,0,0,.26); }
+.status-service-tv__nameplate { display: flex; justify-content: space-between; gap: 7px; min-width: 0; margin: 0 2px 7px; font: 10px var(--mono); letter-spacing: .06em; }
+.status-service-tv__brand { overflow: hidden; color: #ead9c1; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; }
+.status-service-tv__instance { overflow: hidden; color: #a69480; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; }
+.status-service-tv__cabinet { display: grid; grid-template-columns: minmax(0, 1fr) 25px; gap: 7px; padding: 7px; border: 2px solid #120d0f; border-radius: 7px; background: linear-gradient(135deg, #5b4135, #281b1a 45%, #4c342d); box-shadow: inset 1px 1px rgba(255,243,223,.18), inset -2px -2px rgba(0,0,0,.65); }
+.status-service-tv__screen { position: relative; display: grid; place-items: center; min-height: 105px; overflow: hidden; border: 3px solid #080a0c; border-radius: 16px; background: radial-gradient(ellipse at 50% 45%, #1a3840, #091014 66%, #030506); box-shadow: inset 0 0 18px #000, 0 0 1px 1px #926f55; }
+.status-service-tv__scanlines { position: absolute; inset: 0; opacity: .35; background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.55) 3px 4px); }
+.status-service-tv__glyph { position: relative; color: #b0efcf; font: 42px/1 var(--display); text-shadow: 0 0 8px currentColor, 0 0 20px rgba(56,255,178,.55); }
+.status-service-tv__glyph--vision { color: #a8d8ff; }
+.status-service-tv__glyph--generic { color: #d7c4a6; }
+.status-service-tv__screen-status { position: absolute; right: 8px; bottom: 7px; color: #b6e1c5; font: 8px var(--mono); letter-spacing: .08em; }
+.status-service-tv__controls { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border-left: 1px solid rgba(0,0,0,.45); }
+.status-service-tv__controls i { display: block; width: 13px; height: 13px; border: 2px solid #1b1010; border-radius: 50%; background: radial-gradient(circle at 34% 28%, #d1a18b, #4c2a28 58%, #170e10); box-shadow: inset 1px 1px rgba(255,255,255,.35); }
+.status-service-tv__readout { display: grid; gap: 3px; min-height: 38px; margin: 8px 2px 1px; font: 10px var(--mono); letter-spacing: .04em; }
+.status-service-tv__state { color: #c2ebcf; font-weight: 700; text-transform: uppercase; }
+.status-service-tv__detail { overflow: hidden; color: #b8a894; text-overflow: ellipsis; white-space: nowrap; }
+.status-service-tv__detail--warning { color: #ffd08a; }
+.status-service-tv--working .status-service-tv__glyph, .status-service-tv--working .status-service-tv__screen-status { animation: status-shelf-signal 1.8s ease-in-out infinite; }
+.status-service-tv--working .status-service-tv__screen { background: radial-gradient(ellipse at 50% 45%, #174d45, #091615 66%, #030506); }
+.status-service-tv--stuck { border-color: #956332; }
+.status-service-tv--stuck .status-service-tv__screen { background: radial-gradient(ellipse at 50% 45%, #5b321b, #21130e 65%, #050404); box-shadow: inset 0 0 18px #000, 0 0 10px rgba(240,166,83,.22); }
+.status-service-tv--stuck .status-service-tv__glyph, .status-service-tv--stuck .status-service-tv__state, .status-service-tv--stuck .status-service-tv__screen-status { color: #ffd08a; }
+.status-service-tv--offline { opacity: .78; border-color: #403830; }
+.status-service-tv--offline .status-service-tv__screen { background: radial-gradient(ellipse at 50% 45%, #182027, #080a0c 72%, #020202); }
+.status-service-tv--offline .status-service-tv__glyph, .status-service-tv--offline .status-service-tv__state, .status-service-tv--offline .status-service-tv__screen-status { color: #7d8a8c; text-shadow: none; }
+.status-shelf__empty, .status-shelf__stale-note { margin: 0; color: #bba990; font: 11px var(--mono); letter-spacing: .04em; }
+.status-shelf__stale-note { margin-top: 13px; padding-top: 11px; border-top: 1px solid #64442e; color: #f0ba70; }
+@keyframes status-shelf-signal { 0%, 100% { opacity: .58; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .status-service-tv *, .status-shelf * { animation: none !important; transition: none !important; } }
+@media (max-width: 650px) { .status-shelf { width: min(100% - 20px, 1160px); padding: 14px; } .status-shelf__header { align-items: start; flex-direction: column; } .status-shelf__feed { max-width: none; text-align: left; } }
+
 

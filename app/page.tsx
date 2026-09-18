@@ -47,6 +47,7 @@ import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../componen
 import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
+import { StatusShelf } from "../components/status/StatusShelf";
 import { findCrtConfigByCollectibleId, getCrtProfile } from "../components/crt-tv-config";
 
 const chapters = [
@@ -973,6 +974,8 @@ export default function Home() {
           {sound ? <Volume2 size={15} /> : <VolumeX size={15} />} SOUND {sound ? "ON" : "OFF"}
         </button>
       </header>
+
+      <StatusShelf />
 
       {/* Main clean workspace running the authentic Zenless Zone Zero TV web project */}
       <section className="zzz-tv-workspace" id="zzz-tv-workspace">
