@@ -1,126 +1,114 @@
-# vinext-starter
+# Ascend Hub
 
-A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
+A customizable retro dashboard for the Ascend ecosystem, with CRT-style televisions that display live AI service status.
 
-## Prerequisites
+Hub is the presentation layer—not the status authority. Ascend Core stores normalized status and derives offline state; Hub reads that existing v1 API through a server-side proxy.
 
-- Node.js `>=22.13.0`
-- Portable: Windows, macOS, or Linux; no Bash required
-- Managed Linux: managed Linux runtime with Bash, `flock`, `curl`, `sha256sum`, and GNU `timeout`
-- Git is required only for publishing
+## Features
 
-## Sites Lifecycle
+- Retro TV cards, shelves, collectibles, and an editable room layout.
+- A data-driven Status Shelf generated from Core's `services[]` response.
+- Four states: `idle`, `working`, `stuck`, and `offline`, with textual state cues and last-seen information.
+- Four-second polling, reduced polling in hidden tabs, and visible stale/error handling.
+- Generic TV cards for unknown services, without frontend changes.
+- Reduced-motion support and non-color-only status cues.
+- Separate, instance-bound local-agent adapters with durable operation tracking.
 
-The Sites initializer copies the shared starter and selects managed-linux only when `SITES_MANAGED_LINUX_CONTAINER=1`; otherwise it selects portable. It saves the selection only in ignored `.sites-runtime/execution-profile.json`. Both profiles copy/configure first, then use the plugin's separate `install-dependencies.mjs` step to measure installation independently. Edit source under `app/` and follow the Sites skill for installation, preview, builds, and publishing.
+## Connected services
 
-Whenever reopening or moving a checkout, run `node <plugin-root>/scripts/configure-execution-profile.mjs` before project commands. Profile changes do not alter tracked source or require reinstalling otherwise-valid dependencies; restart an existing preview to use the new selection. Do not commit or upload `.sites-runtime/`.
+| Service | Status identity | Supported reporting path |
+| --- | --- | --- |
+| Ascend Core / AIRA | `ascend-core` | Core instrumentation with concurrent-operation tracking |
+| Ascend Vision | `ascend-vision` | Authenticated Vision heartbeats |
+| Codex CLI | `codex-cli` | Status wrapper with explicit session hook overrides |
+| Antigravity CLI | `antigravity-cli` | Status wrapper, workspace hooks, and child-process-exit cleanup |
 
-This starter does not use `wrangler.jsonc`.
+CLI reporting applies only to sessions launched through their status wrappers. Antigravity IDE/sidebar reporting remains **blocked / unsupported**; it is not the CLI integration. Hermes and standalone bot adapters are not implemented yet.
 
-`install:ci` runs `npm ci` once against the shared lockfile, disables parent-workspace discovery, and includes required dev/optional dependencies despite production/omit settings. Sharp defaults to prebuilt binaries unless explicitly configured otherwise. Do not overlap installers.
+Phase 1 (Core + Vision), Phase 2 (Hub), and the approved Phase 3 CLI path have been live-validated. See the [implementation status](docs/phase-3-implementation-status.md) for evidence and limitations.
 
-- **Portable:** Preserve host HOME, npm cache, registry, proxy, temporary paths, retry/concurrency settings, and lifecycle-script policy. Use `--prefer-offline --no-audit --no-fund`.
-- **Managed Linux:** Use the existing project-local HOME/cache/tmp setup and Linux install lock, tarball preflight, and timeout. Restore the image-seeded npm cache only when its lockfile hash matches; retain network fallback. Builds keep their existing timeout. These helpers are not invoked by the portable profile.
+## Quick start
 
-`scripts/sites-env.mjs` preserves the caller's HOME, npm cache, proxy, XDG, and temporary-directory configuration while defaulting Wrangler and Miniflare state to the checkout. If npm reports an unwritable cache, select a writable path with `npm_config_cache` for that install. The `dev` and `start` scripts also keep Wrangler logs inside the checkout. Generated `.sites-runtime/` and `.wrangler/` directories are disposable and ignored by Git.
+Requires Node.js **22.13.0 or newer** and npm. The Hub development runtime supports Windows, macOS, and Linux; the current operator-facing CLI adapter launchers use Windows PowerShell and DPAPI.
 
-On portable, `npm run dev` uses `vinext dev` with HMR, starting at port 5173. Vinext records the running server in ignored `.vinext/` state, rejects an ordinary duplicate launch, and recovers stale state after a stopped process; exactly simultaneous starts can race. Pass `--port <port>` or `--hostname <host>` after `npm run dev --` when needed; keep portable previews on loopback.
-
-On managed Linux, use `sites-preview start` only for requested browser QA. The project's dev script runs Vite and accepts the supervisor's `--host 0.0.0.0 --port 4173 --strictPort` arguments. The internal browser uses `http://terminal.local:4173/`; it is not a user-facing URL. The supervisor owns the preview lifecycle. The ignored local profile survives the supervisor's cleared process environment.
-
-The portable profile simulates ChatGPT sign-in only for loopback development requests. Visit `/signin-with-chatgpt?return_to=/` to sign in as `local_seedy` (`seedy@sites.test`, display name `Seedy`) and `/signout-with-chatgpt?return_to=/` to sign out. The development cookie preserves that identity across server restarts. Mock auth is disabled in the managed-linux profile and is not included in production builds; hosted authentication remains dispatch-owned.
-
-The Worker uses `vinext/server/fetch-handler`, including Vinext's config-aware image handling. After building, `npm start` runs that Worker locally through Wrangler on `127.0.0.1`, sharing `.wrangler/state` with dev preview and local D1 migrations; it does not deploy the site or simulate sign-in. Use the URL printed by the server. Pass `npm start -- --port <port>` to select a different built-preview port.
-
-Local previews use Miniflare's placeholder `Request.cf` metadata without a network lookup. Set `CLOUDFLARE_CF_FETCH_ENABLED=true` to opt into fetching preview metadata; this setting does not change hosted request metadata.
-
-Local tool usage metrics are disabled by default. Set `WRANGLER_SEND_METRICS=true` to opt in.
-
-## Included Shape
-
-- edit site code under `app/`
-- `app/chatgpt-auth.ts` provides optional dispatch-owned ChatGPT sign-in helpers
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/index.ts` reads the D1 binding from the Cloudflare Worker environment
-- `db/schema.ts` starts intentionally empty
-- `@cloudflare/workers-types` provides Worker types; `cloudflare-env.d.ts` declares optional `DB`/`BUCKET` bindings—update these declarations if binding names change
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
-
-The user ID is stable for the same user on the same Site and different across Sites. Use it as the durable user key; use email and name for display or contact purposes.
-
-SIWC-authenticated workspace sites may also receive `oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty `name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by `oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
-```
-
-## Optional Dispatch-Owned ChatGPT Sign-In
-
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs optional or required ChatGPT sign-in:
-
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use the returned `userId` as the stable user key for user-owned records; do not use email as a durable identifier.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send anonymous visitors through Sign in with ChatGPT.
-- In a Server Component, start sign-in with `<a href={chatGPTSignInPath(returnTo)} target="_top">`. The auth helper module is server-only; do not import it into a Client Component.
-- Do not use `fetch`, XHR, a client-side router, or a framework link that can prefetch the sign-in route. SIWC must start as a top-level navigation.
-- Never request the AuthAPI authorization endpoint directly. The dispatch-owned `/signin-with-chatgpt` route must start the SIWC flow.
-- Use `chatGPTSignOutPath(returnTo)` for browser sign-out links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because they depend on per-request identity headers.
-
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the OAuth cookies, and identity header injection. Do not implement app routes for those reserved paths. Routes that do not import and call the helper remain anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the Sites hosting platform's access policy controls for workspace-wide restrictions, or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Local D1 migrations
-
-For a D1-backed local preview, generate SQL with `npm run db:generate`. Build once through the Sites skill's build entrypoint (or `npm run build` for standalone use) to generate `dist/server/wrangler.json`, rebuilding if bindings change. From the project root, apply each pending migration in order:
+From the repository root:
 
 ```sh
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_example.sql
+npm run install:ci
+npm run dev
 ```
 
-Replace the filename with the pending migration and `DB` with your D1 binding name if different. Use `.wrangler/state`, not `.wrangler/state/v3`; Wrangler adds the versioned directories. Do not replay migrations already applied locally. This updates only the preview database; publishing applies production migrations separately.
+Open the local URL printed by the server (the portable development default is port `5173`). A clean clone uses the portable execution profile automatically.
 
-## Diagnostic Commands
+### Configure the Status Shelf
 
-- `npm run install:ci`: perform the one locked dependency install
-- `npm run dev`: start the Vite/Vinext development server
-- `npm run build`: build the deployable Sites artifact
-- `npm run start`: preview the built Worker locally with D1/R2 support
-- `npm run db:generate`: generate Drizzle migrations after schema changes
+Create an ignored `.env.local` file at the repository root:
 
-When using the Sites plugin, follow its skill instructions for installation, builds, and publishing. These npm commands remain available for standalone use.
+```env
+ASCEND_CORE_SHELF_URL=<full URL of your existing Core Shelf read endpoint>
+ASCEND_SHELF_READ_CREDENTIAL=<dedicated read-only authority credential>
+```
 
-The portable build runs Vinext directly without a host `timeout` command. The managed-linux build uses `scripts/build-verified.sh` and its existing `SITES_BUILD_TIMEOUT` setting.
+Replace the placeholders with your deployment values and restart Hub after changing them. Production requires an HTTPS Core endpoint reachable from the Hub server and equivalent server-side environment/secret configuration.
 
-## Learn More
+Use a dedicated **read-only** credential—not a browser session cookie, user Bearer token, or Core/Vision/CLI producer credential. Never prefix these variables with `NEXT_PUBLIC_` or commit real credentials.
 
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+The browser requests only `GET /api/status/shelf`. Hub authenticates upstream using `X-Status-Read-Credential`, validates the schema-v1 response, and returns the normalized snapshot without exposing the credential. Missing configuration or an unavailable authority produces a visible unavailable/stale state, not simulated live status.
+
+### Local-agent setup
+
+Follow the operator guides before provisioning or launching an adapter:
+
+- [Codex CLI setup and lifecycle mapping](docs/codex-status-adapter.md)
+- [Antigravity CLI setup and wrapper boundary](docs/antigravity-cli-status-adapter.md)
+
+Each agent needs its own instance-bound producer credential. Credentials and durable runtime stores belong outside this repository. Keep `scripts/status-adapters/` paths stable because installed hooks reference them. The guides document verified versions and machine-specific executable/configuration paths; adjust deployment paths deliberately rather than bypassing launcher validation.
+
+## Development commands
+
+```sh
+npm run dev                                      # Development server
+npm run test:status                              # Hub Shelf tests
+node --no-warnings --test tests/phase3/*.test.mjs  # Local-agent adapter tests
+npm run lint                                     # Repository lint
+npm run build                                    # Production build
+npm start                                        # Local preview of the built Worker
+git diff --check                                 # Whitespace checks
+```
+
+`npm start` requires a successful build and previews the generated Worker locally; it does not deploy. Repository-wide lint has known existing UI/vendor findings; a successful build or focused test run does not mean full lint is clean.
+
+## Repository structure
+
+| Path | Purpose |
+| --- | --- |
+| `app/` | Pages, routing, Shelf proxy, and polling logic |
+| `components/`, `hooks/`, `lib/` | UI components and shared application logic |
+| `public/` | Runtime artwork, fonts, and models |
+| `scripts/status-adapters/` | Production CLI wrappers, hooks, stores, and reporters |
+| `tests/status/`, `tests/phase3/` | Shelf and adapter regression tests |
+| `docs/`, `docs/design/` | Architecture audits, operator guides, and design references |
+| `build/` | Required build-plugin source—not generated output |
+| `vendor/` | Vendored styles/licenses and the standalone TV reference project |
+| `worker/`, `.openai/` | Worker entry point and hosting configuration |
+| `db/`, `drizzle/`, `examples/` | Optional database integration |
+| `scratch/` | Ignored local inspection and QA files |
+
+## Security and privacy
+
+- Browser code never receives producer or Shelf read credentials.
+- Status reporters allowlist lifecycle metadata; they do not send prompts, responses, transcripts, source code, tool I/O, terminal output, or raw errors.
+- Concurrent operations remain `working` until the final active operation closes.
+- Antigravity child exit is a session boundary, not proof of completion. Orphaned operations become `interrupted-or-abandoned`; completed operations are preserved.
+- Core derives `offline` after heartbeat expiry. Hub shows stale snapshots explicitly when polling fails.
+- `.gitignore` excludes local secrets, dependencies, generated output, SQLite state, and scratch evidence. Review staged changes before publishing; ignore rules do not protect secrets already tracked by Git.
+
+## Documentation
+
+- [Authoritative Status Shelf architecture](<future ai implementation.md>)
+- [Phase 3 audit](docs/phase-3-local-ai-status-adapter-audit.md)
+- [Phase 3 implementation status](docs/phase-3-implementation-status.md)
+- [Development, hosting, authentication, and optional database setup](docs/development-and-hosting.md)
+- [Design references](docs/design/README.md)
+
+Built with React, TypeScript, Tailwind CSS, Three.js, and Vinext on a Cloudflare Worker runtime. Third-party reference assets and vendored code retain their existing files and notices; their presence does not grant redistribution rights.
