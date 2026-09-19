@@ -1,6 +1,6 @@
 # Ascend Hub
 
-A customizable retro dashboard for the Ascend ecosystem, with CRT-style televisions that display live AI service status.
+A customizable retro dashboard for the Ascend ecosystem, with CRT-style televisions that display live AI service status. Currently supports Codex CLI, Antigravity CLI, and my Personal Projects (Core and Vision).
 
 Hub is the presentation layer—not the status authority. Ascend Core stores normalized status and derives offline state; Hub reads that existing v1 API through a server-side proxy.
 
