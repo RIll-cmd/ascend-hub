@@ -697,6 +697,7 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
 
 /* The first cabinet row doubles as the live AI operations console. */
 .shelf-status-tv__screen {
+  isolation: isolate;
   cursor: default;
   color: #bdebc9;
   background:
@@ -705,6 +706,19 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
 }
 .shelf-status-tv__screen:hover {
   filter: brightness(1.03) contrast(1.04);
+}
+.shelf-status-tv__video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  object-fit: cover;
+  transform: scale(1.025);
+  filter: grayscale(.64) brightness(.72) contrast(1.17);
+  animation: shelf-tv-video-lock .26s cubic-bezier(.22, 1, .36, 1) both;
 }
 .shelf-status-tv__signal {
   position: absolute;
@@ -718,6 +732,9 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
   font-family: var(--mono, monospace);
   text-align: center;
   text-shadow: 0 0 5px currentColor;
+  background:
+    linear-gradient(to bottom, rgba(1, 4, 5, .76), transparent 36%),
+    linear-gradient(to top, rgba(1, 4, 5, .88), transparent 48%);
 }
 .shelf-status-tv__heading {
   display: flex;
@@ -741,9 +758,14 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
   box-shadow: 0 0 5px currentColor;
 }
 .shelf-status-tv__service {
-  align-self: end;
+  align-self: start;
+  justify-self: center;
   overflow: hidden;
+  max-width: 94%;
+  margin-top: 3px;
+  padding: 1px 4px;
   color: #f2e5cd;
+  background: rgba(2, 5, 6, .48);
   font-size: clamp(6px, .65vw, 9px);
   line-height: 1;
   letter-spacing: .05em;
@@ -756,7 +778,13 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
   justify-content: center;
   gap: 4px;
   min-width: 0;
+  justify-self: center;
+  padding: 1px 4px;
   color: #bdebc9;
+  border: 1px solid rgba(189, 235, 201, .22);
+  border-radius: 2px;
+  background: rgba(2, 7, 7, .72);
+  box-shadow: 0 0 7px rgba(0, 0, 0, .65);
   font-size: clamp(6px, .68vw, 9px);
   font-weight: 800;
   letter-spacing: .08em;
@@ -765,8 +793,12 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
   font-size: 1.15em;
 }
 .shelf-status-tv__detail {
+  justify-self: center;
   overflow: hidden;
+  max-width: 96%;
+  padding: 1px 3px 0;
   color: #9bbcaf;
+  background: rgba(2, 5, 6, .58);
   font-size: clamp(4px, .46vw, 6px);
   line-height: 1.15;
   letter-spacing: .025em;
@@ -776,12 +808,18 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
 .shelf-status-tv__screen--working {
   background: radial-gradient(ellipse at 50% 46%, #226752, #071c1b 70%, #020707);
 }
+.shelf-status-tv__screen--working .shelf-status-tv__video {
+  filter: grayscale(.5) brightness(.78) contrast(1.2) saturate(.72);
+}
 .shelf-status-tv__screen--working:not(.shelf-status-tv__screen--stale) .shelf-status-tv__state {
   animation: shelf-tv-working 1.8s ease-in-out infinite;
 }
 .shelf-status-tv__screen--stuck {
   color: #ffd08a;
   background: radial-gradient(ellipse at 50% 46%, #75451f, #25140b 70%, #080302);
+}
+.shelf-status-tv__screen--stuck .shelf-status-tv__video {
+  filter: brightness(.72) contrast(1.2) saturate(.88);
 }
 .shelf-status-tv__screen--stuck .shelf-status-tv__state,
 .shelf-status-tv__screen--stuck .shelf-status-tv__detail {
@@ -791,6 +829,9 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
 .shelf-status-tv__screen--unavailable {
   color: #7d8a8c;
   background: radial-gradient(ellipse at 50% 46%, #1b272a, #080b0d 72%, #020202);
+}
+.shelf-status-tv__screen--offline .shelf-status-tv__video {
+  filter: grayscale(1) brightness(.72) contrast(1.18);
 }
 .shelf-status-tv__screen--offline .shelf-status-tv__state,
 .shelf-status-tv__screen--offline .shelf-status-tv__detail,
@@ -813,12 +854,22 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
   color: #ffd08a;
   text-shadow: none;
 }
+.shelf-status-tv__screen--stale .shelf-status-tv__video {
+  opacity: .44;
+  filter: grayscale(.82) brightness(.56) contrast(1.12);
+}
+@keyframes shelf-tv-video-lock {
+  0% { opacity: 0; transform: scale(1.055); filter: brightness(1.45) contrast(1.5) grayscale(1); }
+  36% { opacity: .72; }
+  100% { opacity: 1; transform: scale(1.025); }
+}
 @keyframes shelf-tv-working {
   0%, 100% { opacity: .62; transform: scale(.97); }
   50% { opacity: 1; transform: scale(1.03); }
 }
 @media (prefers-reduced-motion: reduce) {
   .shelf-status-tv * { animation: none !important; transition: none !important; }
+  .shelf-status-tv__video { display: none; }
 }
 
 .shelf-status-tv-trigger {
