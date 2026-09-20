@@ -7,6 +7,10 @@ import {
   statusShelfReducer,
 } from "../../app/status/shelf-runtime";
 import { getStatusPresentation } from "../../components/status/status-presentation";
+import {
+  getShelfTvAssignment,
+  resolveShelfTvService,
+} from "../../components/status/shelf-tv-assignment";
 
 const snapshot = {
   schemaVersion: 1 as const,
@@ -107,4 +111,52 @@ test("unknown services receive the generic TV fallback and tolerate absent optio
 
   assert.equal(presentation.brand, "Generic service");
   assert.equal(presentation.artwork, "generic");
+});
+
+test("the four first-shelf TVs are assigned to the intended services", () => {
+  assert.deepEqual(getShelfTvAssignment("slot-1-1-t"), {
+    channel: "CH 01",
+    serviceId: "ascend-core",
+  });
+  assert.deepEqual(getShelfTvAssignment("slot-1-3-t"), {
+    channel: "CH 02",
+    serviceId: "ascend-vision",
+  });
+  assert.deepEqual(getShelfTvAssignment("slot-1-1-b"), {
+    channel: "CH 03",
+    serviceId: "codex-cli",
+  });
+  assert.deepEqual(getShelfTvAssignment("slot-1-3-b"), {
+    channel: "CH 04",
+    serviceId: "antigravity-cli",
+  });
+  assert.equal(getShelfTvAssignment("slot-2-1-m"), null);
+});
+
+test("a shelf TV resolves only its assigned service from a shared snapshot", () => {
+  const services = [
+    snapshot.services[0],
+    { ...snapshot.services[0], serviceId: "ascend-vision", instanceId: "vision-local-1" },
+    { ...snapshot.services[0], serviceId: "codex-cli", instanceId: "codex-local-1" },
+  ];
+
+  assert.equal(resolveShelfTvService("slot-1-1-t", services)?.instanceId, "core-local-1");
+  assert.equal(resolveShelfTvService("slot-1-1-b", services)?.instanceId, "codex-local-1");
+  assert.equal(resolveShelfTvService("slot-1-3-b", services), null);
+});
+
+test("CLI shelf TVs use explicit service names instead of the generic fallback", () => {
+  const codex = getStatusPresentation({
+    ...snapshot.services[0],
+    serviceId: "codex-cli",
+    instanceId: "codex-local-1",
+  });
+  const antigravity = getStatusPresentation({
+    ...snapshot.services[0],
+    serviceId: "antigravity-cli",
+    instanceId: "antigravity-local-1",
+  });
+
+  assert.equal(codex.brand, "Codex CLI");
+  assert.equal(antigravity.brand, "Antigravity CLI");
 });
