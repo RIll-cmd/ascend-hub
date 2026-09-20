@@ -47,8 +47,10 @@ import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../componen
 import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
-import { StatusShelf } from "../components/status/StatusShelf";
+import { ShelfStatusTv } from "../components/status/ShelfStatusTv";
+import { getShelfTvAssignment, resolveShelfTvService } from "../components/status/shelf-tv-assignment";
 import { findCrtConfigByCollectibleId, getCrtProfile } from "../components/crt-tv-config";
+import { useStatusShelf } from "./status/use-status-shelf";
 
 const chapters = [
   { id: "core", number: "01", title: "Core Engine", eyebrow: "BUILD YOUR FOUNDATION", tag: "FOUNDATION", color: "#e9aa63", description: "A clear direction. A stronger operating system.", specs: ["Define your personal mission and values", "Create a focused progression roadmap", "Choose the principles that guide your work"], art: "engine" },
@@ -300,6 +302,7 @@ function Modal({ title, children, onClose, classic = false }: { title: string; c
 }
 
 export default function Home() {
+  const shelfStatus = useStatusShelf();
   const [layout, setLayout] = useState<Layout>(initialLayout);
   const [rows, setRows] = useState<ShelfRow[]>(DEFAULT_SHELF_ROWS);
   const [ready, setReady] = useState(false);
@@ -975,8 +978,6 @@ export default function Home() {
         </button>
       </header>
 
-      <StatusShelf />
-
       {/* Main clean workspace running the authentic Zenless Zone Zero TV web project */}
       <section className="zzz-tv-workspace" id="zzz-tv-workspace">
         <iframe
@@ -1113,6 +1114,10 @@ export default function Home() {
                                 const def = slot.collectibleId
                                   ? COLLECTIBLES.find(c => c.id === slot.collectibleId)
                                   : null;
+                                const statusAssignment = getShelfTvAssignment(slot.id);
+                                const statusService = statusAssignment
+                                  ? resolveShelfTvService(slot.id, shelfStatus.current?.services ?? [])
+                                  : null;
                                 return (
                                   <Fragment key={slot.id}>
                                     {sIdx > 0 && (
@@ -1162,12 +1167,23 @@ export default function Home() {
                                           </div>
                                         ) : getCrtProfile(def.id) ? (
                                           <div className="cubby-prop cubby-crt-interactive">
-                                            <CrtTvDisplay
-                                              instanceId={slot.id}
-                                              profile={getCrtProfile(def.id)!}
-                                              videoSrc={slot.customVideo}
-                                              onVideoChange={(newSrc) => handleSetSlotVideo(row.id, bay.id, slot.id, newSrc)}
-                                            />
+                                            {statusAssignment ? (
+                                              <ShelfStatusTv
+                                                assignment={statusAssignment}
+                                                profile={getCrtProfile(def.id)!}
+                                                service={statusService}
+                                                loading={shelfStatus.loading && !shelfStatus.current}
+                                                error={shelfStatus.error}
+                                                stale={Boolean(shelfStatus.stale)}
+                                              />
+                                            ) : (
+                                              <CrtTvDisplay
+                                                instanceId={slot.id}
+                                                profile={getCrtProfile(def.id)!}
+                                                videoSrc={slot.customVideo}
+                                                onVideoChange={(newSrc) => handleSetSlotVideo(row.id, bay.id, slot.id, newSrc)}
+                                              />
+                                            )}
                                           </div>
                                         ) : (
                                           <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`}>

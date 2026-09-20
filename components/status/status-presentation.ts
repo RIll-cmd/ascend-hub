@@ -19,6 +19,8 @@ const STATE_PRESENTATION: Record<ServiceState, Pick<StatusPresentation, "label" 
 const KNOWN_SERVICES: Record<string, Pick<StatusPresentation, "brand" | "artwork">> = {
   "ascend-core": { brand: "Ascend Core", artwork: "core" },
   "ascend-vision": { brand: "Ascend Vision", artwork: "vision" },
+  "codex-cli": { brand: "Codex CLI", artwork: "generic" },
+  "antigravity-cli": { brand: "Antigravity CLI", artwork: "generic" },
 };
 
 export function getStatusPresentation(service: ShelfServiceStatus): StatusPresentation {
