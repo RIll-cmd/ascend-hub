@@ -27,20 +27,15 @@ CLI reporting applies only to sessions launched through their status wrappers. A
 
 Phase 1 (Core + Vision), Phase 2 (Hub), and the approved Phase 3 CLI path have been live-validated. See the [implementation status](docs/phase-3-implementation-status.md) for evidence and limitations.
 
-## Quick start
+## Run the Hub locally
 
 Requires Node.js **22.13.0 or newer** and npm. The Hub development runtime supports Windows, macOS, and Linux; the current operator-facing CLI adapter launchers use Windows PowerShell and DPAPI.
 
-From the repository root:
+### 1. Start Ascend Core
 
-```sh
-npm run install:ci
-npm run dev
-```
+Keep the existing Ascend Core server running. Hub reads the live Shelf snapshot from Core; it does not create status data itself.
 
-Open the local URL printed by the server (the portable development default is port `5173`). A clean clone uses the portable execution profile automatically.
-
-### Configure the Status Shelf
+### 2. Configure the read-only connection
 
 Create an ignored `.env.local` file at the repository root:
 
@@ -54,6 +49,129 @@ Replace the placeholders with your deployment values and restart Hub after chang
 Use a dedicated **read-only** credential—not a browser session cookie, user Bearer token, or Core/Vision/CLI producer credential. Never prefix these variables with `NEXT_PUBLIC_` or commit real credentials.
 
 The browser requests only `GET /api/status/shelf`. Hub authenticates upstream using `X-Status-Read-Credential`, validates the schema-v1 response, and returns the normalized snapshot without exposing the credential. Missing configuration or an unavailable authority produces a visible unavailable/stale state, not simulated live status.
+
+### 3. Start Hub
+
+In a new PowerShell terminal:
+
+```powershell
+Set-Location D:\ascend_hub
+# Run this once after cloning or after dependency changes.
+npm run install:ci
+npm run dev
+```
+
+If Node is not on your `PATH`, use the known Node executable instead:
+
+```powershell
+Set-Location D:\ascend_hub
+& D:\node.exe scripts\run-framework.mjs dev
+```
+
+Leave this terminal open. Hub normally starts at `http://localhost:5173`.
+
+### 4. Confirm the Hub proxy
+
+In another PowerShell terminal, request the normalized Shelf snapshot:
+
+```powershell
+Invoke-RestMethod 'http://localhost:5173/api/status/shelf' |
+  ConvertTo-Json -Depth 10
+```
+
+Expected shape:
+
+```json
+{
+  "schemaVersion": 1,
+  "generatedAt": "...",
+  "services": []
+}
+```
+
+The service list should include `ascend-core`, `ascend-vision`, `codex-cli`, and `antigravity-cli` when those reporters have been provisioned. CLI services may correctly appear offline while their wrappers are not running.
+
+If `localhost` does not load, the development server may be listening only on IPv6 loopback. Use:
+
+```powershell
+Invoke-RestMethod 'http://[::1]:5173/api/status/shelf' |
+  ConvertTo-Json -Depth 10
+```
+
+Do not substitute `127.0.0.1` when the server is bound only to `::1`.
+
+### 5. Open the dashboard
+
+Open `http://localhost:5173` in a browser. If needed, use `http://[::1]:5173`.
+
+Check that the four shelf TVs report the correct service:
+
+| TV | Service | Expected state |
+| --- | --- | --- |
+| CH 01 | Ascend Core / AIRA | `idle`, `working`, `stuck`, or `offline` |
+| CH 02 | Ascend Vision | `idle`, `working`, `stuck`, or `offline` |
+| CH 03 | Codex CLI | `idle`, `working`, `stuck`, or `offline` |
+| CH 04 | Antigravity CLI | `idle`, `working`, `stuck`, or `offline` |
+
+The dashboard refreshes about every four seconds. Offline TVs show last-seen information. The read credential must never appear in browser responses or developer tools.
+
+### 6. Test Vision (optional)
+
+With Core and Hub running:
+
+1. Start Vision normally and confirm its TV becomes `idle`.
+2. Confirm its heartbeat advances.
+3. Stop Vision and wait about 30 seconds.
+4. Confirm its TV becomes `offline` and displays its last-seen time.
+
+### 7. Test Codex CLI (optional)
+
+Launch Codex through its status wrapper—not directly through the Codex executable:
+
+```powershell
+Set-Location D:\ascend-core
+& 'D:\ascend_hub\scripts\status-adapters\codex-status.ps1' `
+  -ConfigPath 'D:\ascend-status-adapters\codex-local-1\config.json'
+```
+
+Run a harmless task. The Codex TV should transition `offline → working → idle`. After Codex exits, it should become `offline` after roughly 30 seconds.
+
+### 8. Test Antigravity CLI (optional)
+
+Antigravity status is supported only when launched through the wrapper. The Antigravity IDE/sidebar is not a supported reporter.
+
+First verify that the trusted local probe workspace exists:
+
+```powershell
+$agyWorkspace = "$env:TEMP\ascend-phase3-agy-probe-20260918-4c81e5"
+Test-Path -LiteralPath $agyWorkspace
+```
+
+If this returns `True`, launch the real Antigravity CLI through the wrapper:
+
+```powershell
+& 'D:\ascend_hub\scripts\status-adapters\antigravity-status.ps1' `
+  -Workspace $agyWorkspace
+```
+
+For a normal completion, submit:
+
+```text
+Compute 2 + 2 and reply with the number only. Do not use tools.
+```
+
+The Antigravity TV should transition `offline → working → idle`.
+
+For an interruption test, launch it again, submit a long harmless task, then press `Ctrl+C` while it is working. The wrapper must safely close the operation as interrupted or abandoned; it must never report that interrupted run as completed. After Antigravity exits, its TV should become `offline` after about 30 seconds.
+
+If the workspace check returns `False`, do not install hooks into another workspace. Follow the [Antigravity CLI setup guide](docs/antigravity-cli-status-adapter.md) instead.
+
+### 9. Stop Hub
+
+Press `Ctrl+C` in the Hub terminal.
+
+- `502` from the proxy means Core is unreachable.
+- `503` means Hub is missing configuration or needs a restart after changing `.env.local`.
 
 ### Local-agent setup
 
