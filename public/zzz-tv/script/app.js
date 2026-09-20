@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     av: { state: true, content: ["default"] },
     music: { state: true, content: ["default"] },
     weather: { state: true, content: ["default"] },
-    video: { state: true, content: [""] },
+    video: { state: true, content: ["default"] },
     image: { state: true, content: [""] },
     youtube: { state: true, content: [] },
     gif: { state: true, content: [""] },
@@ -240,7 +240,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       weather: { state: true, content: ["default"] },
       video: {
         state: true,
-        content: [""],
+        content: ["default"],
       },
       image: { state: true, content: [""] },
       youtube: { state: true, content: ["dC8EaBIyXK4"] },

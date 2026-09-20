@@ -2,6 +2,7 @@ import {
   createNoSignalPreset,
   createInfineBouncePreset,
   createBackgroundVideoPreset,
+  createRandomVideoBroadcastPreset,
   createGifPreset,
   createTwitchiFramePreset,
   createImagePreset,
@@ -221,14 +222,20 @@ export class TVContentManager {
                 break;
               case "video":
                 console.log(`Processing video ID: ${id}`);
-                presetFunction = [
-                  createBackgroundVideoPreset(
-                    id,
-                    "video/webm",
-                    false,
-                    true
-                  ),
-                ];
+                if (!id || id === "default" || id === "random") {
+                  presetFunction = [
+                    createRandomVideoBroadcastPreset(this.wallpaperSettings),
+                  ];
+                } else {
+                  presetFunction = [
+                    createBackgroundVideoPreset(
+                      id,
+                      "video/mp4",
+                      false,
+                      true
+                    ),
+                  ];
+                }
                 break;
               case "music":
                 presetFunction = [() => ({ type: "music", style: id })];
@@ -285,9 +292,51 @@ export class TVContentManager {
     }
   }
 
+  stopAllMedia() {
+    try {
+      if (this.videoPlayer) {
+        try {
+          if (typeof this.videoPlayer.destroy === "function") {
+            this.videoPlayer.destroy();
+          } else {
+            this.videoPlayer.pause();
+            this.videoPlayer.muted = true;
+            this.videoPlayer.removeAttribute("src");
+            this.videoPlayer.load();
+          }
+        } catch (_) {}
+        this.videoPlayer = null;
+      }
+      const allVideos = this.tvContentContainer.querySelectorAll("video");
+      allVideos.forEach((v) => {
+        try {
+          if (typeof v.destroy === "function") v.destroy();
+          v.pause();
+          v.muted = true;
+          v.removeAttribute("src");
+          v.load();
+          v.remove();
+        } catch (_) {}
+      });
+      const allAudios = this.tvContentContainer.querySelectorAll("audio");
+      allAudios.forEach((a) => {
+        try {
+          a.pause();
+          a.muted = true;
+          a.removeAttribute("src");
+          a.load();
+          a.remove();
+        } catch (_) {}
+      });
+    } catch (e) {
+      console.warn("Error in stopAllMedia:", e);
+    }
+  }
+
   switchContentProcess() {
     try {
       console.log("Starting switchContent process...");
+      this.stopAllMedia();
       this.canvas_container.classList.remove("noise-switch-ani");
       void this.canvas_container.offsetWidth;
       this.canvas_container.classList.add("noise-switch-ani");
@@ -302,6 +351,7 @@ export class TVContentManager {
 
   nextInput() {
     try {
+      this.stopAllMedia();
       const prevInputIndex = this.currentInputIndex;
       this.currentInputIndex =
         (this.currentInputIndex + 1) % this.tv_input_keys.length;
@@ -354,9 +404,16 @@ export class TVContentManager {
         (currentPreset.currentChannel + 1) % currentPreset.totalChannels;
 
       if (prevChannel === currentPreset.currentChannel) {
+        if (this.tv_input_keys[this.currentInputIndex] === "video" && this.videoPlayer && typeof this.videoPlayer.playNextRandomVideo === "function") {
+          this.showOverlayAnimation("VIDEO-0");
+          this.videoPlayer.playNextRandomVideo();
+          return true;
+        }
         console.log("No more channels available.");
         return false;
       }
+
+      this.stopAllMedia();
 
       console.log(
         `Switching to channel: ${currentPreset.currentChannel} of input: ${
@@ -453,6 +510,8 @@ export class TVContentManager {
   async clearContent() {
     console.log("Starting clearContent process...");
     try {
+      this.stopAllMedia();
+
       const children = Array.from(this.tvContentContainer.children);
 
       if (children.length === 0) {
@@ -478,10 +537,24 @@ export class TVContentManager {
               if (child.id === "game-canvas" && this.gameCanvas) {
                 this.gameCanvas.destroy();
               }
-              if (child.id === "backgroundVideo") {
-                child.pause();
-                child.src = "";
-                child.load();
+              const vidList = child.querySelectorAll?.("video") || [];
+              vidList.forEach(vid => {
+                try {
+                  if (typeof vid.destroy === "function") vid.destroy();
+                  vid.pause();
+                  vid.muted = true;
+                  vid.removeAttribute("src");
+                  vid.load();
+                } catch (_) {}
+              });
+              if (child.tagName === "VIDEO") {
+                try {
+                  if (typeof child.destroy === "function") child.destroy();
+                  child.pause();
+                  child.muted = true;
+                  child.removeAttribute("src");
+                  child.load();
+                } catch (_) {}
               } else if (child.tagName === "CANVAS") {
                 const gl =
                   child.getContext("webgl") ||
@@ -494,9 +567,9 @@ export class TVContentManager {
                 }
               }
 
-              const clone = child.cloneNode(true);
-              child.replaceWith(clone);
-              this.tvContentContainer.removeChild(clone);
+              if (child.parentNode === this.tvContentContainer) {
+                this.tvContentContainer.removeChild(child);
+              }
             }
             resolve();
           } catch (error) {
@@ -528,8 +601,10 @@ export class TVContentManager {
       } else if (currentChannelType === "video" && this.videoPlayer) {
         if (this.videoPlayer.paused) {
           this.videoPlayer.play();
+          this.showOverlayAnimation("VIDEO-0 · PLAY ▶");
         } else {
           this.videoPlayer.pause();
+          this.showOverlayAnimation("VIDEO-0 · PAUSE ❚❚");
         }
       }
     } catch (error) {
@@ -564,6 +639,7 @@ export class TVContentManager {
   async turnOff() {
     try {
       console.log("Turning off TV...");
+      this.stopAllMedia();
       this.tv_screen.classList.remove("switch-tv-on");
       void this.tv_screen.offsetWidth;
       this.tv_screen.classList.add("switch-tv-off");
