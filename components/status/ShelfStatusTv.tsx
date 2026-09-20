@@ -4,6 +4,7 @@ import type { ShelfServiceStatus } from "../../app/status/shelf-contract";
 import type { CrtModelProfile } from "../crt-tv-config";
 import type { ShelfTvAssignment } from "./shelf-tv-assignment";
 import { getStatusPresentation, safeStatusText } from "./status-presentation";
+import { getStatusVideo } from "./status-video";
 
 interface ShelfStatusTvProps {
   assignment: ShelfTvAssignment;
@@ -30,6 +31,7 @@ function lastSeenLabel(iso: string): string {
 export function ShelfStatusTv({ assignment, profile, service, loading, error, stale }: ShelfStatusTvProps) {
   const presentation = service ? getStatusPresentation(service) : null;
   const state = service?.state ?? "unavailable";
+  const statusVideo = getStatusVideo(state);
   const activity = safeStatusText(service?.activity?.label ?? service?.activity?.kind, 34);
   const issue = safeStatusText(service?.issue?.message ?? service?.issue?.code, 34);
   const detail = service
@@ -69,6 +71,25 @@ export function ShelfStatusTv({ assignment, profile, service, loading, error, st
         aria-live="polite"
         aria-label={ariaLabel}
       >
+        {statusVideo ? (
+          <video
+            key={statusVideo.src}
+            className="shelf-status-tv__video"
+            src={statusVideo.src}
+            style={{ objectPosition: statusVideo.objectPosition }}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            tabIndex={-1}
+            aria-hidden="true"
+            onLoadedMetadata={(event) => {
+              event.currentTarget.muted = true;
+              event.currentTarget.playbackRate = statusVideo.playbackRate;
+            }}
+          />
+        ) : null}
         <div className="shelf-status-tv__signal" aria-hidden="true">
           <div className="shelf-status-tv__heading">
             <span><i />{assignment.channel}</span>
