@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     av: { state: true, content: ["default"] },
     music: { state: true, content: ["default"] },
     weather: { state: true, content: ["default"] },
-    video: { state: true, content: [""] },
+    video: { state: true, content: ["default"] },
     image: { state: true, content: [""] },
     youtube: { state: true, content: [] },
     gif: { state: true, content: [""] },
@@ -229,18 +229,18 @@ document.addEventListener("DOMContentLoaded", async () => {
           wallpaperSettings.mediaintegration = properties.mediaintegration;
           updateType.add("music");
         }
-        tvContentManager.setWallpaperSettings(wallpaperSettings, );
+        tvContentManager.setWallpaperSettings(wallpaperSettings);
       },
       applyUserProperties: applyWallpaperUserProperties,
     };
   } else {
-    let tv_dict = {
+    tv_dict = {
       av: { state: true, content: ["default"] },
       music: { state: true, content: ["default"] },
       weather: { state: true, content: ["default"] },
       video: {
         state: true,
-        content: [""],
+        content: ["default"],
       },
       image: { state: true, content: [""] },
       youtube: { state: true, content: ["dC8EaBIyXK4"] },
@@ -272,6 +272,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     switchChannelStaticSound,
     switchChannelSwitchSound
   );
+
+  // Parent Ascend OS postMessage listener for sound toggle & control
+  window.addEventListener("message", (event) => {
+    if (!event.data || typeof event.data !== "object") return;
+    if (event.data.type === "SET_MUTE") {
+      const isMuted = Boolean(event.data.muted);
+      if (switchChannelStaticSound) switchChannelStaticSound.muted = isMuted;
+      if (switchChannelSwitchSound) switchChannelSwitchSound.muted = isMuted;
+      const allMedia = document.querySelectorAll("audio, video");
+      allMedia.forEach((el) => {
+        el.muted = isMuted;
+      });
+      if (tvContentManager && typeof tvContentManager.setMuted === "function") {
+        tvContentManager.setMuted(isMuted);
+      }
+    }
+  });
 });
 
 function getDOMElements() {

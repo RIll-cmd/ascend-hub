@@ -53,6 +53,8 @@ export function parseMediaUrl(url?: string): ParsedMedia {
 }
 
 export const PRESET_BROADCASTS = [
+  { id: "commercials", name: "Ascend Commercials (Random)", url: "/COMMERCIALS/AD1.mp4", icon: "📺" },
+  { id: "shows", name: "Ascend Retro Shows", url: "/SHOWS/SHOW1.mp4", icon: "🎬" },
   { id: "lofi", name: "Lofi Girl · Chill Beats", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", icon: "☕" },
   { id: "synthwave", name: "Cyberpunk Synthwave Radio", url: "https://www.youtube.com/watch?v=4xDzrJKXOOY", icon: "🌆" },
   { id: "workos", name: "WorkOS Launch Video (MP4)", url: "https://dotcom.workos.com/images/launch-week/summer-2026/intro.mp4", icon: "🚀" },

@@ -114,12 +114,215 @@ export function createInfineBouncePreset(src_img) {
   };
 }
 
+export const DEFAULT_COMMERCIALS = [
+  "/COMMERCIALS/AD1.mp4",
+  "/COMMERCIALS/AD2.mp4",
+  "/COMMERCIALS/AD3.mp4",
+  "/COMMERCIALS/AD4.mp4",
+  "/COMMERCIALS/AD6.mp4",
+  "/COMMERCIALS/AD7.mp4",
+  "/COMMERCIALS/AD8.mp4",
+  "/COMMERCIALS/AD9.mp4",
+  "/COMMERCIALS/AD10.mp4",
+  "/COMMERCIALS/AD11.mp4",
+  "/COMMERCIALS/AD12.mp4",
+  "/COMMERCIALS/AD13.mp4",
+  "/COMMERCIALS/AD14.mp4",
+  "/COMMERCIALS/AD15.mp4"
+];
+
+export const DEFAULT_SHOWS = [
+  "/SHOWS/SHOW1.mp4",
+  "/SHOWS/SHOW2.mp4",
+  "/SHOWS/SHOW3.mp4",
+  "/SHOWS/SHOW4.mp4",
+  "/SHOWS/SHOW5.mp4",
+  "/SHOWS/SGOW6.mp4",
+  "/SHOWS/SHO7.mp4",
+  "/SHOWS/SHOW%209.mp4",
+  "/SHOWS/SHOW9.mp4",
+  "/SHOWS/SHOW10.mp4"
+];
+
+export function createRandomVideoBroadcastPreset(wallpaperSettings = {}) {
+  let commercials = [...DEFAULT_COMMERCIALS];
+  let shows = [...DEFAULT_SHOWS];
+  let isFetching = false;
+
+  // Asynchronously query API for dynamic file discovery
+  const updateFromApi = async () => {
+    if (isFetching) return;
+    isFetching = true;
+    try {
+      const res = await fetch("/api/zzz-videos");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.commercials) && data.commercials.length > 0) {
+          commercials = data.commercials;
+        }
+        if (Array.isArray(data.shows) && data.shows.length > 0) {
+          shows = data.shows;
+        }
+        console.log(`[VIDEO-0 Broadcast] Synced ${commercials.length} commercials and ${shows.length} shows from API.`);
+      }
+    } catch (e) {
+      console.warn("[VIDEO-0 Broadcast] API fetch fallback to static defaults:", e);
+    } finally {
+      isFetching = false;
+    }
+  };
+
+  updateFromApi();
+
+  return () => {
+    let isDestroyed = false;
+    let isAdvancing = false;
+    let errorTimeout = null;
+
+    const container = document.createElement("div");
+    container.classList.add("backgroundVideo-container");
+    container.classList.add("crt-video-broadcast-wrap");
+
+    const video = document.createElement("video");
+    video.id = "backgroundVideo";
+    video.className = "crt-video-player";
+    video.playsInline = true;
+    video.preload = "auto";
+    video.autoplay = true;
+    video.loop = false; // We advance to next random video instead of looping a single clip
+
+    let lastCategory = null; // 'show' | 'commercial'
+    let consecutiveCount = 0;
+    const history = []; // Keep last 8 played URLs to prevent repeats
+
+    function getNextVideoUrl() {
+      const allVideos = [...shows, ...commercials];
+      if (allVideos.length === 0) return "/COMMERCIALS/AD1.mp4";
+
+      let targetPool;
+      if (consecutiveCount >= 2 && lastCategory === "commercial" && shows.length > 0) {
+        targetPool = shows;
+        lastCategory = "show";
+        consecutiveCount = 1;
+      } else if (lastCategory === "show" && commercials.length > 0) {
+        targetPool = commercials;
+        lastCategory = "commercial";
+        consecutiveCount = 1;
+      } else {
+        const pickShow = Math.random() < 0.5 && shows.length > 0;
+        if (pickShow) {
+          targetPool = shows;
+          consecutiveCount = (lastCategory === "show") ? consecutiveCount + 1 : 1;
+          lastCategory = "show";
+        } else if (commercials.length > 0) {
+          targetPool = commercials;
+          consecutiveCount = (lastCategory === "commercial") ? consecutiveCount + 1 : 1;
+          lastCategory = "commercial";
+        } else {
+          targetPool = allVideos;
+          consecutiveCount = 1;
+        }
+      }
+
+      let available = targetPool.filter(url => !history.includes(url));
+      if (available.length === 0) {
+        available = targetPool.filter(url => url !== history[history.length - 1]);
+      }
+      if (available.length === 0) {
+        available = targetPool;
+      }
+
+      const chosen = available[Math.floor(Math.random() * available.length)];
+      history.push(chosen);
+      if (history.length > 8) history.shift();
+      return chosen;
+    }
+
+    function destroy() {
+      if (isDestroyed) return;
+      isDestroyed = true;
+      if (errorTimeout) {
+        clearTimeout(errorTimeout);
+        errorTimeout = null;
+      }
+      try {
+        video.pause();
+        video.muted = true;
+        video.removeAttribute("src");
+        video.load();
+      } catch (_) {}
+      try {
+        container.remove();
+      } catch (_) {}
+    }
+
+    video.destroy = destroy;
+
+    function playClip(url) {
+      if (isDestroyed) return;
+      isAdvancing = false;
+      video.src = url;
+      video.load();
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          if (isDestroyed) return;
+          console.warn("[VIDEO-0] Autoplay unmuted was blocked by browser, falling back to muted:", err);
+          video.muted = true;
+          video.play().catch(e => {
+            if (!isDestroyed) console.error("[VIDEO-0] Playback failed:", e);
+          });
+        });
+      }
+    }
+
+    function advanceToNext() {
+      if (isDestroyed || isAdvancing) return;
+      isAdvancing = true;
+      const nextUrl = getNextVideoUrl();
+      console.log(`[VIDEO-0 Broadcast] Now playing (${lastCategory}): ${nextUrl}`);
+      playClip(nextUrl);
+    }
+
+    video.addEventListener("ended", () => {
+      if (isDestroyed) return;
+      advanceToNext();
+    });
+
+    video.addEventListener("error", (e) => {
+      if (isDestroyed) return;
+      if (!video.src || video.src === window.location.href || video.src.endsWith("/")) return;
+      console.warn("[VIDEO-0] Video load error, auto-advancing to next clip:", e);
+      if (errorTimeout) clearTimeout(errorTimeout);
+      errorTimeout = setTimeout(() => {
+        if (!isDestroyed) advanceToNext();
+      }, 500);
+    });
+
+    video.playNextRandomVideo = () => {
+      if (isDestroyed) return;
+      advanceToNext();
+    };
+
+    container.appendChild(video);
+
+    // Launch initial random clip immediately
+    advanceToNext();
+
+    return { container, video };
+  };
+}
+
 export function createBackgroundVideoPreset(
   src_video,
-  video_type,
+  video_type = "video/mp4",
   muted = true,
   loop = true
 ) {
+  if (!src_video || src_video === "default" || src_video === "random" || src_video === "") {
+    return createRandomVideoBroadcastPreset();
+  }
+
   return () => {
     const container = document.createElement("div");
     container.classList.add("backgroundVideo-container");
@@ -130,7 +333,7 @@ export function createBackgroundVideoPreset(
     }
     video.autoplay = true;
     video.loop = loop;
-    video.preload = "auto"; // Optional, can improve load times
+    video.preload = "auto";
 
     const source = document.createElement("source");
     source.src = src_video;
