@@ -821,6 +821,153 @@ button,a,input,summary{-webkit-tap-highlight-color:transparent}button{font:inher
   .shelf-status-tv * { animation: none !important; transition: none !important; }
 }
 
+.shelf-status-tv-trigger {
+  appearance: none;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: zoom-in;
+  container-type: size;
+  transition: transform 220ms cubic-bezier(.16, 1, .3, 1), filter 220ms ease;
+}
+.shelf-status-tv-trigger:hover {
+  transform: translateY(-2px) scale(1.018);
+  filter: brightness(1.06);
+}
+.shelf-status-tv-trigger:disabled,
+.shelf-status-tv-trigger:disabled:hover {
+  transform: none;
+  filter: none;
+  cursor: default;
+}
+.shelf-status-tv-trigger:focus-visible {
+  outline: 1px solid rgba(255, 216, 157, .88);
+  outline-offset: 4px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 4px rgba(202, 126, 54, .16), 0 0 28px rgba(255, 166, 83, .18);
+}
+.shelf-status-tv-trigger .shelf-status-tv {
+  pointer-events: none;
+}
+.shelf-status-tv-trigger__hint {
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  z-index: 7;
+  padding: 3px 7px 2px;
+  border: 1px solid rgba(218, 166, 111, .42);
+  border-radius: 2px;
+  background: rgba(20, 10, 6, .82);
+  color: #e9c79f;
+  font: 700 6px/1 var(--mono), monospace;
+  letter-spacing: .17em;
+  opacity: 0;
+  transform: translate(-50%, 5px);
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(.16, 1, .3, 1);
+  pointer-events: none;
+}
+.shelf-status-tv-trigger:hover .shelf-status-tv-trigger__hint,
+.shelf-status-tv-trigger:focus-visible .shelf-status-tv-trigger__hint {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.shelf-camera-scene {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.shelf-camera-backdrop {
+  z-index: 80;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  padding: 0;
+  border: 0;
+  background:
+    radial-gradient(circle at 50% 48%, rgba(32, 13, 5, .08), rgba(8, 2, 1, .68) 78%),
+    rgba(8, 2, 1, .28);
+  backdrop-filter: blur(1.5px) saturate(.78) brightness(.68);
+  cursor: zoom-out;
+}
+.shelf-camera-controls {
+  z-index: 110;
+  pointer-events: none;
+}
+.shelf-camera-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 1px solid rgba(238, 190, 137, .58);
+  border-radius: 999px;
+  background: rgba(28, 13, 7, .88);
+  color: #f3d1aa;
+  font: 700 9px/1 var(--mono), monospace;
+  letter-spacing: .13em;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .03), 0 14px 38px rgba(0, 0, 0, .48);
+  cursor: zoom-out;
+  pointer-events: auto;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+.shelf-camera-exit:hover {
+  border-color: #f6d0a2;
+  background: rgba(55, 28, 14, .95);
+  transform: translateY(-1px);
+}
+.shelf-camera-exit:focus-visible {
+  outline: 2px solid #f5c58f;
+  outline-offset: 3px;
+}
+.shelf-camera-readout {
+  position: absolute;
+  left: max(24px, env(safe-area-inset-left));
+  bottom: max(22px, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-left: 2px solid #d9904d;
+  background: linear-gradient(90deg, rgba(23, 10, 5, .82), rgba(23, 10, 5, 0));
+  color: #c79c70;
+  font-family: var(--mono), monospace;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.shelf-camera-readout span {
+  color: #e0914d;
+  font-size: 7px;
+}
+.shelf-camera-readout strong {
+  color: #f0d1aa;
+  font-size: 10px;
+}
+@media (max-width: 650px) {
+  .shelf-camera-exit {
+    right: 14px;
+    top: 14px;
+    min-height: 38px;
+    padding: 0 13px;
+  }
+  .shelf-camera-readout {
+    left: 14px;
+    bottom: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shelf-status-tv-trigger,
+  .shelf-status-tv-trigger__hint,
+  .shelf-camera-exit {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 .view-switch{display:flex;align-items:center;gap:7px;font:9px var(--mono);padding:6px 12px;background:#241b14;border:1px solid #483321;border-radius:3px;color:#cfaa71;cursor:pointer;transition:all .15s ease}
 .view-switch:hover{background:#38281a;color:#ffe2b7;border-color:#75502c}
 .view-switch.active{background:#fea48022;border-color:#fea480;color:#fea480;box-shadow:0 0 10px rgba(254,164,128,.3)}

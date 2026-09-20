@@ -1,6 +1,7 @@
 "use client";
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
+import { motion, useReducedMotion } from "framer-motion";
 import { Rnd } from "react-rnd";
 import {
   ArrowDown,
@@ -48,7 +49,8 @@ import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
 import { ShelfStatusTv } from "../components/status/ShelfStatusTv";
-import { getShelfTvAssignment, resolveShelfTvService } from "../components/status/shelf-tv-assignment";
+import { getShelfSceneCameraMotion, type ShelfSceneCameraMotion } from "../components/status/shelf-tv-focus";
+import { getShelfTvAssignment, resolveShelfTvService, type ShelfTvAssignment } from "../components/status/shelf-tv-assignment";
 import { findCrtConfigByCollectibleId, getCrtProfile } from "../components/crt-tv-config";
 import { useStatusShelf } from "./status/use-status-shelf";
 
@@ -303,6 +305,7 @@ function Modal({ title, children, onClose, classic = false }: { title: string; c
 
 export default function Home() {
   const shelfStatus = useStatusShelf();
+  const reduceMotion = useReducedMotion();
   const [layout, setLayout] = useState<Layout>(initialLayout);
   const [rows, setRows] = useState<ShelfRow[]>(DEFAULT_SHELF_ROWS);
   const [ready, setReady] = useState(false);
@@ -332,6 +335,11 @@ export default function Home() {
   const [shelfTopCrop, setShelfTopCrop] = useState<number>(0);
   const [shelfCalibratorOpen, setShelfCalibratorOpen] = useState<boolean>(false);
   const [showTrimGuides, setShowTrimGuides] = useState<boolean>(false);
+  const [focusedStatusTv, setFocusedStatusTv] = useState<{
+    assignment: ShelfTvAssignment;
+    motion: ShelfSceneCameraMotion;
+    open: boolean;
+  } | null>(null);
 
   const handleShelfOffsetChange = (val: number) => {
     setShelfOffsetY(val);
@@ -406,12 +414,44 @@ export default function Home() {
   };
 
   const stageRef = useRef<HTMLDivElement>(null);
+  const cameraSceneRef = useRef<HTMLDivElement>(null);
+  const cameraExitRef = useRef<HTMLButtonElement>(null);
+  const cameraTriggerRef = useRef<HTMLButtonElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadTarget = useRef("tv");
   const urls = useRef<Record<string, string>>({});
   const notify = (s: string) => setToast(s);
   const zzzFrameRef = useRef<HTMLIFrameElement>(null);
+  const cameraMounted = focusedStatusTv !== null;
+
+  useEffect(() => {
+    if (!cameraMounted) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const focusFrame = requestAnimationFrame(() => cameraExitRef.current?.focus());
+    const keepCameraFocused = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setFocusedStatusTv(current => current ? { ...current, open: false } : null);
+      } else if (event.key === "Tab") {
+        event.preventDefault();
+        cameraExitRef.current?.focus();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", keepCameraFocused);
+
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", keepCameraFocused);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => cameraTriggerRef.current?.focus());
+      });
+    };
+  }, [cameraMounted]);
 
   const handleZzzLoad = () => {
     if (zzzFrameRef.current?.contentWindow) {
@@ -1015,14 +1055,62 @@ export default function Home() {
         )}
       </section>
 
+      {focusedStatusTv && (
+        <>
+          <motion.button
+            type="button"
+            tabIndex={-1}
+            className="shelf-camera-backdrop fixed inset-0"
+            aria-label="Zoom out to the full status shelf"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: focusedStatusTv.open ? 1 : 0 }}
+            transition={{ duration: reduceMotion ? 0.01 : 1.4, ease: [0.77, 0, 0.175, 1] }}
+            onClick={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
+          />
+          <motion.div
+            className="shelf-camera-controls fixed inset-0"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${focusedStatusTv.assignment.channel} ${focusedStatusTv.assignment.serviceId.replaceAll("-", " ")} camera view`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: focusedStatusTv.open ? 1 : 0 }}
+            transition={{ duration: reduceMotion ? 0.01 : 0.7, delay: focusedStatusTv.open && !reduceMotion ? 0.7 : 0 }}
+          >
+            <div className="shelf-camera-readout" aria-hidden="true">
+              <span>CAMERA LOCK</span>
+              <strong>{focusedStatusTv.assignment.channel} · {focusedStatusTv.assignment.serviceId.replaceAll("-", " ")}</strong>
+            </div>
+            <button
+              ref={cameraExitRef}
+              type="button"
+              className="shelf-camera-exit absolute right-6 top-6"
+              onClick={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
+            >
+              <X size={18} /> ZOOM OUT
+            </button>
+          </motion.div>
+        </>
+      )}
+
       {/* Scrollable WorkOS Multi-Tier Shelves Stack (100% Uncovered & Clean) */}
-      <div
-        className={`cabinet-shell lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`}
+      <motion.div
+        ref={cameraSceneRef}
+        className={`cabinet-shell shelf-camera-scene lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`}
         id="ascend-cabinet-section"
+        animate={focusedStatusTv?.open ? {
+          x: focusedStatusTv.motion.translateX,
+          y: focusedStatusTv.motion.translateY,
+          scale: focusedStatusTv.motion.scale,
+        } : { x: 0, y: 0, scale: 1 }}
+        transition={{ duration: reduceMotion ? 0.01 : 1.4, ease: [0.77, 0, 0.175, 1] }}
+        onAnimationComplete={() => {
+          if (focusedStatusTv && !focusedStatusTv.open) setFocusedStatusTv(null);
+        }}
         style={{
           marginTop: `${shelfOffsetY}px`,
           position: "relative",
-          zIndex: 15,
+          zIndex: focusedStatusTv ? 95 : 15,
+          transformOrigin: "0 0",
         }}
       >
         {(presetMode !== "reference" || edit) && (
@@ -1168,14 +1256,39 @@ export default function Home() {
                                         ) : getCrtProfile(def.id) ? (
                                           <div className="cubby-prop cubby-crt-interactive">
                                             {statusAssignment ? (
-                                              <ShelfStatusTv
-                                                assignment={statusAssignment}
-                                                profile={getCrtProfile(def.id)!}
-                                                service={statusService}
-                                                loading={shelfStatus.loading && !shelfStatus.current}
-                                                error={shelfStatus.error}
-                                                stale={Boolean(shelfStatus.stale)}
-                                              />
+                                              <button
+                                                type="button"
+                                                className="shelf-status-tv-trigger"
+                                                disabled={Boolean(focusedStatusTv)}
+                                                aria-label={`Focus ${statusAssignment.channel} ${statusAssignment.serviceId.replaceAll("-", " ")} status TV`}
+                                                onClick={(event) => {
+                                                  const scene = cameraSceneRef.current;
+                                                  const screen = event.currentTarget.querySelector<HTMLElement>(".shelf-status-tv__screen");
+                                                  if (!scene || !screen) return;
+                                                  const targetBounds = screen.getBoundingClientRect();
+                                                  const sceneBounds = scene.getBoundingClientRect();
+                                                  cameraTriggerRef.current = event.currentTarget;
+                                                  setFocusedStatusTv({
+                                                    assignment: statusAssignment,
+                                                    open: true,
+                                                    motion: getShelfSceneCameraMotion(
+                                                      { left: targetBounds.left, top: targetBounds.top, width: targetBounds.width, height: targetBounds.height },
+                                                      { left: sceneBounds.left, top: sceneBounds.top, width: sceneBounds.width, height: sceneBounds.height },
+                                                      { width: window.innerWidth, height: window.innerHeight },
+                                                    ),
+                                                  });
+                                                }}
+                                              >
+                                                <ShelfStatusTv
+                                                  assignment={statusAssignment}
+                                                  profile={getCrtProfile(def.id)!}
+                                                  service={statusService}
+                                                  loading={shelfStatus.loading && !shelfStatus.current}
+                                                  error={shelfStatus.error}
+                                                  stale={Boolean(shelfStatus.stale)}
+                                                />
+                                                <span className="shelf-status-tv-trigger__hint" aria-hidden="true">FOCUS</span>
+                                              </button>
                                             ) : (
                                               <CrtTvDisplay
                                                 instanceId={slot.id}
@@ -1349,7 +1462,7 @@ export default function Home() {
           <span>{presetMode === "reference" ? `${rows.length} SHELF TIERS ACTIVE` : `${String(completed).padStart(2, "0")} / 05 MILESTONES COMPLETE`}</span>
           <span>DESIGNED TO EVOLVE ↗</span>
         </div>
-      </div>
+      </motion.div>
 
       <section className="below-shelf">
         <div><span className="tiny-cross">+</span><p>Not a destination.<br /><strong>A way of moving forward.</strong></p></div>
