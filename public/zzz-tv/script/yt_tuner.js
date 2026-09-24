@@ -2,20 +2,21 @@
  * CRT YouTube On-Screen Tuner & Search HUD
  * Enables real-time YouTube search, direct frequency tuning,
  * preset streaming channels, and automatic dead-video error recovery.
+ *
+ * Clickable directly on the CRT TV screen when channel is YouTube!
  */
 
 export function initYouTubeTuner(tvContentManager, updateDial) {
-  const triggerBtn = document.getElementById("crt-yt-tuner-trigger");
   const panel = document.getElementById("crt-yt-tuner-panel");
+  const tvOverlay = document.getElementById("tv-container-overlay");
   const closeBtn = document.getElementById("tuner-close-btn");
   const errorBanner = document.getElementById("tuner-error-banner");
   const searchForm = document.getElementById("tuner-search-form");
   const searchInput = document.getElementById("tuner-search-input");
-  const resultsContainer = document.getElementById("tuner-results-container");
   const resultsList = document.getElementById("tuner-results-list");
   const pills = document.querySelectorAll(".tuner-pill");
 
-  if (!panel || !triggerBtn) {
+  if (!panel || !tvOverlay) {
     console.warn("CRT YouTube Tuner elements not found");
     return;
   }
@@ -28,7 +29,7 @@ export function initYouTubeTuner(tvContentManager, updateDial) {
     isOpen = true;
     panel.style.display = "flex";
     panel.setAttribute("aria-hidden", "false");
-    triggerBtn.classList.add("active");
+    tvOverlay.classList.add("tuner-open");
 
     if (errorMessage) {
       if (errorBanner) {
@@ -40,7 +41,7 @@ export function initYouTubeTuner(tvContentManager, updateDial) {
     }
 
     if (searchInput) {
-      setTimeout(() => searchInput.focus(), 100);
+      setTimeout(() => searchInput.focus(), 120);
     }
 
     // If no results yet, load featured default streams
@@ -53,7 +54,7 @@ export function initYouTubeTuner(tvContentManager, updateDial) {
     isOpen = false;
     panel.style.display = "none";
     panel.setAttribute("aria-hidden", "true");
-    triggerBtn.classList.remove("active");
+    tvOverlay.classList.remove("tuner-open");
     if (errorBanner) {
       errorBanner.style.display = "none";
     }
@@ -64,6 +65,20 @@ export function initYouTubeTuner(tvContentManager, updateDial) {
       closeTuner();
     } else {
       openTuner();
+    }
+  }
+
+  function updateOverlayChannelState(inputType) {
+    const isYt = inputType === "youtube";
+    if (isYt) {
+      tvOverlay.classList.add("is-youtube");
+      tvOverlay.setAttribute("title", "Click CRT screen to search & tune YouTube");
+    } else {
+      tvOverlay.classList.remove("is-youtube");
+      tvOverlay.removeAttribute("title");
+      if (isOpen) {
+        closeTuner();
+      }
     }
   }
 
@@ -177,12 +192,22 @@ export function initYouTubeTuner(tvContentManager, updateDial) {
       .replace(/'/g, "&#039;");
   }
 
-  // Event Listeners
-  triggerBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    toggleTuner();
+  // --- Click on TV Screen Handler ---
+  tvOverlay.addEventListener("click", (e) => {
+    // Only handle if clicking directly on the overlay backdrop
+    if (e.target !== tvOverlay) return;
+
+    const currentInput = typeof tvContentManager.getCurrentInputType === "function"
+      ? tvContentManager.getCurrentInputType()
+      : (tvContentManager.currentInputType || "");
+
+    if (currentInput === "youtube") {
+      e.stopPropagation();
+      toggleTuner();
+    }
   });
 
+  // Close Button
   if (closeBtn) {
     closeBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -190,6 +215,7 @@ export function initYouTubeTuner(tvContentManager, updateDial) {
     });
   }
 
+  // Search Form Submit
   if (searchForm) {
     searchForm.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -198,6 +224,7 @@ export function initYouTubeTuner(tvContentManager, updateDial) {
     });
   }
 
+  // Quick Preset Pills
   pills.forEach((pill) => {
     pill.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -209,23 +236,35 @@ export function initYouTubeTuner(tvContentManager, updateDial) {
     });
   });
 
-  // Hotkey support: ESC to close, / to open
+  // Hotkey support: ESC to close
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && isOpen) {
       closeTuner();
     }
   });
 
-  // Listen for video unavailable / player errors
+  // Listen for channel/input changes from TVContentManager
+  window.addEventListener("tv-input-changed", (e) => {
+    const inputType = e.detail?.inputType || "";
+    updateOverlayChannelState(inputType);
+  });
+
+  // Initial channel check
+  const initialInput = typeof tvContentManager.getCurrentInputType === "function"
+    ? tvContentManager.getCurrentInputType()
+    : (tvContentManager.currentInputType || "");
+  updateOverlayChannelState(initialInput);
+
+  // Listen for video unavailable / player errors to open tuner
   window.addEventListener("yt-error", (e) => {
     console.warn("CRT Tuner intercepted YouTube player error:", e.detail);
     openTuner("BROADCAST OFFLINE (VIDEO UNAVAILABLE) — SELECT A WORKING STREAM BELOW:");
   });
 
-  // Stop click bubbling on panel so clicking inside tuner doesn't affect underlying controls
+  // Stop click bubbling on tuner panel
   panel.addEventListener("click", (e) => {
     e.stopPropagation();
   });
 
-  console.log("CRT YouTube Tuner initialized successfully");
+  console.log("CRT YouTube Tuner (Screen Clickable Mode) initialized");
 }
