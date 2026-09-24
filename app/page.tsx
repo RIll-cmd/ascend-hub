@@ -27,6 +27,7 @@ import {
   Volume2,
   VolumeX,
   Tv,
+  Disc,
   X
 } from "lucide-react";
 import { synth } from "./synth";
@@ -360,6 +361,46 @@ export default function Home() {
   const [visionEyeTargets, setVisionEyeTargets] = useState<readonly VisionEyeTarget[]>([]);
   const [visionEyeActivating, setVisionEyeActivating] = useState(false);
   const [cameraSceneElement, setCameraSceneElement] = useState<HTMLDivElement | null>(null);
+  const [spotifyData, setSpotifyData] = useState<{
+    isPlaying?: boolean;
+    title?: string;
+    artist?: string;
+    album?: string;
+    albumImageUrl?: string;
+    songUrl?: string;
+    progressMs?: number;
+    durationMs?: number;
+    connected?: boolean;
+    device?: string;
+  } | null>(null);
+  const [spotifyModalOpen, setSpotifyModalOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/spotify/currently-playing");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active) {
+          setSpotifyData(data);
+          if (zzzFrameRef.current?.contentWindow) {
+            zzzFrameRef.current.contentWindow.postMessage(
+              { type: "SPOTIFY_UPDATE", data },
+              "*"
+            );
+          }
+        }
+      } catch (_) {}
+    };
+
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleShelfOffsetChange = (val: number) => {
     setShelfOffsetY(val);
@@ -1207,6 +1248,15 @@ export default function Home() {
           <button className="view-switch" onClick={() => setRowTemplateModalOpen(true)}>
             <Plus size={11} /> ADD SHELF ROW
           </button>
+          <button
+            className={`view-switch ${spotifyData?.isPlaying ? "spotify-playing" : ""}`}
+            onClick={() => setSpotifyModalOpen(true)}
+            title={spotifyData?.connected ? (spotifyData.isPlaying ? `Spotify: ${spotifyData.title} by ${spotifyData.artist}` : "Spotify Connected (Idle)") : "Setup Spotify Sync"}
+            style={spotifyData?.isPlaying ? { borderColor: "rgba(16, 185, 129, 0.6)", color: "#34d399" } : undefined}
+          >
+            <Disc size={11} className={spotifyData?.isPlaying ? "animate-spin" : ""} />
+            {spotifyData?.isPlaying ? `SPOTIFY: ${(spotifyData.title || "").slice(0, 14)}` : (spotifyData?.connected ? "SPOTIFY IDLE" : "SPOTIFY SYNC")}
+          </button>
         </div>
         <button className="sound-switch" onClick={() => { setSound(v => !v); if (!sound) synth.unlock(); }} aria-pressed={sound}>
           {sound ? <Volume2 size={15} /> : <VolumeX size={15} />} SOUND {sound ? "ON" : "OFF"}
@@ -1878,6 +1928,103 @@ export default function Home() {
 
       {active === "picker" && (
         <ComponentPicker onAdd={addCollectible} onClose={() => setActive(null)} />
+      )}
+
+      {spotifyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="relative w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl text-zinc-100 font-mono">
+            <button
+              onClick={() => setSpotifyModalOpen(false)}
+              className="absolute right-4 top-4 text-zinc-400 hover:text-white"
+            >
+              <X size={18} />
+            </button>
+            <div className="flex items-center gap-2 mb-4 text-emerald-400 text-sm font-semibold tracking-wider">
+              <Disc size={18} className={spotifyData?.isPlaying ? "animate-spin" : ""} />
+              SPOTIFY "NOW PLAYING" SYNC
+            </div>
+
+            {spotifyData?.connected ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/80 border border-zinc-800">
+                  {spotifyData.albumImageUrl ? (
+                    <img
+                      src={spotifyData.albumImageUrl}
+                      alt={spotifyData.album || "Album cover"}
+                      className="w-14 h-14 rounded-md object-cover shadow"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-500">
+                      <Disc size={24} />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs uppercase text-emerald-500 font-bold tracking-wider">
+                      {spotifyData.isPlaying ? "● Currently Playing" : "Paused / Idle"}
+                    </div>
+                    <div className="text-sm font-semibold text-white truncate">
+                      {spotifyData.title}
+                    </div>
+                    <div className="text-xs text-zinc-400 truncate">
+                      {spotifyData.artist}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-xs text-zinc-400 space-y-1">
+                  <p>✓ Connected to Spotify Account</p>
+                  <p className="text-[11px] text-zinc-500">
+                    Playback is actively streaming to the retro CRT TV music channel.
+                  </p>
+                </div>
+
+                <div className="pt-2 flex gap-2">
+                  <a
+                    href="/api/spotify/login"
+                    className="flex-1 text-center py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition"
+                  >
+                    Re-Authenticate Spotify
+                  </a>
+                  <button
+                    onClick={() => setSpotifyModalOpen(false)}
+                    className="py-2 px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs">
+                <div className="p-3 rounded-lg bg-zinc-900 border border-amber-900/50 text-amber-200/90 text-xs">
+                  <span className="font-bold text-amber-400">Status:</span> Not connected yet.
+                </div>
+
+                <p className="text-zinc-300">
+                  To sync live music from your PC or phone onto the CRT TV, configure your Spotify Developer App credentials:
+                </p>
+
+                <div className="p-3 rounded-lg bg-black/60 border border-zinc-800 font-mono text-[11px] text-zinc-300 space-y-1">
+                  <p className="text-zinc-400 font-bold">In .env.local:</p>
+                  <p>SPOTIFY_CLIENT_ID=&lt;your_client_id&gt;</p>
+                  <p>SPOTIFY_CLIENT_SECRET=&lt;your_client_secret&gt;</p>
+                  <p>SPOTIFY_REFRESH_TOKEN=&lt;optional_or_use_button&gt;</p>
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  <p className="text-[11px] text-zinc-400">
+                    Redirect URI for Spotify App: <code className="bg-zinc-900 px-1 py-0.5 rounded text-emerald-400">http://localhost:5173/api/spotify/callback</code>
+                  </p>
+                  <a
+                    href="/api/spotify/login"
+                    className="block text-center w-full py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition"
+                  >
+                    Connect with Spotify (OAuth)
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
