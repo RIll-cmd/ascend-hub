@@ -64,6 +64,10 @@ export class TVContentManager {
       this.crtContainer.appendChild(startingVideo);
 
       this.youtubePlayer = new YouTubePlayer(tvContentContainer);
+      this.youtubePlayer.onErrorCallback = (code) => {
+        console.warn(`YouTube player error reported: ${code}`);
+        window.dispatchEvent(new CustomEvent("yt-error", { detail: { code } }));
+      };
       this.videoPlayer = null;
 
       setTimeout(() => {
@@ -513,6 +517,10 @@ export class TVContentManager {
       await this.clearContent();
       if (!this.youtubePlayer) {
         this.youtubePlayer = new YouTubePlayer(this.tvContentContainer);
+        this.youtubePlayer.onErrorCallback = (code) => {
+          console.warn(`YouTube player error reported: ${code}`);
+          window.dispatchEvent(new CustomEvent("yt-error", { detail: { code } }));
+        };
       }
       this.youtubePlayer.updateYouTubePlayer(videoId, isPlaylist, isLive);
       this.youtubePlayer.setContentFitMode(this.mediaContentFitMode);

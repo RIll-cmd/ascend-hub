@@ -2,6 +2,7 @@ import { Clock } from "./clock.js";
 import { Calendar } from "./calendar.js";
 import { TVContentManager } from "./tv.js";
 import { debounce } from "./utils.js";
+import { initYouTubeTuner } from "./yt_tuner.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("Document ready, initializing...");
@@ -251,7 +252,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         content: ["default"],
       },
       image: { state: true, content: [""] },
-      youtube: { state: true, content: ["dC8EaBIyXK4"] },
+      youtube: {
+        state: true,
+        content: [
+          "LIVE_jfKfPfyJRdk",
+          "LIVE_4xDzrJKXOOY",
+          "LIVE_5yx6BWlEVcY"
+        ]
+      },
       gif: {
         state: true,
         content: [
@@ -308,6 +316,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (tvContentManager?.youtubePlayer) {
         tvContentManager.youtubePlayer.playVideo();
       }
+    } else if (event.data.type === "OPEN_YT_TUNER") {
+      const trigger = document.getElementById("crt-yt-tuner-trigger");
+      if (trigger) trigger.click();
     }
   });
 });
@@ -359,6 +370,9 @@ function initializeEventListeners(
       tvContentManager.getChannelDict().length;
     switchChannel.style.transform = `rotateZ(-${channelAngle}deg)`;
   }
+
+  // Initialize CRT YouTube On-Screen Tuner & Search
+  initYouTubeTuner(tvContentManager, updateDial);
 
   // Utility function to handle cooldown
   function handleCooldown(element) {
