@@ -378,6 +378,11 @@ export class TVContentManager {
         }`
       );
       this.currentInputType = this.tv_input_keys[this.currentInputIndex];
+      window.dispatchEvent(
+        new CustomEvent("tv-input-changed", {
+          detail: { inputType: this.currentInputType },
+        })
+      );
       this.switchContentProcess();
       return true;
     } catch (error) {
@@ -455,6 +460,12 @@ export class TVContentManager {
       const currentPreset =
         this.tv_guide[this.tv_input_keys[this.currentInputIndex]];
       const channelType = this.tv_input_keys[this.currentInputIndex];
+      this.currentInputType = channelType;
+      window.dispatchEvent(
+        new CustomEvent("tv-input-changed", {
+          detail: { inputType: channelType },
+        })
+      );
 
       if (currentPreset.channels.length > 0) {
         const currentChannel =
@@ -534,6 +545,11 @@ export class TVContentManager {
           this.currentInputIndex = ytIndex;
         }
       }
+      window.dispatchEvent(
+        new CustomEvent("tv-input-changed", {
+          detail: { inputType: "youtube" },
+        })
+      );
     } catch (err) {
       console.error("Error playing direct YouTube:", err);
     }
@@ -723,6 +739,19 @@ export class TVContentManager {
       }
     } catch (e) {
       console.warn("Error setting mute state in TVContentManager:", e);
+    }
+  }
+
+  getCurrentInputType() {
+    try {
+      return (
+        this.currentInputType ||
+        (Array.isArray(this.tv_input_keys)
+          ? this.tv_input_keys[this.currentInputIndex]
+          : "")
+      );
+    } catch (e) {
+      return "";
     }
   }
 }
