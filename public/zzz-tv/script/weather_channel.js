@@ -16,12 +16,12 @@ import { anchorConfigDict } from "./anchor_config.js";
 
 export class WeatherChannel {
   constructor(wallpaperSettings) {
-    this.wallpaperSettings = wallpaperSettings;
-    this.apiKey = "";
-    this.city = "";
-    this.lat = 51.505;
-    this.lon = -0.10707;
-    this.units = "metric"; // Change to "imperial" for Fahrenheit
+    this.wallpaperSettings = wallpaperSettings || {};
+    this.apiKey = this.wallpaperSettings.weather_api || this.wallpaperSettings.weather_api_key || "FLTQSEWVR77875H6UM6P65DUF";
+    this.city = this.wallpaperSettings.weather_city || "Manila,PH";
+    this.lat = this.wallpaperSettings.weather_latitude || 14.5995;
+    this.lon = this.wallpaperSettings.weather_longitude || 120.9842;
+    this.units = this.wallpaperSettings.weather_unit || "metric"; // Change to "imperial" for Fahrenheit
 
     this.windUnit = "m/s"; // Change to "m/h" for MPH
 
@@ -69,10 +69,10 @@ export class WeatherChannel {
 
     this.container = this.initWeatherChannel(); // Initialize container
 
-    this.setAPIKey(this.wallpaperSettings.weather_api_key);
-    this.setCity(this.wallpaperSettings.weather_city);
-    this.setLatitue(this.wallpaperSettings.weather_latitude);
-    this.setLongitude(this.wallpaperSettings.weather_longitude);
+    this.setAPIKey(this.wallpaperSettings?.weather_api || this.wallpaperSettings?.weather_api_key || "FLTQSEWVR77875H6UM6P65DUF");
+    this.setCity(this.wallpaperSettings?.weather_city || "Manila,PH");
+    this.setLatitue(this.wallpaperSettings?.weather_latitude || 14.5995);
+    this.setLongitude(this.wallpaperSettings?.weather_longitude || 120.9842);
     this.updateWeather();
     this.switchInPanelAnimation();
     this.startAutoWeatherUpdateInterval();
@@ -802,75 +802,114 @@ export class WeatherChannel {
     }, 1000 * 60 * 60); // 1 hour
   }
 
-  async fetchLatlongGeo() {
-    // const response = await fetch(
-    //   `https://api.openweathermap.org/geo/1.0/direct?q=${this.city}&limit=1&appid=${this.apiKey}`
-    // );
-    const limit = 1;
-    const response = await fetch(
-      `http://api.openweathermap.org/geo/1.0/reverse?lat=${this.lat}&lon=${this.lon}&limit=${limit}&appid=${this.apiKey}`
-    );
-    if (!response.ok) {
-      throw new Error("Geo data not available, please check your internet connection/api key/geo data");
-    }
-    const data = await response.json();
-    if (data.length === 0) {
-      throw new Error("City not found");
-    }
-    return data
-    // return data[0].lat.toFixed(2) + "," + data[0].lon.toFixed(2);
+  mapCondition(icon, conditions = "") {
+    const iconLower = (icon || "").toLowerCase();
+    const condLower = (conditions || "").toLowerCase();
+
+    if (iconLower.includes("thunder") || condLower.includes("thunder")) return "Thunderstorm";
+    if (iconLower.includes("snow") || condLower.includes("snow")) return "Snow";
+    if (iconLower.includes("rain") || iconLower.includes("shower") || condLower.includes("rain")) return "Rain";
+    if (condLower.includes("drizzle")) return "Drizzle";
+    if (iconLower.includes("fog") || condLower.includes("fog")) return "Fog";
+    if (iconLower.includes("wind") || condLower.includes("squall")) return "Squall";
+    if (condLower.includes("haze")) return "Haze";
+    if (condLower.includes("mist")) return "Mist";
+    if (condLower.includes("smoke")) return "Smoke";
+    if (iconLower.includes("cloud") || condLower.includes("cloud") || condLower.includes("overcast")) return "Clouds";
+    if (iconLower.includes("clear")) return "Clear";
+    return "Clear";
   }
 
-  async fetchCurrentWeather() {
-    // const response = await fetch(
-    //   `https://api.openweathermap.org/data/2.5/weather?q=${this.city}&units=${this.units}&appid=${this.apiKey}`
-    // );
-    const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${this.lat}&lon=${this.lon}&units=${this.units}&appid=${this.apiKey}`
-    );
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        `Weather data not available, code: ${response.status} -> ${errorData.message}`
-      );
+  async fetchVisualCrossingWeather() {
+    const unitGroup = this.units === "imperial" ? "us" : "metric";
+    let locationQuery = "";
+    if (this.city && this.city.trim().length > 0) {
+      locationQuery = encodeURIComponent(this.city.trim());
+    } else if (this.lat && this.lon) {
+      locationQuery = `${this.lat},${this.lon}`;
+    } else {
+      locationQuery = "Manila,PH";
     }
-    return await response.json();
-  }
 
-  async fetchForecastWeather() {
-    // const response = await fetch(
-    //   `https://api.openweathermap.org/data/2.5/forecast?q=${this.city}&units=${this.units}&appid=${this.apiKey}`
-    // );
-    const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/forecast?lat=${this.lat}&lon=${this.lon}&units=${this.units}&appid=${this.apiKey}`
-    );
+    const key = this.apiKey || "FLTQSEWVR77875H6UM6P65DUF";
+    const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${locationQuery}?unitGroup=${unitGroup}&key=${key}&contentType=json`;
+
+    const response = await fetch(url);
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        `Weather data not available, code: ${response.status} -> ${errorData.message}`
-      );
+      const err = await response.text().catch(() => "");
+      throw new Error(`Weather API Error (${response.status}): ${err || response.statusText}`);
     }
-    return await response.json();
+    const vcData = await response.json();
+
+    const cityName = vcData.resolvedAddress ? vcData.resolvedAddress.split(",")[0].trim() : (this.city || "Local");
+    const location = [{ name: cityName }];
+
+    const cc = vcData.currentConditions || (vcData.days && vcData.days[0]) || {};
+    const mainCondition = this.mapCondition(cc.icon, cc.conditions);
+
+    const data = {
+      main: {
+        temp: cc.temp ?? 25,
+        feels_like: cc.feelslike ?? cc.temp ?? 25,
+        humidity: cc.humidity ?? 50,
+      },
+      weather: [{
+        main: mainCondition,
+        description: cc.conditions || mainCondition,
+      }],
+      wind: {
+        speed: cc.windspeed ?? 0,
+      },
+    };
+
+    const forecastData = { list: [] };
+    if (Array.isArray(vcData.days)) {
+      for (const d of vcData.days.slice(0, 6)) {
+        forecastData.list.push({
+          dt_txt: `${d.datetime} 12:00:00`,
+          main: {
+            temp: d.temp,
+            temp_min: d.tempmin,
+            temp_max: d.tempmax,
+          },
+          weather: [{
+            main: this.mapCondition(d.icon, d.conditions),
+          }],
+          pop: (d.precipprob || 0) / 100,
+        });
+      }
+    }
+
+    return { data, forecastData, location };
   }
 
   async updateWeather() {
-    // this.checkAPIKey();
     this.weatherWarningMsg.style.display = "none";
-    if (!this.apiKey || !this.lat || !this.lon) {
+    const key = this.apiKey || "FLTQSEWVR77875H6UM6P65DUF";
+    if (!key) {
       this.weatherWarningMsg.textContent = this.errorMsgMissingAPI;
       this.weatherWarningMsg.style.display = "block";
       return;
     }
+
     try {
-      const location = await this.fetchLatlongGeo();
-      const data = await this.fetchCurrentWeather();
-      const forecastData = await this.fetchForecastWeather();
+      if (typeof navigator !== "undefined" && navigator.geolocation && (!this.city || this.city === "Manila,PH")) {
+        try {
+          const pos = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
+          });
+          this.lat = pos.coords.latitude;
+          this.lon = pos.coords.longitude;
+          this.city = ""; // Use exact lat/lon
+        } catch (_) {}
+      }
+
+      const { data, forecastData, location } = await this.fetchVisualCrossingWeather();
       this.displayWeather(data, forecastData, location);
     } catch (error) {
       console.error("Error fetching weather data:", error);
-      this.weatherWarningMsg.textContent = error;
+      this.weatherWarningMsg.textContent = error.message || String(error);
       this.weatherWarningMsg.style.display = "block";
-      // this.descriptionElement.textContent = "Unable to load weather data";
     }
   }
 

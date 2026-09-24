@@ -12,6 +12,7 @@ Hub is the presentation layer—not the status authority. Ascend Core stores nor
 - A data-driven Status Shelf generated from Core's `services[]` response.
 - Four states: `idle`, `working`, `stuck`, and `offline`, with textual state cues and last-seen information.
 - Four-second polling, reduced polling in hidden tabs, and visible stale/error handling.
+- A focused-TV auxiliary console with privacy-safe lifecycle details and local status-copy controls; transcripts and browser message sending are intentionally excluded.
 - Generic TV cards for unknown services, without frontend changes.
 - Reduced-motion support and non-color-only status cues.
 - Separate, instance-bound local-agent adapters with durable operation tracking.
@@ -117,6 +118,13 @@ Check that the four shelf TVs report the correct service:
 
 The dashboard refreshes about every four seconds. Offline TVs show last-seen information. The read credential must never appear in browser responses or developer tools.
 
+#### Blue-eye TV navigation
+
+- Use **WASD** or the **Arrow keys** to move the Ascend Vision eye between the four status TVs. Moving does not zoom the shelf.
+- Press **Space** to open the selected TV and its read-only auxiliary panel.
+- Click or tap a TV to open it immediately.
+- Press **Escape** or choose **Zoom Out** to return to the shelf. The previous TV remains selected.
+
 ### 6. Test Vision (optional)
 
 With Core and Hub running:
@@ -218,6 +226,7 @@ git diff --check                                 # Whitespace checks
 
 - Browser code never receives producer or Shelf read credentials.
 - Status reporters allowlist lifecycle metadata; they do not send prompts, responses, transcripts, source code, tool I/O, terminal output, or raw errors.
+- The focused-TV auxiliary console renders only allowlisted normalized Shelf fields and ignores arbitrary provider, capability, and metadata objects.
 - Concurrent operations remain `working` until the final active operation closes.
 - Antigravity child exit is a session boundary, not proof of completion. Orphaned operations become `interrupted-or-abandoned`; completed operations are preserved.
 - Core derives `offline` after heartbeat expiry. Hub shows stale snapshots explicitly when polling fails.

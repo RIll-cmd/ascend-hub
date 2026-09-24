@@ -48,3 +48,26 @@ test("scene camera caps magnification for very small TV screens", async () => {
     translateY: -454,
   });
 });
+
+test("scene camera centers the TV inside a desktop focus region reserved for the console", async () => {
+  const { getShelfSceneCameraMotion } = await import("../../components/status/shelf-tv-focus");
+  const target = { left: 300, top: 250, width: 200, height: 200 };
+  const scene = { left: 100, top: 50, width: 1200, height: 800 };
+
+  const motion = getShelfSceneCameraMotion(
+    target,
+    scene,
+    { width: 1440, height: 900 },
+    { left: 0, top: 0, width: 900, height: 900 },
+  );
+
+  const localTargetCenter = target.left + target.width / 2 - scene.left;
+  const projectedCenter = scene.left + motion.translateX + localTargetCenter * motion.scale;
+
+  assert.equal(Math.round(projectedCenter), 450);
+  assert.deepEqual(motion, {
+    scale: 3.15,
+    translateX: -595,
+    translateY: -545,
+  });
+});
