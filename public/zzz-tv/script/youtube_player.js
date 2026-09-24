@@ -3,6 +3,7 @@ export class YouTubePlayer {
     this.tvContentContainer = tvContentContainer;
     this.youtubePlayer = null;
     this.youtubePlayerReady = false;
+    this.onErrorCallback = null;
 
     this.initializeYouTubePlayer();
   }
@@ -114,6 +115,13 @@ export class YouTubePlayer {
                 console.error("An unknown error occurred.");
             }
             // Additional error handling or fallback can be added here
+            if (typeof this.onErrorCallback === "function") {
+              try {
+                this.onErrorCallback(event.data);
+              } catch (cbErr) {
+                console.error("Error in onErrorCallback:", cbErr);
+              }
+            }
           },
         },
       });

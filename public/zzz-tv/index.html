@@ -38,7 +38,54 @@
                 <button id="switch-channel"></button>
                 <button id="switch-play-state"></button>
             </div>
-            <div class="tv-container-overlay" id="tv-container-overlay"></div>
+            <div class="tv-container-overlay" id="tv-container-overlay">
+                <!-- Retro CRT YouTube Tuner HUD Trigger & Panel -->
+                <button type="button" class="crt-yt-tuner-trigger" id="crt-yt-tuner-trigger" title="Open YouTube Search & Tuner">
+                    <span class="tuner-radar-dot"></span>
+                    <span class="tuner-trigger-text">🔍 YT SEARCH</span>
+                </button>
+
+                <div class="crt-yt-tuner-panel" id="crt-yt-tuner-panel" style="display: none;" aria-hidden="true">
+                    <div class="tuner-header">
+                        <div class="tuner-title-block">
+                            <span class="tuner-radar-dot"></span>
+                            <span class="tuner-title-text">CRT BROADCAST TUNER</span>
+                            <span class="tuner-badge">CH-03 // YT</span>
+                        </div>
+                        <button type="button" class="tuner-close-btn" id="tuner-close-btn" title="Close Tuner">✕</button>
+                    </div>
+
+                    <div class="tuner-error-banner" id="tuner-error-banner" style="display: none;">
+                        ⚠️ BROADCAST OFFLINE // SELECT A WORKING STREAM:
+                    </div>
+
+                    <form class="tuner-search-form" id="tuner-search-form">
+                        <span class="tuner-prompt">&gt;</span>
+                        <input 
+                            type="text" 
+                            id="tuner-search-input" 
+                            placeholder="Search any song, artist, video or paste YT link..." 
+                            autocomplete="off"
+                            spellcheck="false"
+                        />
+                        <button type="submit" id="tuner-search-submit">TUNE</button>
+                    </form>
+
+                    <div class="tuner-pills-bar">
+                        <button type="button" class="tuner-pill" data-query="Lofi Girl radio">☕ Lofi 24/7</button>
+                        <button type="button" class="tuner-pill" data-query="Synthwave radio live">🌌 Synthwave</button>
+                        <button type="button" class="tuner-pill" data-query="Cyberpunk 2077 radio">⚡ Cyberpunk</button>
+                        <button type="button" class="tuner-pill" data-query="Zenless Zone Zero OST">🎮 ZZZ OST</button>
+                        <button type="button" class="tuner-pill" data-query="Chillhop cafe live">🌧️ Chillhop</button>
+                    </div>
+
+                    <div class="tuner-results-container" id="tuner-results-container">
+                        <div class="tuner-results-list" id="tuner-results-list">
+                            <!-- Populated dynamically with live results -->
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="tv_container" id="tv-container">
                 <img id="screen-highlight" src="resource/image/screen_hightlight.png" alt="screen-highlight">
                 <!-- <img id="vignette" src="resource/image/crt-3.png" alt="vignette"> -->
