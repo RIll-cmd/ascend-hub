@@ -32,7 +32,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     weather: { state: true, content: ["default"] },
     video: { state: true, content: ["default"] },
     image: { state: true, content: [""] },
-    youtube: { state: true, content: [] },
+    youtube: {
+      state: true,
+      content: [
+        "LIVE_jfKfPfyJRdk",
+        "LIVE_4xDzrJKXOOY",
+        "LIVE_5yx6BWlEVcY"
+      ]
+    },
     gif: { state: true, content: [""] },
     game: { state: true, content: ["bangboo_jump"] },
   };
@@ -287,6 +294,19 @@ document.addEventListener("DOMContentLoaded", async () => {
       });
       if (tvContentManager && typeof tvContentManager.setMuted === "function") {
         tvContentManager.setMuted(isMuted);
+      }
+    } else if (event.data.type === "PLAY_YOUTUBE") {
+      const { videoId, isPlaylist, isLive, title } = event.data;
+      if (videoId && tvContentManager) {
+        tvContentManager.playYouTubeDirect(videoId, Boolean(isPlaylist), Boolean(isLive), title);
+      }
+    } else if (event.data.type === "PAUSE_YOUTUBE") {
+      if (tvContentManager?.youtubePlayer) {
+        tvContentManager.youtubePlayer.pauseVideo();
+      }
+    } else if (event.data.type === "RESUME_YOUTUBE") {
+      if (tvContentManager?.youtubePlayer) {
+        tvContentManager.youtubePlayer.playVideo();
       }
     }
   });
