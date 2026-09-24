@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const redirectUri = `${request.nextUrl.origin}/api/spotify/callback`;
+  const origin = request.nextUrl.origin.replace("localhost", "127.0.0.1");
+  const redirectUri = `${origin}/api/spotify/callback`;
   const basic = Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString("base64");
 
   try {

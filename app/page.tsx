@@ -540,11 +540,11 @@ export default function Home() {
   };
 
   const copyRedirectUri = () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
+    const origin = typeof window !== "undefined" ? window.location.origin.replace("localhost", "127.0.0.1") : "http://127.0.0.1:5173";
     const uri = `${origin}/api/spotify/callback`;
     navigator.clipboard.writeText(uri).then(() => {
       setCopiedRedirect(true);
-      notify("Copied callback URL to clipboard!");
+      notify("Copied 127.0.0.1 callback URL to clipboard!");
       setTimeout(() => setCopiedRedirect(false), 2000);
     });
   };
@@ -2268,8 +2268,8 @@ export default function Home() {
                         <div className="mt-1 flex items-center gap-1.5">
                           <code className="flex-1 bg-black/60 p-1.5 rounded border border-zinc-800 text-emerald-400 font-mono text-[10px] truncate">
                             {typeof window !== "undefined"
-                              ? `${window.location.origin}/api/spotify/callback`
-                              : "http://localhost:5173/api/spotify/callback"}
+                              ? `${window.location.origin.replace("localhost", "127.0.0.1")}/api/spotify/callback`
+                              : "http://127.0.0.1:5173/api/spotify/callback"}
                           </code>
                           <button
                             type="button"

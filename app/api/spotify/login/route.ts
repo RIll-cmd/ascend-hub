@@ -12,7 +12,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/?spotify=missing_client_id", request.url));
   }
 
-  const redirectUri = `${request.nextUrl.origin}/api/spotify/callback`;
+  const origin = request.nextUrl.origin.replace("localhost", "127.0.0.1");
+  const redirectUri = `${origin}/api/spotify/callback`;
   const scope = "user-read-currently-playing user-read-playback-state";
 
   const params = new URLSearchParams({
