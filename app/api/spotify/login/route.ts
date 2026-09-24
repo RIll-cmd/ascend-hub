@@ -9,10 +9,7 @@ export async function GET(request: NextRequest) {
   const clientId = searchParams.get("client_id") || creds.clientId;
 
   if (!clientId) {
-    return NextResponse.json(
-      { error: "Missing SPOTIFY_CLIENT_ID in environment or query params" },
-      { status: 400 }
-    );
+    return NextResponse.redirect(new URL("/?spotify=missing_client_id", request.url));
   }
 
   const redirectUri = `${request.nextUrl.origin}/api/spotify/callback`;

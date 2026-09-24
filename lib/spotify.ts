@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 const TOKEN_ENDPOINT = "https://accounts.spotify.com/api/token";
@@ -16,64 +16,94 @@ export interface SpotifyPlaybackState {
   connected: boolean;
   device?: string;
   lastUpdated?: string;
+  demoMode?: boolean;
+}
+
+declare global {
+  var __spotifyTokens: {
+    clientId?: string;
+    clientSecret?: string;
+    refreshToken?: string;
+    demoMode?: boolean;
+  } | undefined;
 }
 
 export function getStoredSpotifyTokens(): {
   clientId?: string;
   clientSecret?: string;
   refreshToken?: string;
+  demoMode?: boolean;
 } {
   const envClientId = process.env.SPOTIFY_CLIENT_ID;
   const envClientSecret = process.env.SPOTIFY_CLIENT_SECRET;
   const envRefreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
 
-  if (envClientId && envClientSecret && envRefreshToken) {
-    return {
-      clientId: envClientId,
-      clientSecret: envClientSecret,
-      refreshToken: envRefreshToken,
-    };
-  }
+  const memoryTokens = globalThis.__spotifyTokens || {};
 
+  let fileTokens: Record<string, any> = {};
   try {
     const tokenFile = join(process.cwd(), ".sites-runtime", "spotify-token.json");
     if (existsSync(tokenFile)) {
-      const data = JSON.parse(readFileSync(tokenFile, "utf-8"));
-      return {
-        clientId: envClientId || data.clientId,
-        clientSecret: envClientSecret || data.clientSecret,
-        refreshToken: envRefreshToken || data.refreshToken,
-      };
+      fileTokens = JSON.parse(readFileSync(tokenFile, "utf-8"));
     }
   } catch (_) {}
 
   return {
-    clientId: envClientId,
-    clientSecret: envClientSecret,
-    refreshToken: envRefreshToken,
+    clientId: envClientId || memoryTokens.clientId || fileTokens.clientId,
+    clientSecret: envClientSecret || memoryTokens.clientSecret || fileTokens.clientSecret,
+    refreshToken: envRefreshToken || memoryTokens.refreshToken || fileTokens.refreshToken,
+    demoMode:
+      memoryTokens.demoMode !== undefined
+        ? Boolean(memoryTokens.demoMode)
+        : Boolean(fileTokens.demoMode),
   };
 }
 
 export function saveSpotifyTokens(tokens: {
   clientId?: string;
   clientSecret?: string;
-  refreshToken: string;
+  refreshToken?: string;
+  demoMode?: boolean;
 }) {
+  const current = getStoredSpotifyTokens();
+  const merged = {
+    ...current,
+    ...tokens,
+  };
+
+  globalThis.__spotifyTokens = merged;
+
+  try {
+    const dir = join(process.cwd(), ".sites-runtime");
+    if (!existsSync(dir)) {
+      try {
+        mkdirSync(dir, { recursive: true });
+      } catch (_) {}
+    }
+    const tokenFile = join(dir, "spotify-token.json");
+    writeFileSync(tokenFile, JSON.stringify(merged, null, 2), "utf-8");
+  } catch (err) {
+    // Memory store succeeded even if disk write has sandbox/permission restrictions
+  }
+  return true;
+}
+
+export function clearSpotifyTokens() {
+  globalThis.__spotifyTokens = {
+    clientId: undefined,
+    clientSecret: undefined,
+    refreshToken: undefined,
+    demoMode: false,
+  };
+
   try {
     const dir = join(process.cwd(), ".sites-runtime");
     const tokenFile = join(dir, "spotify-token.json");
-    let existing = {};
     if (existsSync(tokenFile)) {
-      try {
-        existing = JSON.parse(readFileSync(tokenFile, "utf-8"));
-      } catch (_) {}
+      writeFileSync(tokenFile, JSON.stringify({}, null, 2), "utf-8");
     }
-    writeFileSync(tokenFile, JSON.stringify({ ...existing, ...tokens }, null, 2), "utf-8");
-    return true;
-  } catch (err) {
-    console.error("Failed to save Spotify token:", err);
-    return false;
-  }
+  } catch (_) {}
+  return true;
 }
 
 export async function getSpotifyAccessToken() {
@@ -109,10 +139,30 @@ export async function getSpotifyAccessToken() {
 export async function getCurrentlyPlaying(): Promise<SpotifyPlaybackState> {
   const creds = getStoredSpotifyTokens();
   if (!creds.clientId || !creds.clientSecret || !creds.refreshToken) {
+    if (creds.demoMode) {
+      const now = Date.now();
+      const durationMs = 214000;
+      const progressMs = now % durationMs;
+      return {
+        isPlaying: true,
+        title: "Drowning in Tears (ZZZ OST)",
+        artist: "HOYO-MiX · Zenless Zone Zero",
+        album: "Zenless Zone Zero OST",
+        albumImageUrl: "https://fastcdn.hoyoverse.com/content-v2/nap/102370/0a3fab8aa62d35d4cb0013bcb90253d6_390791847830884978.png",
+        songUrl: "https://open.spotify.com",
+        progressMs,
+        durationMs,
+        connected: true,
+        device: "Zenless Zone Zero Vinyl Record",
+        lastUpdated: new Date().toISOString(),
+        demoMode: true,
+      };
+    }
+
     return {
       isPlaying: false,
       title: "Spotify Not Connected",
-      artist: "Configure SPOTIFY_CLIENT_ID & REFRESH_TOKEN",
+      artist: "Enter Client ID & Secret in Hub",
       album: "Ascend Hub",
       albumImageUrl: "",
       songUrl: "",

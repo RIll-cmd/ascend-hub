@@ -28,7 +28,13 @@ import {
   VolumeX,
   Tv,
   Disc,
-  X
+  X,
+  Check,
+  Copy,
+  ExternalLink,
+  Radio,
+  Key,
+  RefreshCw
 } from "lucide-react";
 import { synth } from "./synth";
 import { loadLayout, initialLayout, saveMedia, getMedia, type Layout, type Item } from "./storage";
@@ -372,8 +378,45 @@ export default function Home() {
     durationMs?: number;
     connected?: boolean;
     device?: string;
+    demoMode?: boolean;
   } | null>(null);
   const [spotifyModalOpen, setSpotifyModalOpen] = useState(false);
+  const [spotifyNotice, setSpotifyNotice] = useState<string | null>(null);
+  const [spotifyClientIdInput, setSpotifyClientIdInput] = useState("");
+  const [spotifyClientSecretInput, setSpotifyClientSecretInput] = useState("");
+  const [spotifySetupLoading, setSpotifySetupLoading] = useState(false);
+  const [spotifyHasCreds, setSpotifyHasCreds] = useState<{
+    hasClientId: boolean;
+    hasClientSecret: boolean;
+    demoMode: boolean;
+    clientId?: string;
+  }>({ hasClientId: false, hasClientSecret: false, demoMode: false });
+  const [copiedRedirect, setCopiedRedirect] = useState(false);
+  const [showManualInputs, setShowManualInputs] = useState(false);
+
+  const refreshSpotifyStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/spotify/currently-playing");
+      if (!res.ok) return;
+      const data = await res.json();
+      setSpotifyData(data);
+      if (zzzFrameRef.current?.contentWindow) {
+        zzzFrameRef.current.contentWindow.postMessage(
+          { type: "SPOTIFY_UPDATE", data },
+          "*"
+        );
+      }
+    } catch (_) {}
+  }, []);
+
+  const refreshSpotifySetup = useCallback(async () => {
+    try {
+      const res = await fetch("/api/spotify/setup");
+      if (!res.ok) return;
+      const data = await res.json();
+      setSpotifyHasCreds(data);
+    } catch (_) {}
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -395,12 +438,116 @@ export default function Home() {
     };
 
     poll();
+    refreshSpotifySetup();
     const interval = setInterval(poll, 3000);
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const spotifyParam = params.get("spotify");
+      const msg = params.get("message");
+      if (spotifyParam) {
+        if (spotifyParam === "missing_client_id") {
+          setSpotifyNotice(
+            "Spotify Client ID is required to use Spotify's OAuth API. You can enter your credentials below, or toggle Instant Demo Mode to test right away without an account!"
+          );
+          setSpotifyModalOpen(true);
+        } else if (spotifyParam === "error") {
+          setSpotifyNotice(`Spotify login error: ${msg || "Authentication was cancelled or failed."}`);
+          setSpotifyModalOpen(true);
+        } else if (spotifyParam === "connected") {
+          setSpotifyNotice("✓ Spotify account connected successfully! Playback is now syncing live to the CRT TV.");
+          setSpotifyModalOpen(true);
+        }
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    }
+
     return () => {
       active = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [refreshSpotifySetup]);
+
+  const handleToggleDemo = async (enable: boolean) => {
+    setSpotifySetupLoading(true);
+    try {
+      const res = await fetch("/api/spotify/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ demoMode: enable }),
+      });
+      if (res.ok) {
+        await refreshSpotifySetup();
+        await refreshSpotifyStatus();
+        notify(enable ? "⚡ Demo mode activated! Streaming Zenless Zone Zero OST to CRT TV" : "Demo mode turned off");
+      }
+    } catch (_) {
+      notify("Failed to toggle demo mode");
+    } finally {
+      setSpotifySetupLoading(false);
+    }
+  };
+
+  const handleSaveCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!spotifyClientIdInput.trim()) {
+      notify("Please enter your Spotify Client ID");
+      return;
+    }
+    setSpotifySetupLoading(true);
+    try {
+      const res = await fetch("/api/spotify/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId: spotifyClientIdInput.trim(),
+          clientSecret: spotifyClientSecretInput.trim() || undefined,
+          demoMode: false,
+        }),
+      });
+      if (res.ok) {
+        notify("Credentials saved! Redirecting to Spotify authorization...");
+        window.location.href = `/api/spotify/login?client_id=${encodeURIComponent(spotifyClientIdInput.trim())}`;
+      } else {
+        notify("Failed to save credentials");
+        setSpotifySetupLoading(false);
+      }
+    } catch (_) {
+      notify("Error saving credentials");
+      setSpotifySetupLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setSpotifySetupLoading(true);
+    try {
+      const res = await fetch("/api/spotify/setup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "disconnect" }),
+      });
+      if (res.ok) {
+        await refreshSpotifySetup();
+        await refreshSpotifyStatus();
+        notify("Spotify disconnected and tokens reset");
+      }
+    } catch (_) {
+      notify("Failed to disconnect");
+    } finally {
+      setSpotifySetupLoading(false);
+    }
+  };
+
+  const copyRedirectUri = () => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
+    const uri = `${origin}/api/spotify/callback`;
+    navigator.clipboard.writeText(uri).then(() => {
+      setCopiedRedirect(true);
+      notify("Copied callback URL to clipboard!");
+      setTimeout(() => setCopiedRedirect(false), 2000);
+    });
+  };
 
   const handleShelfOffsetChange = (val: number) => {
     setShelfOffsetY(val);
@@ -1931,36 +2078,72 @@ export default function Home() {
       )}
 
       {spotifyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="relative w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl text-zinc-100 font-mono">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl text-zinc-100 font-mono my-8 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setSpotifyModalOpen(false)}
-              className="absolute right-4 top-4 text-zinc-400 hover:text-white"
+              className="absolute right-4 top-4 text-zinc-400 hover:text-white transition p-1"
+              aria-label="Close Spotify setup modal"
             >
               <X size={18} />
             </button>
-            <div className="flex items-center gap-2 mb-4 text-emerald-400 text-sm font-semibold tracking-wider">
+
+            <div className="flex items-center gap-2 mb-1 text-emerald-400 text-sm font-semibold tracking-wider">
               <Disc size={18} className={spotifyData?.isPlaying ? "animate-spin" : ""} />
               SPOTIFY "NOW PLAYING" SYNC
             </div>
+            <p className="text-[11px] text-zinc-400 mb-4">
+              Retro CRT TV Channel 1 Vinyl Record Integration
+            </p>
+
+            {spotifyNotice && (
+              <div
+                className={`mb-4 p-3 rounded-lg border text-xs flex items-start justify-between gap-2 ${
+                  spotifyNotice.includes("✓") || spotifyNotice.includes("successfully")
+                    ? "bg-emerald-950/40 border-emerald-800/60 text-emerald-200"
+                    : "bg-amber-950/40 border-amber-800/60 text-amber-200"
+                }`}
+              >
+                <div className="flex-1 leading-relaxed">{spotifyNotice}</div>
+                <button
+                  onClick={() => setSpotifyNotice(null)}
+                  className="text-zinc-400 hover:text-white shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
 
             {spotifyData?.connected ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900/80 border border-zinc-800">
+                <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800">
                   {spotifyData.albumImageUrl ? (
                     <img
                       src={spotifyData.albumImageUrl}
                       alt={spotifyData.album || "Album cover"}
-                      className="w-14 h-14 rounded-md object-cover shadow"
+                      className="w-16 h-16 rounded-lg object-cover shadow-lg border border-zinc-700/50"
                     />
                   ) : (
-                    <div className="w-14 h-14 rounded-md bg-zinc-800 flex items-center justify-center text-zinc-500">
-                      <Disc size={24} />
+                    <div className="w-16 h-16 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-500">
+                      <Disc size={28} />
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs uppercase text-emerald-500 font-bold tracking-wider">
-                      {spotifyData.isPlaying ? "● Currently Playing" : "Paused / Idle"}
+                    <div className="flex items-center gap-2 mb-1">
+                      {spotifyData.demoMode ? (
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold tracking-wider">
+                          ⚡ DEMO STREAMING
+                        </span>
+                      ) : spotifyData.isPlaying ? (
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold tracking-wider flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                          LIVE PLAYING
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 text-[10px] font-bold tracking-wider">
+                          PAUSED / IDLE
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm font-semibold text-white truncate">
                       {spotifyData.title}
@@ -1971,55 +2154,178 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="text-xs text-zinc-400 space-y-1">
-                  <p>✓ Connected to Spotify Account</p>
-                  <p className="text-[11px] text-zinc-500">
-                    Playback is actively streaming to the retro CRT TV music channel.
+                <div className="text-xs text-zinc-400 space-y-1 bg-zinc-900/40 p-3 rounded-lg border border-zinc-800/60">
+                  <p className="text-emerald-400 font-semibold">✓ Sync Active with CRT TV</p>
+                  <p className="text-[11px] text-zinc-400 leading-normal">
+                    {spotifyData.demoMode
+                      ? "Currently demonstrating Zenless Zone Zero OST with live vinyl rotation, album artwork, and beat visualizer."
+                      : "Ascend Hub is actively reading your Spotify playback and rendering album art, marquee titles, and audio visualizer onto CRT Screen 1."}
                   </p>
                 </div>
 
-                <div className="pt-2 flex gap-2">
-                  <a
-                    href="/api/spotify/login"
-                    className="flex-1 text-center py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition"
-                  >
-                    Re-Authenticate Spotify
-                  </a>
-                  <button
-                    onClick={() => setSpotifyModalOpen(false)}
-                    className="py-2 px-4 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs transition"
-                  >
-                    Close
-                  </button>
+                <div className="pt-2 flex flex-col gap-2">
+                  {spotifyData.demoMode ? (
+                    <>
+                      <button
+                        onClick={() => setShowManualInputs((v) => !v)}
+                        className="w-full py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition"
+                      >
+                        {showManualInputs ? "Hide Spotify API Setup" : "Connect Real Spotify Account"}
+                      </button>
+                      <button
+                        onClick={() => handleToggleDemo(false)}
+                        disabled={spotifySetupLoading}
+                        className="w-full py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition"
+                      >
+                        Turn Off Demo Mode
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <a
+                          href="/api/spotify/login"
+                          className="flex-1 text-center py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition"
+                        >
+                          Re-Authenticate
+                        </a>
+                        <button
+                          onClick={handleDisconnect}
+                          disabled={spotifySetupLoading}
+                          className="py-2 px-3 rounded-lg bg-red-950/60 hover:bg-red-900 border border-red-800 text-red-200 text-xs transition"
+                        >
+                          Disconnect
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleToggleDemo(true)}
+                        disabled={spotifySetupLoading}
+                        className="w-full py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs transition"
+                      >
+                        Switch to Instant Demo Mode
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
-            ) : (
-              <div className="space-y-4 text-xs">
-                <div className="p-3 rounded-lg bg-zinc-900 border border-amber-900/50 text-amber-200/90 text-xs">
-                  <span className="font-bold text-amber-400">Status:</span> Not connected yet.
+            ) : null}
+
+            {(!spotifyData?.connected || showManualInputs) && (
+              <div className="space-y-4 pt-2">
+                {!spotifyData?.connected && (
+                  <div className="p-4 rounded-xl bg-emerald-950/20 border border-emerald-800/40 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-emerald-400 flex items-center gap-1.5">
+                        <Sparkles size={14} /> OPTION 1: INSTANT PREVIEW
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wider bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded font-bold border border-emerald-500/30">
+                        1-Click Ready
+                      </span>
+                    </div>
+                    <p className="text-zinc-300 text-[11px] leading-relaxed">
+                      Experience live spinning vinyl, album art, audio waves, and track marquee right now with Zenless Zone Zero OST without setting up API keys.
+                    </p>
+                    <button
+                      onClick={() => handleToggleDemo(true)}
+                      disabled={spotifySetupLoading}
+                      className="w-full mt-1 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow"
+                    >
+                      <Play size={13} />
+                      Launch Instant Vinyl Demo
+                    </button>
+                  </div>
+                )}
+
+                <div className="relative py-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-zinc-800" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
+                    <span className="bg-zinc-950 px-3 text-zinc-500">
+                      {spotifyData?.connected ? "Spotify Developer Credentials" : "Option 2: Connect Real Spotify Account"}
+                    </span>
+                  </div>
                 </div>
 
-                <p className="text-zinc-300">
-                  To sync live music from your PC or phone onto the CRT TV, configure your Spotify Developer App credentials:
-                </p>
+                <div className="space-y-3 text-xs">
+                  <div className="p-3 rounded-lg bg-zinc-900/60 border border-zinc-800 space-y-2 text-[11px] text-zinc-300">
+                    <p className="font-semibold text-zinc-200">Quick 2-Step Setup:</p>
+                    <ol className="list-decimal list-inside space-y-1.5 text-zinc-400">
+                      <li>
+                        Open{" "}
+                        <a
+                          href="https://developer.spotify.com/dashboard"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-emerald-400 underline inline-flex items-center gap-0.5"
+                        >
+                          Spotify Developer Dashboard <ExternalLink size={11} />
+                        </a>{" "}
+                        and create an App (or open an existing one).
+                      </li>
+                      <li>
+                        In App Settings &gt; Redirect URIs, add:
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <code className="flex-1 bg-black/60 p-1.5 rounded border border-zinc-800 text-emerald-400 font-mono text-[10px] truncate">
+                            {typeof window !== "undefined"
+                              ? `${window.location.origin}/api/spotify/callback`
+                              : "http://localhost:5173/api/spotify/callback"}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={copyRedirectUri}
+                            className="shrink-0 p-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition"
+                            title="Copy Redirect URI"
+                          >
+                            {copiedRedirect ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                          </button>
+                        </div>
+                      </li>
+                    </ol>
+                  </div>
 
-                <div className="p-3 rounded-lg bg-black/60 border border-zinc-800 font-mono text-[11px] text-zinc-300 space-y-1">
-                  <p className="text-zinc-400 font-bold">In .env.local:</p>
-                  <p>SPOTIFY_CLIENT_ID=&lt;your_client_id&gt;</p>
-                  <p>SPOTIFY_CLIENT_SECRET=&lt;your_client_secret&gt;</p>
-                  <p>SPOTIFY_REFRESH_TOKEN=&lt;optional_or_use_button&gt;</p>
-                </div>
+                  <form onSubmit={handleSaveCredentials} className="space-y-3">
+                    <div>
+                      <label className="block text-[11px] text-zinc-400 mb-1">
+                        Spotify Client ID <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Paste Client ID from Spotify Dashboard"
+                        value={spotifyClientIdInput}
+                        onChange={(e) => setSpotifyClientIdInput(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-black/60 border border-zinc-800 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
 
-                <div className="space-y-2 pt-1">
-                  <p className="text-[11px] text-zinc-400">
-                    Redirect URI for Spotify App: <code className="bg-zinc-900 px-1 py-0.5 rounded text-emerald-400">http://localhost:5173/api/spotify/callback</code>
-                  </p>
-                  <a
-                    href="/api/spotify/login"
-                    className="block text-center w-full py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition"
-                  >
-                    Connect with Spotify (OAuth)
-                  </a>
+                    <div>
+                      <label className="block text-[11px] text-zinc-400 mb-1">
+                        Spotify Client Secret <span className="text-zinc-500">(Optional if in .env.local)</span>
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Paste Client Secret"
+                        value={spotifyClientSecretInput}
+                        onChange={(e) => setSpotifyClientSecretInput(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-black/60 border border-zinc-800 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={spotifySetupLoading}
+                      className="w-full py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-medium text-xs transition flex items-center justify-center gap-2"
+                    >
+                      {spotifySetupLoading ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" /> Saving...
+                        </>
+                      ) : (
+                        "Save & Authorize with Spotify →"
+                      )}
+                    </button>
+                  </form>
                 </div>
               </div>
             )}
