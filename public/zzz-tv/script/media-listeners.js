@@ -43,6 +43,9 @@ export class MediaListeners {
 
     this.visualizerStyle = "radialBars";
 
+    this.registerEventListeners();
+    this.initSpotifyBridge();
+
     this.videoStreamingServiceMap = {
       "Disney+": {
         imagePath: "resource/brand/disney_plus.png",
@@ -436,14 +439,8 @@ export class MediaListeners {
   }
 
   checkMediaIntegration() {
-    console.log(
-      "Checking media integration...",
-      this.wallpaperSettings.mediaintegration
-    );
-    if (this.wallpaperSettings.mediaintegration) {
+    if (this.warningMessageContainer) {
       this.warningMessageContainer.style.display = "none";
-    } else {
-      this.warningMessageContainer.style.display = "block";
     }
   }
 
@@ -1174,9 +1171,105 @@ export class MediaListeners {
       "wallpaperRegisterAudioListener"
     );
   }
-  // test(event){
-  //   console.log("Test event triggered:", event);
-  // }
+
+  initSpotifyBridge() {
+    if (typeof window !== "undefined") {
+      window.addEventListener("message", (event) => {
+        if (!event.data || typeof event.data !== "object") return;
+        if (event.data.type === "SPOTIFY_UPDATE") {
+          this.handleSpotifyData(event.data.data);
+        }
+      });
+
+      this.pollSpotify();
+      setInterval(() => {
+        this.pollSpotify();
+      }, 2500);
+    }
+  }
+
+  async pollSpotify() {
+    try {
+      const res = await fetch("/api/spotify/currently-playing");
+      if (!res.ok) return;
+      const data = await res.json();
+      this.handleSpotifyData(data);
+    } catch (_) {}
+  }
+
+  handleSpotifyData(data) {
+    if (!data) return;
+    if (this.warningMessageContainer) {
+      this.warningMessageContainer.style.display = "none";
+    }
+
+    if (data.connected && data.isPlaying) {
+      if (!this.isPlaying) {
+        this.isPlaying = true;
+        this.vinylRecordImg.classList.add("spin-360");
+        this.vinylPlayIcon.style.display = "block";
+        this.vinylPauseIcon.style.display = "none";
+        this.vinylStopIcon.style.display = "none";
+        this.startUpdateLoop();
+      }
+
+      if (this.trackName !== data.title || this.artistName !== data.artist) {
+        this.trackName = data.title;
+        this.artistName = data.artist;
+        this.transitionInfoHub(data.artist, data.title);
+      }
+
+      if (data.albumImageUrl && this.albumCoverArtImage !== data.albumImageUrl) {
+        this.albumCoverArtImage = data.albumImageUrl;
+        this.albumCoverArt.style.backgroundImage = `url("${data.albumImageUrl}")`;
+        this.albumCoverArt.style.display = "block";
+      }
+
+      if (data.durationMs > 0) {
+        this.totalDuration = data.durationMs / 1000;
+        this.accurateCurrentTime = data.progressMs / 1000;
+        this.lastUpdateTime = performance.now();
+        this.updateTimelineInfo();
+      }
+
+      // Dynamic audio visualizer pulse synced to playback
+      const now = performance.now() / 1000;
+      const beat = (Math.sin(now * 3.5) + 1) / 2;
+      const synthAudioArray = Array.from({ length: 64 }, (_, i) => {
+        const wave = Math.sin(now * 5 + i * 0.4) * 0.5 + 0.5;
+        const decay = Math.exp(-i / 16);
+        return Math.min(1, Math.max(0, (beat * 0.7 + wave * 0.3) * decay));
+      });
+      this.switchVisualizer(synthAudioArray);
+    } else if (data.connected && !data.isPlaying) {
+      if (this.isPlaying) {
+        this.isPlaying = false;
+        this.stopUpdateLoop();
+        this.vinylRecordImg.classList.remove("spin-360");
+        this.vinylPlayIcon.style.display = "none";
+        this.vinylPauseIcon.style.display = "block";
+        this.vinylStopIcon.style.display = "none";
+        this.clearVisualizer();
+      }
+
+      if (data.title && data.title !== "Nothing Playing" && (this.trackName !== data.title || this.artistName !== data.artist)) {
+        this.trackName = data.title;
+        this.artistName = data.artist;
+        this.transitionInfoHub(data.artist, data.title);
+        if (data.albumImageUrl) {
+          this.albumCoverArtImage = data.albumImageUrl;
+          this.albumCoverArt.style.backgroundImage = `url("${data.albumImageUrl}")`;
+          this.albumCoverArt.style.display = "block";
+        }
+      }
+    } else if (!data.connected) {
+      if (this.trackName !== "Spotify Sync Ready") {
+        this.trackName = "Spotify Sync Ready";
+        this.transitionInfoHub("Connect in Hub Header", "Spotify Sync Ready");
+        this.clearVisualizer();
+      }
+    }
+  }
 
   simulateEvents() {
     setTimeout(() => {

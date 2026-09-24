@@ -1,0 +1,30 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getStoredSpotifyTokens } from "@/lib/spotify";
+
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const creds = getStoredSpotifyTokens();
+  const clientId = searchParams.get("client_id") || creds.clientId;
+
+  if (!clientId) {
+    return NextResponse.json(
+      { error: "Missing SPOTIFY_CLIENT_ID in environment or query params" },
+      { status: 400 }
+    );
+  }
+
+  const redirectUri = `${request.nextUrl.origin}/api/spotify/callback`;
+  const scope = "user-read-currently-playing user-read-playback-state";
+
+  const params = new URLSearchParams({
+    response_type: "code",
+    client_id: clientId,
+    scope: scope,
+    redirect_uri: redirectUri,
+    show_dialog: "true",
+  });
+
+  return NextResponse.redirect(`https://accounts.spotify.com/authorize?${params.toString()}`);
+}
