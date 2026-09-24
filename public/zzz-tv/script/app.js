@@ -42,11 +42,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     mediaintegration: false,
     isAudioVisual: true,
     musicVisualizerStyle: "gooeyWave",
-    weather_api: "xxxxxxxxxxxxxxxxxxx", //8
-    weather_latitude: 51.507351,
-    weather_longitude: -0.127758,
+    weather_api: "FLTQSEWVR77875H6UM6P65DUF",
+    weather_latitude: 14.5995,
+    weather_longitude: 120.9842,
+    weather_city: "Manila,PH",
+    weather_unit: "metric",
     object_fit: "cover",
-    // weather_city: "Taipei"
   };
 
   console.log("Wallpaper Setting:", wallpaperSettings);

@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Rnd } from "react-rnd";
@@ -49,8 +49,21 @@ import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
 import { ShelfStatusTv } from "../components/status/ShelfStatusTv";
+import { AgentAuxiliaryPanel } from "../components/status/AgentAuxiliaryPanel";
+import { VisionEyeNavigator } from "../components/status/VisionEyeNavigator";
+import { buildAgentAuxiliaryModel } from "../components/status/agent-auxiliary-model";
 import { getShelfSceneCameraMotion, type ShelfSceneCameraMotion } from "../components/status/shelf-tv-focus";
 import { getShelfTvAssignment, resolveShelfTvService, type ShelfTvAssignment } from "../components/status/shelf-tv-assignment";
+import {
+  advanceTvSignalTransition,
+  beginTvSignalTransition,
+  createTvSignalState,
+  findDirectionalVisionEyeTarget,
+  getTvSignalScreenMode,
+  getVisionEyeCommand,
+  isVisionEyeKeyboardTarget,
+  type VisionEyeTarget,
+} from "../components/status/vision-eye-navigation";
 import { findCrtConfigByCollectibleId, getCrtProfile } from "../components/crt-tv-config";
 import { useStatusShelf } from "./status/use-status-shelf";
 
@@ -340,6 +353,13 @@ export default function Home() {
     motion: ShelfSceneCameraMotion;
     open: boolean;
   } | null>(null);
+  const [tvSignalTransition, setTvSignalTransition] = useState(() =>
+    createTvSignalState("ascend-core"),
+  );
+  const selectedVisionEyeServiceId = tvSignalTransition.activeTvId;
+  const [visionEyeTargets, setVisionEyeTargets] = useState<readonly VisionEyeTarget[]>([]);
+  const [visionEyeActivating, setVisionEyeActivating] = useState(false);
+  const [cameraSceneElement, setCameraSceneElement] = useState<HTMLDivElement | null>(null);
 
   const handleShelfOffsetChange = (val: number) => {
     setShelfOffsetY(val);
@@ -415,15 +435,84 @@ export default function Home() {
 
   const stageRef = useRef<HTMLDivElement>(null);
   const cameraSceneRef = useRef<HTMLDivElement>(null);
+  const cameraControlsRef = useRef<HTMLDivElement>(null);
   const cameraExitRef = useRef<HTMLButtonElement>(null);
   const cameraTriggerRef = useRef<HTMLButtonElement>(null);
+  const visionEyeActivationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadTarget = useRef("tv");
   const urls = useRef<Record<string, string>>({});
   const notify = (s: string) => setToast(s);
   const zzzFrameRef = useRef<HTMLIFrameElement>(null);
+  const setCameraSceneNode = useCallback((node: HTMLDivElement | null) => {
+    cameraSceneRef.current = node;
+    setCameraSceneElement(node);
+  }, []);
   const cameraMounted = focusedStatusTv !== null;
+  const focusedService = focusedStatusTv
+    ? shelfStatus.current?.services.find(
+        service => service.serviceId === focusedStatusTv.assignment.serviceId,
+      ) ?? null
+    : null;
+  const focusedAgentModel = focusedStatusTv
+    ? buildAgentAuxiliaryModel({
+        assignment: focusedStatusTv.assignment,
+        service: focusedService,
+        loading: shelfStatus.loading && !shelfStatus.current,
+        error: shelfStatus.error,
+        stale: Boolean(shelfStatus.stale),
+        nowMs: shelfStatus.current ? Date.parse(shelfStatus.current.generatedAt) : 0,
+      })
+    : null;
+  const selectedVisionEyeTarget = visionEyeTargets.find(
+    target => target.serviceId === selectedVisionEyeServiceId,
+  ) ?? null;
+
+  const activateStatusTv = useCallback((
+    assignment: ShelfTvAssignment,
+    trigger: HTMLButtonElement,
+    withEyeTransition: boolean,
+  ) => {
+    const scene = cameraSceneRef.current;
+    const screen = trigger.querySelector<HTMLElement>(".shelf-status-tv__screen");
+    if (!scene || !screen || focusedStatusTv) return;
+
+    setTvSignalTransition(createTvSignalState(assignment.serviceId));
+    if (visionEyeActivationTimerRef.current) {
+      clearTimeout(visionEyeActivationTimerRef.current);
+    }
+
+    const openCamera = () => {
+      const targetBounds = screen.getBoundingClientRect();
+      const sceneBounds = scene.getBoundingClientRect();
+      const focusArea = window.innerWidth > 860
+        ? { left: 0, top: 0, width: window.innerWidth * 0.64, height: window.innerHeight }
+        : undefined;
+
+      cameraTriggerRef.current = trigger;
+      setFocusedStatusTv({
+        assignment,
+        open: true,
+        motion: getShelfSceneCameraMotion(
+          { left: targetBounds.left, top: targetBounds.top, width: targetBounds.width, height: targetBounds.height },
+          { left: sceneBounds.left, top: sceneBounds.top, width: sceneBounds.width, height: sceneBounds.height },
+          { width: window.innerWidth, height: window.innerHeight },
+          focusArea,
+        ),
+      });
+      setVisionEyeActivating(false);
+      visionEyeActivationTimerRef.current = null;
+    };
+
+    if (!withEyeTransition || reduceMotion) {
+      openCamera();
+      return;
+    }
+
+    setVisionEyeActivating(true);
+    visionEyeActivationTimerRef.current = setTimeout(openCamera, 220);
+  }, [focusedStatusTv, reduceMotion]);
 
   useEffect(() => {
     if (!cameraMounted) return;
@@ -435,8 +524,19 @@ export default function Home() {
         event.preventDefault();
         setFocusedStatusTv(current => current ? { ...current, open: false } : null);
       } else if (event.key === "Tab") {
-        event.preventDefault();
-        cameraExitRef.current?.focus();
+        const focusables = Array.from(
+          cameraControlsRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? [],
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
 
@@ -569,6 +669,101 @@ export default function Home() {
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
   }, []);
+
+  useEffect(() => () => {
+    if (visionEyeActivationTimerRef.current) {
+      clearTimeout(visionEyeActivationTimerRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tvSignalTransition.phase === "idle") return;
+    const delay = reduceMotion
+      ? 0
+      : tvSignalTransition.phase === "collapsing"
+        ? 100
+        : tvSignalTransition.phase === "traveling"
+          ? 60
+          : 140;
+    const timer = window.setTimeout(() => {
+      setTvSignalTransition(current => advanceTvSignalTransition(current));
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [reduceMotion, tvSignalTransition]);
+
+  useEffect(() => {
+    if (edit || focusedStatusTv || active || rowTemplateModalOpen || slotPickerTarget || shelfCalibratorOpen) return;
+
+    const handleVisionEyeKey = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented
+        || event.isComposing
+        || event.ctrlKey
+        || event.metaKey
+        || event.altKey
+        || visionEyeActivating
+        || tvSignalTransition.phase !== "idle"
+      ) return;
+      const targetElement = event.target instanceof Element ? event.target : null;
+      const isStatusTvTrigger = Boolean(targetElement?.closest("[data-status-service-id]"));
+      if (!isStatusTvTrigger && isVisionEyeKeyboardTarget(event.target)) return;
+
+      const command = getVisionEyeCommand(event);
+      if (!command) return;
+      const visibleTrigger = cameraSceneRef.current?.querySelector<HTMLElement>(
+        `[data-status-service-id="${selectedVisionEyeServiceId}"]`,
+      );
+      const visibleRect = visibleTrigger?.getBoundingClientRect();
+      if (!visibleRect || visibleRect.bottom <= 0 || visibleRect.top >= window.innerHeight) return;
+
+      if (command === "activate") {
+        if (event.repeat || visionEyeActivating) return;
+        const selectedTarget = visionEyeTargets.find(
+          target => target.serviceId === selectedVisionEyeServiceId,
+        );
+        const trigger = cameraSceneRef.current?.querySelector<HTMLButtonElement>(
+          `[data-status-service-id="${selectedVisionEyeServiceId}"]`,
+        );
+        if (!selectedTarget || !trigger) return;
+
+        event.preventDefault();
+        activateStatusTv({
+          channel: selectedTarget.channel,
+          serviceId: selectedTarget.serviceId,
+        }, trigger, true);
+        return;
+      }
+
+      const nextTarget = findDirectionalVisionEyeTarget(
+        selectedVisionEyeServiceId,
+        command,
+        visionEyeTargets,
+      );
+      if (!nextTarget) return;
+
+      event.preventDefault();
+      setTvSignalTransition(current => reduceMotion
+        ? createTvSignalState(nextTarget.serviceId)
+        : beginTvSignalTransition(current, nextTarget.serviceId, command));
+    };
+
+    window.addEventListener("keydown", handleVisionEyeKey);
+    return () => window.removeEventListener("keydown", handleVisionEyeKey);
+  }, [
+    activateStatusTv,
+    active,
+    rowTemplateModalOpen,
+    slotPickerTarget,
+    shelfCalibratorOpen,
+    edit,
+    focusedStatusTv,
+    selectedVisionEyeServiceId,
+    reduceMotion,
+    tvSignalTransition.phase,
+    visionEyeActivating,
+    visionEyeTargets,
+  ]);
 
   useEffect(() => {
     synth.setEnabled(sound);
@@ -1068,6 +1263,7 @@ export default function Home() {
             onClick={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
           />
           <motion.div
+            ref={cameraControlsRef}
             className="shelf-camera-controls fixed inset-0"
             role="dialog"
             aria-modal="true"
@@ -1088,13 +1284,21 @@ export default function Home() {
             >
               <X size={18} /> ZOOM OUT
             </button>
+            {focusedAgentModel ? (
+              <AgentAuxiliaryPanel
+                model={focusedAgentModel}
+                open={focusedStatusTv.open}
+                reduceMotion={Boolean(reduceMotion)}
+                onClose={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
+              />
+            ) : null}
           </motion.div>
         </>
       )}
 
       {/* Scrollable WorkOS Multi-Tier Shelves Stack (100% Uncovered & Clean) */}
       <motion.div
-        ref={cameraSceneRef}
+        ref={setCameraSceneNode}
         className={`cabinet-shell shelf-camera-scene lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`}
         id="ascend-cabinet-section"
         animate={focusedStatusTv?.open ? {
@@ -1120,6 +1324,26 @@ export default function Home() {
             <i />
           </div>
         )}
+        {!edit ? (
+          <>
+            <VisionEyeNavigator
+              sceneElement={cameraSceneElement}
+              transition={tvSignalTransition}
+              hidden={Boolean(focusedStatusTv)}
+              reduceMotion={Boolean(reduceMotion)}
+              layoutVersion={JSON.stringify(rows)}
+              onTargetsChange={setVisionEyeTargets}
+            />
+            <div className="vision-eye-controls" aria-hidden="true" style={{ visibility: focusedStatusTv ? "hidden" : "visible" }}>
+              WASD / ARROWS MOVE <span>·</span> SPACE OPEN
+            </div>
+            <p className="sr-only" aria-live={focusedStatusTv ? "off" : "polite"}>
+              {selectedVisionEyeTarget
+                ? `${selectedVisionEyeTarget.channel}, ${selectedVisionEyeTarget.serviceId.replaceAll("-", " ")} selected. Press Space to open.`
+                : "Status TV navigation loading."}
+            </p>
+          </>
+        ) : null}
         <div className="stage-viewport cabinet-wall-bg" ref={stageRef} style={{ height: dynamicStageHeight * scale }}>
           <div className="stage" style={{ transform: `scale(${scale})` }}>
             {presetMode === "reference" ? (
@@ -1206,6 +1430,9 @@ export default function Home() {
                                 const statusService = statusAssignment
                                   ? resolveShelfTvService(slot.id, shelfStatus.current?.services ?? [])
                                   : null;
+                                const statusSignalMode = statusAssignment
+                                  ? getTvSignalScreenMode(statusAssignment.serviceId, tvSignalTransition)
+                                  : "default";
                                 return (
                                   <Fragment key={slot.id}>
                                     {sIdx > 0 && (
@@ -1258,26 +1485,16 @@ export default function Home() {
                                             {statusAssignment ? (
                                               <button
                                                 type="button"
-                                                className="shelf-status-tv-trigger"
+                                                  className={`shelf-status-tv-trigger ${
+                                                   statusSignalMode !== "default"
+                                                     ? "is-vision-eye-selected"
+                                                     : ""
+                                                }`}
+                                                data-status-service-id={statusAssignment.serviceId}
+                                                data-status-channel={statusAssignment.channel}
                                                 disabled={Boolean(focusedStatusTv)}
                                                 aria-label={`Focus ${statusAssignment.channel} ${statusAssignment.serviceId.replaceAll("-", " ")} status TV`}
-                                                onClick={(event) => {
-                                                  const scene = cameraSceneRef.current;
-                                                  const screen = event.currentTarget.querySelector<HTMLElement>(".shelf-status-tv__screen");
-                                                  if (!scene || !screen) return;
-                                                  const targetBounds = screen.getBoundingClientRect();
-                                                  const sceneBounds = scene.getBoundingClientRect();
-                                                  cameraTriggerRef.current = event.currentTarget;
-                                                  setFocusedStatusTv({
-                                                    assignment: statusAssignment,
-                                                    open: true,
-                                                    motion: getShelfSceneCameraMotion(
-                                                      { left: targetBounds.left, top: targetBounds.top, width: targetBounds.width, height: targetBounds.height },
-                                                      { left: sceneBounds.left, top: sceneBounds.top, width: sceneBounds.width, height: sceneBounds.height },
-                                                      { width: window.innerWidth, height: window.innerHeight },
-                                                    ),
-                                                  });
-                                                }}
+                                                onClick={(event) => activateStatusTv(statusAssignment, event.currentTarget, false)}
                                               >
                                                 <ShelfStatusTv
                                                   assignment={statusAssignment}
@@ -1286,6 +1503,9 @@ export default function Home() {
                                                   loading={shelfStatus.loading && !shelfStatus.current}
                                                   error={shelfStatus.error}
                                                   stale={Boolean(shelfStatus.stale)}
+                                                  signalMode={statusSignalMode}
+                                                  signalDirection={tvSignalTransition.direction}
+                                                  signalActivating={visionEyeActivating && statusSignalMode === "active"}
                                                 />
                                                 <span className="shelf-status-tv-trigger__hint" aria-hidden="true">FOCUS</span>
                                               </button>

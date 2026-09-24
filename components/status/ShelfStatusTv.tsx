@@ -5,6 +5,8 @@ import type { CrtModelProfile } from "../crt-tv-config";
 import type { ShelfTvAssignment } from "./shelf-tv-assignment";
 import { getStatusPresentation, safeStatusText } from "./status-presentation";
 import { getStatusVideo } from "./status-video";
+import { VisionEyeEntity } from "./VisionEyeEntity";
+import type { TvSignalScreenMode, VisionEyeDirection } from "./vision-eye-navigation";
 
 interface ShelfStatusTvProps {
   assignment: ShelfTvAssignment;
@@ -13,6 +15,9 @@ interface ShelfStatusTvProps {
   loading: boolean;
   error: string | null;
   stale: boolean;
+  signalMode: TvSignalScreenMode;
+  signalDirection: VisionEyeDirection | null;
+  signalActivating: boolean;
 }
 
 const SERVICE_LABELS: Record<ShelfTvAssignment["serviceId"], string> = {
@@ -28,7 +33,17 @@ function lastSeenLabel(iso: string): string {
   return `SEEN ${value.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-export function ShelfStatusTv({ assignment, profile, service, loading, error, stale }: ShelfStatusTvProps) {
+export function ShelfStatusTv({
+  assignment,
+  profile,
+  service,
+  loading,
+  error,
+  stale,
+  signalMode,
+  signalDirection,
+  signalActivating,
+}: ShelfStatusTvProps) {
   const presentation = service ? getStatusPresentation(service) : null;
   const state = service?.state ?? "unavailable";
   const statusVideo = getStatusVideo(state);
@@ -71,37 +86,52 @@ export function ShelfStatusTv({ assignment, profile, service, loading, error, st
         aria-live="polite"
         aria-label={ariaLabel}
       >
-        {statusVideo ? (
-          <video
-            key={statusVideo.src}
-            className="shelf-status-tv__video"
-            src={statusVideo.src}
-            style={{ objectPosition: statusVideo.objectPosition }}
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            tabIndex={-1}
-            aria-hidden="true"
-            onLoadedMetadata={(event) => {
-              event.currentTarget.muted = true;
-              event.currentTarget.playbackRate = statusVideo.playbackRate;
-            }}
-          />
-        ) : null}
-        <div className="shelf-status-tv__signal" aria-hidden="true">
-          <div className="shelf-status-tv__heading">
-            <span><i />{assignment.channel}</span>
-            <span>{stale ? "STALE" : "LIVE"}</span>
+        <div
+          className={`shelf-status-tv__normal-content${signalMode === "default" ? "" : " is-suppressed"}`}
+          aria-hidden={signalMode !== "default"}
+        >
+          {statusVideo ? (
+            <video
+              key={statusVideo.src}
+              className="shelf-status-tv__video"
+              src={statusVideo.src}
+              style={{ objectPosition: statusVideo.objectPosition }}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              tabIndex={-1}
+              aria-hidden="true"
+              onLoadedMetadata={(event) => {
+                event.currentTarget.muted = true;
+                event.currentTarget.playbackRate = statusVideo.playbackRate;
+              }}
+            />
+          ) : null}
+          <div className="shelf-status-tv__signal" aria-hidden="true">
+            <div className="shelf-status-tv__heading">
+              <span><i />{assignment.channel}</span>
+              <span>{stale ? "STALE" : "LIVE"}</span>
+            </div>
+            <strong className="shelf-status-tv__service">{SERVICE_LABELS[assignment.serviceId]}</strong>
+            <div className="shelf-status-tv__state">
+              <b>{symbol}</b>
+              <span>{stateLabel}</span>
+            </div>
+            <span className="shelf-status-tv__detail">{detail}</span>
           </div>
-          <strong className="shelf-status-tv__service">{SERVICE_LABELS[assignment.serviceId]}</strong>
-          <div className="shelf-status-tv__state">
-            <b>{symbol}</b>
-            <span>{stateLabel}</span>
-          </div>
-          <span className="shelf-status-tv__detail">{detail}</span>
         </div>
+        {signalMode !== "default" ? (
+          <div className="shelf-status-tv__entity-layer">
+            <VisionEyeEntity
+              mode={signalMode}
+              direction={signalDirection}
+              channel={assignment.channel}
+              activating={signalActivating}
+            />
+          </div>
+        ) : null}
         <div className="crt-effects" aria-hidden="true">
           <div className="crt-scanlines" />
           <div className="crt-glass-reflection" />
