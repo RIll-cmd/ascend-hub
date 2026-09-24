@@ -507,6 +507,30 @@ export class TVContentManager {
     }
   }
 
+  async playYouTubeDirect(videoId, isPlaylist = false, isLive = false, title = "YouTube Broadcast") {
+    try {
+      console.log(`playYouTubeDirect called for videoId: ${videoId}`);
+      await this.clearContent();
+      if (!this.youtubePlayer) {
+        this.youtubePlayer = new YouTubePlayer(this.tvContentContainer);
+      }
+      this.youtubePlayer.updateYouTubePlayer(videoId, isPlaylist, isLive);
+      this.youtubePlayer.setContentFitMode(this.mediaContentFitMode);
+      if (typeof this.displayOverlay === "function") {
+        this.displayOverlay(`▶ ${title}`, 3500);
+      }
+      this.currentInputType = "youtube";
+      if (Array.isArray(this.tv_input_keys)) {
+        const ytIndex = this.tv_input_keys.indexOf("youtube");
+        if (ytIndex !== -1) {
+          this.currentInputIndex = ytIndex;
+        }
+      }
+    } catch (err) {
+      console.error("Error playing direct YouTube:", err);
+    }
+  }
+
   async clearContent() {
     console.log("Starting clearContent process...");
     try {

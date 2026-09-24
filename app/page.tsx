@@ -34,7 +34,10 @@ import {
   ExternalLink,
   Radio,
   Key,
-  RefreshCw
+  RefreshCw,
+  Search,
+  Video,
+  Film
 } from "lucide-react";
 import { synth } from "./synth";
 import { loadLayout, initialLayout, saveMedia, getMedia, type Layout, type Item } from "./storage";
@@ -394,6 +397,28 @@ export default function Home() {
   const [copiedRedirect, setCopiedRedirect] = useState(false);
   const [showManualInputs, setShowManualInputs] = useState(false);
 
+  interface YouTubeVideoResult {
+    id: string;
+    title: string;
+    author: string;
+    thumbnail: string;
+    duration: string;
+    views?: string;
+    isLive: boolean;
+  }
+
+  const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
+  const [youtubeSearchQuery, setYoutubeSearchQuery] = useState("");
+  const [youtubeSearchResults, setYoutubeSearchResults] = useState<YouTubeVideoResult[]>([]);
+  const [youtubeSearching, setYoutubeSearching] = useState(false);
+  const [currentPlayingYouTube, setCurrentPlayingYouTube] = useState<{
+    id: string;
+    title: string;
+    author?: string;
+    isLive?: boolean;
+  } | null>(null);
+  const [youtubeSearchLoaded, setYoutubeSearchLoaded] = useState(false);
+
   const refreshSpotifyStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/spotify/currently-playing");
@@ -548,6 +573,74 @@ export default function Home() {
       setTimeout(() => setCopiedRedirect(false), 2000);
     });
   };
+
+  const searchYouTube = useCallback(async (query: string) => {
+    setYoutubeSearching(true);
+    try {
+      const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setYoutubeSearchResults(data.results || []);
+        setYoutubeSearchLoaded(true);
+      }
+    } catch (_) {
+      notify("Failed to search YouTube");
+    } finally {
+      setYoutubeSearching(false);
+    }
+  }, []);
+
+  const handlePlayYouTube = (video: { id: string; title: string; author?: string; isLive?: boolean }) => {
+    if (zzzFrameRef.current?.contentWindow) {
+      zzzFrameRef.current.contentWindow.postMessage(
+        {
+          type: "PLAY_YOUTUBE",
+          videoId: video.id,
+          title: video.title,
+          isLive: Boolean(video.isLive),
+        },
+        "*"
+      );
+      setCurrentPlayingYouTube({
+        id: video.id,
+        title: video.title,
+        author: video.author,
+        isLive: video.isLive,
+      });
+      notify(`▶ Broadcasting to CRT TV: ${(video.title || "Video").slice(0, 26)}...`);
+    }
+  };
+
+  const handlePauseYouTube = () => {
+    if (zzzFrameRef.current?.contentWindow) {
+      zzzFrameRef.current.contentWindow.postMessage({ type: "PAUSE_YOUTUBE" }, "*");
+      notify("Paused YouTube TV broadcast");
+    }
+  };
+
+  const handleResumeYouTube = () => {
+    if (zzzFrameRef.current?.contentWindow) {
+      zzzFrameRef.current.contentWindow.postMessage({ type: "RESUME_YOUTUBE" }, "*");
+      notify("Resumed YouTube TV broadcast");
+    }
+  };
+
+  const handleStopYouTube = () => {
+    if (zzzFrameRef.current?.contentWindow) {
+      zzzFrameRef.current.contentWindow.postMessage({ type: "PAUSE_YOUTUBE" }, "*");
+      setCurrentPlayingYouTube(null);
+      notify("Stopped YouTube broadcast");
+    }
+  };
+
+  const YOUTUBE_PRESETS = [
+    { label: "☕ 24/7 Lofi Beats", query: "lofi hip hop radio live" },
+    { label: "🌌 Synthwave Radio", query: "synthwave radio live" },
+    { label: "🎮 Zenless Zone Zero OST", query: "zenless zone zero ost drowning in tears" },
+    { label: "⚡ Cyberpunk 2077", query: "cyberpunk 2077 radio ost" },
+    { label: "🎭 Persona 5 OST", query: "persona 5 beneath the mask" },
+    { label: "☕ Chillhop Cafe", query: "chillhop cafe beats live" },
+  ];
 
   const handleShelfOffsetChange = (val: number) => {
     setShelfOffsetY(val);
@@ -1403,6 +1496,18 @@ export default function Home() {
           >
             <Disc size={11} className={spotifyData?.isPlaying ? "animate-spin" : ""} />
             {spotifyData?.isPlaying ? `SPOTIFY: ${(spotifyData.title || "").slice(0, 14)}` : (spotifyData?.connected ? "SPOTIFY IDLE" : "SPOTIFY SYNC")}
+          </button>
+          <button
+            className={`view-switch ${currentPlayingYouTube ? "youtube-playing" : ""}`}
+            onClick={() => {
+              setYoutubeModalOpen(true);
+              if (!youtubeSearchLoaded) searchYouTube("");
+            }}
+            title={currentPlayingYouTube ? `YouTube: ${currentPlayingYouTube.title}` : "Search & Broadcast YouTube on CRT TV"}
+            style={currentPlayingYouTube ? { borderColor: "rgba(239, 68, 68, 0.7)", color: "#f87171" } : undefined}
+          >
+            <Video size={11} className={currentPlayingYouTube ? "animate-pulse" : ""} />
+            {currentPlayingYouTube ? `YT: ${(currentPlayingYouTube.title || "").slice(0, 14)}` : "YOUTUBE CRT"}
           </button>
         </div>
         <button className="sound-switch" onClick={() => { setSound(v => !v); if (!sound) synth.unlock(); }} aria-pressed={sound}>
@@ -2329,6 +2434,210 @@ export default function Home() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {youtubeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-2xl border border-red-950/80 bg-zinc-950 p-6 shadow-2xl text-zinc-100 font-mono my-8 max-h-[90vh] flex flex-col">
+            <button
+              onClick={() => setYoutubeModalOpen(false)}
+              className="absolute right-4 top-4 text-zinc-400 hover:text-white transition p-1"
+              aria-label="Close YouTube studio modal"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-1 text-red-400 text-sm font-semibold tracking-wider">
+              <Video size={18} className={currentPlayingYouTube ? "animate-pulse" : ""} />
+              YOUTUBE CRT BROADCAST STUDIO
+            </div>
+            <p className="text-[11px] text-zinc-400 mb-4">
+              Search any song, artist, album, MV, or paste any YouTube URL to stream directly into the CRT TV.
+            </p>
+
+            {/* Active On-Air Bar */}
+            {currentPlayingYouTube && (
+              <div className="mb-4 p-3 rounded-xl bg-red-950/30 border border-red-800/60 flex items-center justify-between gap-3 text-xs">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-bold tracking-wider flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-ping" />
+                      ON AIR ON CRT TV
+                    </span>
+                    {currentPlayingYouTube.isLive && (
+                      <span className="px-1.5 py-0.5 rounded bg-red-600 text-white text-[9px] font-bold">
+                        LIVE
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm font-semibold text-white truncate">
+                    {currentPlayingYouTube.title}
+                  </div>
+                  {currentPlayingYouTube.author && (
+                    <div className="text-[11px] text-zinc-400 truncate">
+                      {currentPlayingYouTube.author}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={handleResumeYouTube}
+                    className="p-2 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition"
+                    title="Play"
+                  >
+                    <Play size={14} />
+                  </button>
+                  <button
+                    onClick={handlePauseYouTube}
+                    className="p-2 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition"
+                    title="Pause"
+                  >
+                    <Pause size={14} />
+                  </button>
+                  <button
+                    onClick={handleStopYouTube}
+                    className="p-2 rounded bg-red-950 hover:bg-red-900 border border-red-800 text-red-200 text-xs transition px-2.5"
+                    title="Stop Broadcast"
+                  >
+                    Stop
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Search Input Bar */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                searchYouTube(youtubeSearchQuery);
+              }}
+              className="flex gap-2 mb-3"
+            >
+              <div className="relative flex-1">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search song, artist, album, or paste YouTube link..."
+                  value={youtubeSearchQuery}
+                  onChange={(e) => setYoutubeSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-black/70 border border-zinc-800 text-white font-mono text-xs focus:outline-none focus:border-red-500 placeholder:text-zinc-600"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={youtubeSearching}
+                className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold text-xs transition flex items-center gap-1.5 shrink-0 shadow-lg shadow-red-950/50"
+              >
+                {youtubeSearching ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <Search size={14} />
+                )}
+                Search
+              </button>
+            </form>
+
+            {/* Direct Link Detection Banner */}
+            {/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|live\/))([a-zA-Z0-9_-]{11})/.test(youtubeSearchQuery) && (
+              <div className="mb-3 p-2.5 rounded-lg bg-red-950/40 border border-red-700/60 flex items-center justify-between gap-2 text-xs">
+                <span className="text-red-300 text-[11px] truncate">
+                  ⚡ Direct YouTube URL detected in input!
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    searchYouTube(youtubeSearchQuery);
+                  }}
+                  className="shrink-0 px-3 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-[11px] font-bold transition"
+                >
+                  Broadcast Now →
+                </button>
+              </div>
+            )}
+
+            {/* Quick Preset Chips */}
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {YOUTUBE_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => {
+                    setYoutubeSearchQuery(preset.query);
+                    searchYouTube(preset.query);
+                  }}
+                  className="px-2.5 py-1 rounded-full bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-800 text-[10.5px] text-zinc-300 hover:text-white transition flex items-center gap-1"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Results Grid */}
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar min-h-[260px] max-h-[420px]">
+              {youtubeSearching ? (
+                <div className="flex flex-col items-center justify-center py-16 text-zinc-500 gap-2">
+                  <RefreshCw size={24} className="animate-spin text-red-500" />
+                  <span className="text-xs">Scanning YouTube frequency...</span>
+                </div>
+              ) : youtubeSearchResults.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {youtubeSearchResults.map((video) => {
+                    const isCurrent = currentPlayingYouTube?.id === video.id;
+                    return (
+                      <div
+                        key={video.id}
+                        onClick={() => handlePlayYouTube(video)}
+                        className={`group relative flex gap-3 p-2.5 rounded-xl border cursor-pointer transition ${
+                          isCurrent
+                            ? "bg-red-950/40 border-red-700/80 shadow-md shadow-red-950/50"
+                            : "bg-zinc-900/50 border-zinc-800/80 hover:bg-zinc-900 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="relative w-24 h-16 shrink-0 rounded-lg overflow-hidden bg-black/60 border border-zinc-800">
+                          <img
+                            src={video.thumbnail}
+                            alt={video.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                          />
+                          <span
+                            className={`absolute bottom-1 right-1 px-1 py-0.2 rounded text-[9px] font-bold ${
+                              video.isLive
+                                ? "bg-red-600 text-white"
+                                : "bg-black/80 text-zinc-300"
+                            }`}
+                          >
+                            {video.duration}
+                          </span>
+                        </div>
+                        <div className="min-w-0 flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="text-xs font-semibold text-white line-clamp-2 leading-tight group-hover:text-red-300 transition">
+                              {video.title}
+                            </div>
+                            <div className="text-[11px] text-zinc-400 truncate mt-1">
+                              {video.author}
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-zinc-500 mt-1">
+                            <span>{video.views ? `${video.views}` : ""}</span>
+                            <span className="text-red-400 group-hover:translate-x-0.5 transition font-semibold flex items-center gap-0.5">
+                              {isCurrent ? "Playing ●" : "Tune in →"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-zinc-500 text-xs">
+                  No broadcast streams found. Try searching for a track, artist, or pasting a YouTube link.
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
