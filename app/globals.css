@@ -5891,4 +5891,219 @@ html {
 }
 @media (max-width: 650px) { .status-shelf { width: min(100% - 20px, 1160px); padding: 14px; } .status-shelf__header { align-items: start; flex-direction: column; } .status-shelf__feed { max-width: none; text-align: left; } }
 
+/* ==========================================================================
+   WORKOS RETRO BROWSER MODAL (SPRING 2026 LAUNCH WEEK EXPERIENCE)
+   ========================================================================== */
+.launch-retro-browser {
+  width: min(1080px, calc(100vw - 32px));
+  height: min(720px, calc(100vh - 64px));
+  max-width: 100vw;
+  max-height: 100vh;
+  border-radius: 13px;
+  background: linear-gradient(rgba(66, 53, 42, 0.96), rgba(22, 17, 14, 0.98)), #16110e;
+  border: 1px solid rgba(255, 217, 170, 0.36);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.72), 0 0 0 5px rgba(255, 143, 71, 0.08), 0 0 0 6px rgba(0, 0, 0, 0.34);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.launch-retro-browser__chrome {
+  height: 44px;
+  background: linear-gradient(rgba(113, 83, 56, 0.88), rgba(45, 34, 27, 0.96)), #3a2b22;
+  border-bottom: 1px solid rgba(255, 165, 94, 0.18);
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 12px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.launch-retro-browser__lights {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-left: 2px;
+}
+
+.launch-retro-browser__traffic-control {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  border: 0.8px solid rgba(0, 0, 0, 0.45);
+  display: inline-block;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+.launch-retro-browser__traffic-control:hover {
+  filter: brightness(1.2);
+  transform: scale(1.08);
+}
+
+.launch-retro-browser__traffic-control--close {
+  background: #ff7a45;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 10px rgba(255, 122, 69, 0.48);
+}
+
+.launch-retro-browser__traffic-control--minimize {
+  background: #ffd37a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 0 8px rgba(255, 211, 122, 0.35);
+}
+
+.launch-retro-browser__traffic-control--external {
+  background: #87d37c;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), 0 0 8px rgba(135, 211, 124, 0.35);
+}
+
+.launch-retro-browser__address {
+  flex: 1;
+  max-width: 680px;
+  height: 28px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0px, rgba(255, 255, 255, 0.035) 1px, transparent 1px, transparent 3px), rgba(8, 7, 6, 0.72);
+  border: 0.8px solid rgba(255, 213, 153, 0.24);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  gap: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.launch-retro-browser__action-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 217, 170, 0.2);
+  color: #eed6c0;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.launch-retro-browser__action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 217, 170, 0.4);
+}
+
+.launch-retro-browser__mobile-close {
+  background: transparent;
+  border: none;
+  color: #eed6c0;
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.launch-retro-browser__mobile-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.launch-retro-browser__viewport {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background: #090807;
+  position: relative;
+  overflow: hidden;
+}
+
+.launch-retro-browser__iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #000;
+  display: block;
+}
+
+.launch-retro-browser__scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  opacity: 0.4;
+  z-index: 5;
+}
+
+/* Shelf CD Player Trigger styling */
+.cubby-cd-player-trigger {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cubby-cd-player-trigger:focus-visible {
+  outline: 2px solid rgba(255, 217, 170, 0.8);
+  outline-offset: 4px;
+}
+
+.cubby-cd-player-trigger .cubby-prop {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.cubby-cd-player-trigger__badge {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: rgba(14, 10, 8, 0.92);
+  border: 1px solid rgba(255, 177, 122, 0.5);
+  color: #ffe3c6;
+  font-family: var(--mono), monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8), 0 0 10px rgba(255, 143, 71, 0.25);
+  z-index: 10;
+}
+
+.cubby-cd-player-trigger:hover .cubby-cd-player-trigger__badge {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.cubby-cd-player-trigger:hover img {
+  filter: drop-shadow(0 0 12px rgba(255, 160, 90, 0.35));
+}
+
 
