@@ -1,19 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ExternalLink, X, RefreshCw } from "lucide-react";
+import { X, RefreshCw } from "lucide-react";
 import { RetroCdPlayerExperience } from "./RetroCdPlayerExperience";
 
 interface RetroCdBrowserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialUrl?: string;
 }
 
 export function RetroCdBrowserModal({
   open,
   onOpenChange,
-  initialUrl = "https://workos.com/launch-week/spring-2026#day-1",
 }: RetroCdBrowserModalProps) {
   const [mounted, setMounted] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
@@ -71,47 +69,36 @@ export function RetroCdBrowserModal({
               title="Reload"
               className="launch-retro-browser__traffic-control launch-retro-browser__traffic-control--minimize cursor-pointer"
             />
-            <a
-              href={initialUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Open in a new tab"
-              title="Open in new tab"
-              className="launch-retro-browser__traffic-control launch-retro-browser__traffic-control--external"
+            <button
+              type="button"
+              aria-label="Player status: Ready"
+              title="Status: Ready"
+              className="launch-retro-browser__traffic-control launch-retro-browser__traffic-control--external cursor-default"
             />
           </div>
 
-          <div className="launch-retro-browser__address font-mono">
-            <span className="text-[#a58668] select-none" aria-hidden="true">http://</span>
-            <span className="text-[#f5e6d3] font-semibold tracking-wider truncate">workos.com/launch-week/spring-2026#day-1</span>
+          <div className="launch-retro-browser__address font-mono flex items-center justify-center">
+            <span className="text-[#f5e6d3] font-semibold tracking-widest text-[11px] uppercase select-none">
+              COMPACT DISC PLAYER · STEREO AUDIO SYSTEM
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5 ml-auto">
             <button
               type="button"
               onClick={handleRefresh}
-              aria-label="Refresh view"
-              title="Refresh page"
+              aria-label="Reload player"
+              title="Reload player"
               className="launch-retro-browser__action-btn"
             >
               <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
             </button>
-            <a
-              href={initialUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Open in new tab"
-              title="Open external window"
-              className="launch-retro-browser__action-btn"
-            >
-              <ExternalLink size={13} />
-            </a>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
               aria-label="Close"
               title="Close window"
-              className="launch-retro-browser__mobile-close font-mono"
+              className="launch-retro-browser__action-btn"
             >
               <X size={15} />
             </button>
