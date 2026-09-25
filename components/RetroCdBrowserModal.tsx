@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ExternalLink, X, RefreshCw } from "lucide-react";
+import { RetroCdPlayerExperience } from "./RetroCdPlayerExperience";
 
 interface RetroCdBrowserModalProps {
   open: boolean;
@@ -118,27 +119,7 @@ export function RetroCdBrowserModal({
         </div>
 
         <div className="launch-retro-browser__viewport relative">
-          {isLoading && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-[#0d0a08]/90 text-[#e99f6d]">
-              <div className="relative mb-3 flex items-center justify-center">
-                <div className="size-8 rounded-full border-2 border-[#e99f6d]/30 border-t-[#e99f6d] animate-spin" />
-              </div>
-              <span className="font-mono text-xs uppercase tracking-widest text-[#d8c3b0]">
-                ACCESSING COMPACT DISC ARCHIVE...
-              </span>
-            </div>
-          )}
-
-          <iframe
-            key={iframeKey}
-            src={initialUrl}
-            title="WorkOS Spring 2026 Launch Week"
-            allow="clipboard-write; encrypted-media; fullscreen; payment; web-share"
-            referrerPolicy="strict-origin-when-cross-origin"
-            className="launch-retro-browser__iframe"
-            onLoad={() => setIsLoading(false)}
-          />
-
+          <RetroCdPlayerExperience key={iframeKey} />
           <div className="launch-retro-browser__scanlines pointer-events-none" aria-hidden="true" />
         </div>
       </div>
