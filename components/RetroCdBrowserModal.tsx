@@ -53,54 +53,46 @@ export function RetroCdBrowserModal({
       aria-label="Launch Week Spring 2026 — CD Player Experience"
     >
       <div className="launch-retro-browser focus:outline-none animate-in zoom-in-95 duration-200">
-        <div className="launch-retro-browser__chrome">
-          <div className="launch-retro-browser__lights">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close browser window"
-              title="Close"
-              className="launch-retro-browser__traffic-control launch-retro-browser__traffic-control--close cursor-pointer"
-            />
+        <div className="ascend-cd-deck__header">
+          <div className="ascend-cd-deck__leds">
+            <div className="ascend-cd-deck__led" title="System Power: Active">
+              <span className="ascend-cd-deck__led-dot ascend-cd-deck__led-dot--pwr" />
+              <span className="hidden sm:inline">PWR</span>
+            </div>
+            <div className="ascend-cd-deck__led" title="Laser Servo: Locked">
+              <span className="ascend-cd-deck__led-dot ascend-cd-deck__led-dot--laser" />
+              <span className="hidden sm:inline">SERVO</span>
+            </div>
+            <div className="ascend-cd-deck__led" title="Optical Pickup: Ready">
+              <span className="ascend-cd-deck__led-dot ascend-cd-deck__led-dot--opt" />
+              <span className="hidden sm:inline">OPTICAL</span>
+            </div>
+          </div>
+
+          <div className="ascend-cd-deck__vfd">
+            <span>ASCEND OS // CD-DA TRANSPORT // 44.1kHz 16-BIT LINEAR PCM</span>
+          </div>
+
+          <div className="flex items-center gap-2 ml-auto">
             <button
               type="button"
               onClick={handleRefresh}
-              aria-label="Reload browser view"
-              title="Reload"
-              className="launch-retro-browser__traffic-control launch-retro-browser__traffic-control--minimize cursor-pointer"
-            />
-            <button
-              type="button"
-              aria-label="Player status: Ready"
-              title="Status: Ready"
-              className="launch-retro-browser__traffic-control launch-retro-browser__traffic-control--external cursor-default"
-            />
-          </div>
-
-          <div className="launch-retro-browser__address font-mono flex items-center justify-center">
-            <span className="text-[#f5e6d3] font-semibold tracking-widest text-[11px] uppercase select-none">
-              COMPACT DISC PLAYER · STEREO AUDIO SYSTEM
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 ml-auto">
-            <button
-              type="button"
-              onClick={handleRefresh}
-              aria-label="Reload player"
-              title="Reload player"
-              className="launch-retro-browser__action-btn"
+              aria-label="Reset audio player"
+              title="Reset player"
+              className="ascend-cd-deck__btn"
             >
-              <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+              <RefreshCw size={11} className={isLoading ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">RESET</span>
             </button>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              aria-label="Close"
-              title="Close window"
-              className="launch-retro-browser__action-btn"
+              aria-label="Eject / Close Deck"
+              title="Close deck"
+              className="ascend-cd-deck__btn"
             >
-              <X size={15} />
+              <X size={12} />
+              <span className="hidden sm:inline">EJECT</span>
             </button>
           </div>
         </div>
