@@ -15,6 +15,8 @@ import {
   Check,
   X,
   Disc3,
+  SkipBack,
+  SkipForward,
 } from "lucide-react";
 
 interface CdAlbumState {
@@ -22,16 +24,14 @@ interface CdAlbumState {
   artistSubtitle: string;
   coverUrl: string;
   audioUrl: string | null;
-  useProceduralSynth: boolean;
   volume: number;
 }
 
 const DEFAULT_ALBUM_STATE: CdAlbumState = {
-  albumTitle: "multiple apps",
-  artistSubtitle: "RUN ON WEB, MOBILE, AND DESKTOP WITH SEPARATE SESSIONS ACROSS USERS.",
+  albumTitle: "ASCEND SOUND ARCHIVE",
+  artistSubtitle: "CONTINUOUS PROGRESSION · ANALOG AUDIO DIVISION",
   coverUrl: "/retro-cd/cover-multiple-apps.webp",
   audioUrl: null,
-  useProceduralSynth: true,
   volume: 0.7,
 };
 
@@ -47,6 +47,10 @@ export function RetroCdPlayerExperience() {
   const [imageUploadLoading, setImageUploadLoading] = useState(false);
   const [audioUploadName, setAudioUploadName] = useState<string | null>(null);
 
+  // VU Meter state (Left and Right levels: 0 to 12)
+  const [vuLeft, setVuLeft] = useState(0);
+  const [vuRight, setVuRight] = useState(0);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const synthNodesRef = useRef<{
@@ -58,7 +62,7 @@ export function RetroCdPlayerExperience() {
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
 
-  // Load persisted state on client mount
+  // Load saved state on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -71,11 +75,10 @@ export function RetroCdPlayerExperience() {
         }));
       }
     } catch {
-      // fallback to default
+      // fallback
     }
   }, []);
 
-  // Save changes to localStorage
   const saveAlbumState = useCallback((updates: Partial<CdAlbumState>) => {
     setAlbumState(prev => {
       const next = { ...prev, ...updates };
@@ -85,20 +88,17 @@ export function RetroCdPlayerExperience() {
           JSON.stringify({
             albumTitle: next.albumTitle,
             artistSubtitle: next.artistSubtitle,
-            coverUrl: next.coverUrl.startsWith("data:") ? next.coverUrl : next.coverUrl,
+            coverUrl: next.coverUrl,
             audioUrl: next.audioUrl?.startsWith("blob:") ? null : next.audioUrl,
-            useProceduralSynth: next.useProceduralSynth,
             volume: next.volume,
           })
         );
-      } catch {
-        // quota exceeded or private mode
-      }
+      } catch {}
       return next;
     });
   }, []);
 
-  // Web Audio Procedural Lo-Fi Synth
+  // Web Audio Synth Engine
   const stopProceduralSynth = useCallback(() => {
     if (synthNodesRef.current.timer) {
       window.clearInterval(synthNodesRef.current.timer);
@@ -135,17 +135,16 @@ export function RetroCdPlayerExperience() {
     master.gain.setValueAtTime(0, ctx.currentTime);
     master.gain.setTargetAtTime(isMuted ? 0 : albumState.volume * 0.22, ctx.currentTime, 0.3);
 
-    // Warm filter for analog tape feel
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.setValueAtTime(750, ctx.currentTime);
-    filter.Q.setValueAtTime(2.5, ctx.currentTime);
+    filter.frequency.setValueAtTime(780, ctx.currentTime);
+    filter.Q.setValueAtTime(2.2, ctx.currentTime);
 
     master.connect(filter);
     filter.connect(ctx.destination);
     synthNodesRef.current.masterGain = master;
 
-    // Vintage Neo-Soul / Lo-Fi Chord progressions
+    // Neo-Soul ambient synth chords
     const chords = [
       [146.83, 174.61, 220.0, 261.63, 329.63],
       [98.0, 174.61, 246.94, 329.63],
@@ -189,7 +188,6 @@ export function RetroCdPlayerExperience() {
     }, 3200);
   }, [albumState.volume, isMuted, stopProceduralSynth]);
 
-  // Master Play / Pause toggle
   const togglePlay = useCallback(() => {
     if (isPlaying) {
       setIsPlaying(false);
@@ -197,6 +195,8 @@ export function RetroCdPlayerExperience() {
         audioRef.current.pause();
       }
       stopProceduralSynth();
+      setVuLeft(0);
+      setVuRight(0);
     } else {
       setIsPlaying(true);
       if (albumState.audioUrl && audioRef.current) {
@@ -209,20 +209,34 @@ export function RetroCdPlayerExperience() {
     }
   }, [isPlaying, albumState.audioUrl, stopProceduralSynth, startProceduralSynth]);
 
-  // Continuous CD Rotation while playing
+  // Optical Disc Spin & VU Meters Animation Loop
   useEffect(() => {
     if (!isPlaying) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       lastTimeRef.current = null;
+      setVuLeft(0);
+      setVuRight(0);
       return;
     }
 
+    let vuTick = 0;
     const animate = (timestamp: number) => {
       if (lastTimeRef.current != null) {
         const delta = timestamp - lastTimeRef.current;
         setRotationDeg(prev => (prev + delta * 0.36) % 360);
       }
       lastTimeRef.current = timestamp;
+
+      // Realistic bouncing VU meters
+      vuTick++;
+      if (vuTick % 4 === 0) {
+        const base = Math.sin(timestamp * 0.005) * 2 + 7;
+        const jitterL = Math.floor(Math.random() * 4);
+        const jitterR = Math.floor(Math.random() * 4);
+        setVuLeft(Math.min(12, Math.max(2, Math.floor(base + jitterL))));
+        setVuRight(Math.min(12, Math.max(2, Math.floor(base + jitterR))));
+      }
+
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
@@ -232,7 +246,6 @@ export function RetroCdPlayerExperience() {
     };
   }, [isPlaying]);
 
-  // Handle master volume adjustments
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : albumState.volume;
@@ -246,7 +259,6 @@ export function RetroCdPlayerExperience() {
     }
   }, [albumState.volume, isMuted]);
 
-  // Clean up Web Audio on unmount
   useEffect(() => {
     return () => {
       stopProceduralSynth();
@@ -258,7 +270,6 @@ export function RetroCdPlayerExperience() {
     };
   }, [stopProceduralSynth]);
 
-  // Handle Cover Art Upload
   const handleCoverUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -275,7 +286,6 @@ export function RetroCdPlayerExperience() {
     reader.readAsDataURL(file);
   };
 
-  // Handle Audio File Upload
   const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -284,8 +294,7 @@ export function RetroCdPlayerExperience() {
     setAudioUploadName(file.name);
     saveAlbumState({
       audioUrl: objectUrl,
-      useProceduralSynth: false,
-      albumTitle: file.name.replace(/\.[^/.]+$/, ""),
+      albumTitle: file.name.replace(/\.[^/.]+$/, "").toUpperCase(),
     });
 
     if (isPlaying) {
@@ -299,7 +308,6 @@ export function RetroCdPlayerExperience() {
     }
   };
 
-  // Reset to default
   const handleResetDefaults = () => {
     stopProceduralSynth();
     if (audioRef.current) {
@@ -313,7 +321,6 @@ export function RetroCdPlayerExperience() {
     } catch {}
   };
 
-  // Format MM:SS for LCD
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -321,8 +328,7 @@ export function RetroCdPlayerExperience() {
   };
 
   return (
-    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden select-none bg-[#07131d]">
-      {/* Hidden audio element for custom tracks */}
+    <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden select-none bg-[#0e0a08]">
       {albumState.audioUrl && (
         <audio
           ref={audioRef}
@@ -337,24 +343,41 @@ export function RetroCdPlayerExperience() {
         />
       )}
 
-      {/* Blueprint Grid Background */}
+      {/* Ascend OS Acoustic Studio Background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <img
-          src="/retro-cd/bg-multiple-apps.webp"
-          alt="Blueprint Stage Background"
-          className="h-full w-full object-cover"
+        {/* Dark Walnut Acoustic Slats / Texture */}
+        <div
+          className="absolute inset-0 opacity-70"
+          style={{
+            backgroundColor: "#110b08",
+            backgroundImage: `
+              radial-gradient(ellipse 900px 500px at 50% 15%, rgba(255, 143, 71, 0.16) 0%, rgba(10, 6, 4, 0.95) 100%),
+              repeating-linear-gradient(90deg, rgba(30, 20, 15, 0.6) 0px, rgba(30, 20, 15, 0.6) 18px, rgba(14, 9, 6, 0.95) 18px, rgba(14, 9, 6, 0.95) 20px)
+            `,
+          }}
         />
-        {/* Paper Texture Overlay with blend mode */}
-        <img
-          src="/retro-cd/paper-texture.webp"
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover opacity-80 mix-blend-hard-light pointer-events-none"
+
+        {/* Overhead Spot Light Cone */}
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[720px] h-[480px] pointer-events-none opacity-40 blur-3xl"
+          style={{
+            background: "radial-gradient(circle, rgba(255, 153, 85, 0.25) 0%, transparent 70%)",
+          }}
+        />
+
+        {/* Fine Acoustic Grain */}
+        <div
+          className="absolute inset-0 opacity-30 mix-blend-overlay"
+          style={{
+            backgroundImage:
+              "repeating-radial-gradient(circle at 50% 50%, transparent 0, rgba(0,0,0,0.4) 1px, transparent 2px)",
+            backgroundSize: "4px 4px",
+          }}
         />
       </div>
 
-      {/* 3D Jewel Case and Disc Stage (Perfect WorkOS Proportions) */}
-      <div className="relative z-10 flex h-full w-full items-center justify-center -translate-y-4">
+      {/* 3D Jewel Case and Holographic Disc Stage */}
+      <div className="relative z-10 flex h-full w-full items-center justify-center -translate-y-6">
         <div
           className="relative flex items-center justify-center"
           style={{ width: "320px", height: "300px" }}
@@ -379,96 +402,146 @@ export function RetroCdPlayerExperience() {
                 transform: "translateX(-155px) rotate(-5deg)",
               }}
             >
-              {/* Left Spine with authentic molded ridges */}
+              {/* Left Spine with machined ridges */}
               <div
                 className="relative z-0"
                 style={{
                   width: "48px",
                   height: "523px",
                   background:
-                    "linear-gradient(90deg, #545454 0%, #3e3e3e 10%, #343434 50%, #242424 100%)",
+                    "linear-gradient(90deg, #44372e 0%, #2f251e 15%, #241c16 50%, #16100c 100%)",
                   boxShadow:
-                    "inset -2px 0px 5px 0px rgba(0, 0, 0, 0.5), -10px 20px 50px 0px rgba(0, 0, 0, 0.3)",
+                    "inset -2px 0px 5px 0px rgba(0, 0, 0, 0.6), -10px 20px 50px 0px rgba(0, 0, 0, 0.5)",
                 }}
               >
                 <div
                   className="w-full h-full"
                   style={{
                     backgroundImage:
-                      "repeating-linear-gradient(90deg, transparent 0px, transparent 2px, rgba(0, 0, 0, 0.8) 2px, rgba(0, 0, 0, 0.8) 4px)",
+                      "repeating-linear-gradient(90deg, transparent 0px, transparent 2px, rgba(0, 0, 0, 0.85) 2px, rgba(0, 0, 0, 0.85) 4px)",
                   }}
                 />
-                <div className="absolute inset-y-0 left-0 w-[2px] bg-white/10" />
-                <div className="absolute inset-y-0 right-0 w-[1px] bg-black/80" />
+                <div className="absolute inset-y-0 left-0 w-[2px] bg-amber-500/20" />
+                <div className="absolute inset-y-0 right-0 w-[1px] bg-black/90" />
               </div>
 
-              {/* Tray Background */}
+              {/* Charcoal Audio Tray */}
               <div
                 className="absolute top-[6px] right-[2px] bottom-[6px] left-[48px] z-0 overflow-hidden rounded-[3px]"
                 style={{
-                  background: "#1a1a1a",
+                  background: "#14100d",
                   boxShadow:
-                    "inset 0px 0px 20px 0px rgba(0, 0, 0, 0.8), 0px 20px 50px 0px rgba(0, 0, 0, 0.5)",
+                    "inset 0px 0px 24px 0px rgba(0, 0, 0, 0.9), 0px 20px 50px 0px rgba(0, 0, 0, 0.6)",
                 }}
               >
-                <div className="absolute inset-0 border-[6px] border-[#0a0a0a]" />
-                <div className="absolute inset-[6px] rounded-r-[2px] border border-[#222]" />
+                <div className="absolute inset-0 border-[6px] border-[#0a0705]" />
+                <div className="absolute inset-[6px] rounded-r-[2px] border border-[#221812]" />
 
-                {/* Circular Indentation for CD */}
-                <div className="absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#222]" />
+                {/* Circular CD Bed Indentation */}
+                <div className="absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#2b1f18]" />
 
-                {/* Plastic Tray Locking Tabs */}
-                <div className="absolute top-0 right-[20%] h-[8px] w-[40px] bg-[#111] border-x border-b border-[#2a2a2a] rounded-b-[2px]" />
-                <div className="absolute right-[20%] bottom-0 h-[8px] w-[40px] bg-[#111] border-x border-t border-[#2a2a2a] rounded-t-[2px]" />
-                <div className="absolute top-1/2 right-0 h-[40px] w-[8px] -translate-y-1/2 bg-[#111] border-y border-l border-[#2a2a2a] rounded-l-[2px]" />
+                {/* Tray Locking Tabs */}
+                <div className="absolute top-0 right-[20%] h-[8px] w-[40px] bg-[#0c0907] border-x border-b border-[#2b1f18] rounded-b-[2px]" />
+                <div className="absolute right-[20%] bottom-0 h-[8px] w-[40px] bg-[#0c0907] border-x border-t border-[#2b1f18] rounded-t-[2px]" />
+                <div className="absolute top-1/2 right-0 h-[40px] w-[8px] -translate-y-1/2 bg-[#0c0907] border-y border-l border-[#2b1f18] rounded-l-[2px]" />
               </div>
 
-              {/* Optical CD Disc Layer (Peeking Out) */}
+              {/* Ascend Holographic Optical CD Disc */}
               <div
                 className="absolute top-[6px] right-0 bottom-[6px] left-[48px] z-10 flex items-center justify-center transition-transform duration-700 ease-out"
                 style={{
                   transform: "translateX(395px) translateZ(0.5px) scale(1.1)",
                 }}
               >
-                <div className="relative flex aspect-square w-[506px] items-center justify-center rounded-full shadow-2xl select-none">
-                  {/* Outer CD Clear Plastic Ring */}
-                  <div className="absolute inset-[-0.4%] flex items-center justify-center rounded-full bg-gray-200/30 ring-1 ring-slate-300/30 ring-inset" />
+                <div className="relative flex aspect-square w-[506px] items-center justify-center rounded-full shadow-[0_25px_60px_rgba(0,0,0,0.85)] select-none">
+                  {/* Outer Polycarbonate Beveled Ring */}
+                  <div className="absolute inset-[-0.5%] flex items-center justify-center rounded-full bg-slate-200/25 ring-1 ring-white/30 ring-inset" />
 
-                  {/* CD Disc Face */}
-                  <div className="relative h-full w-full rounded-full overflow-hidden">
-                    <div className="absolute inset-0 bg-neutral-900" />
+                  {/* CD Disc Body */}
+                  <div className="relative h-full w-full rounded-full overflow-hidden border border-white/20">
                     <div
                       className="absolute inset-0 rounded-full"
                       style={{
                         transform: `rotate(${rotationDeg}deg) translateZ(0px)`,
-                        transition: isPlaying ? "none" : "transform 0.5s ease-out",
+                        transition: isPlaying ? "none" : "transform 0.6s ease-out",
                       }}
                     >
-                      <img
-                        src="/retro-cd/cd-multiple-apps.png"
-                        alt="Optical CD Disc"
-                        draggable={false}
-                        className="h-full w-full object-cover"
+                      {/* Mirror Silver Substrate Base */}
+                      <div className="absolute inset-0 bg-gradient-to-tr from-[#99a2ad] via-[#cbd5e1] to-[#88929e]" />
+
+                      {/* Concentric Audio Track Grooves */}
+                      <div
+                        className="absolute inset-0 rounded-full opacity-60"
+                        style={{
+                          backgroundImage:
+                            "repeating-radial-gradient(circle at 50% 50%, transparent 0px, transparent 1px, rgba(0, 0, 0, 0.35) 1px, rgba(0, 0, 0, 0.35) 2px)",
+                        }}
                       />
+
+                      {/* Shimmering Holographic Diffraction Grating */}
+                      <div
+                        className="absolute inset-0 rounded-full mix-blend-screen opacity-70"
+                        style={{
+                          background: `
+                            conic-gradient(
+                              from 0deg at 50% 50%,
+                              rgba(255, 69, 0, 0.45) 0deg,
+                              rgba(255, 187, 0, 0.45) 45deg,
+                              rgba(0, 240, 255, 0.45) 90deg,
+                              rgba(176, 38, 255, 0.45) 135deg,
+                              rgba(0, 255, 136, 0.45) 180deg,
+                              rgba(255, 69, 0, 0.45) 225deg,
+                              rgba(255, 187, 0, 0.45) 270deg,
+                              rgba(0, 240, 255, 0.45) 315deg,
+                              rgba(255, 69, 0, 0.45) 360deg
+                            )
+                          `,
+                        }}
+                      />
+
+                      {/* Radial Optical Reflection Flares */}
+                      <div
+                        className="absolute inset-0 rounded-full opacity-40 mix-blend-overlay"
+                        style={{
+                          background:
+                            "conic-gradient(from 45deg at 50% 50%, white 0deg, transparent 40deg, white 90deg, transparent 130deg, white 180deg, transparent 220deg, white 270deg, transparent 310deg, white 360deg)",
+                        }}
+                      />
+
+                      {/* Center Clamping Hub & Typography */}
+                      <div className="absolute inset-[24%] rounded-full border-2 border-slate-400/40 bg-radial from-[#181310] to-[#0c0907] flex flex-col items-center justify-between p-7 shadow-inner">
+                        <span className="font-mono text-[10px] tracking-[0.25em] text-[#ff7a45] uppercase font-bold text-center">
+                          ASCEND OS · CONTINUOUS PROGRESSION
+                        </span>
+
+                        {/* Center Spindle Hole (15mm Clear Polycarbonate Ring) */}
+                        <div className="relative size-20 rounded-full border border-white/40 bg-[#070504]/90 flex items-center justify-center shadow-2xl">
+                          <div className="size-10 rounded-full border border-white/20 bg-transparent" />
+                        </div>
+
+                        <span className="font-mono text-[9px] tracking-[0.2em] text-[#cbd5e1]/80 uppercase text-center font-medium">
+                          DIGITAL AUDIO · 44.1 kHz PCM
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Center Spindle Hub */}
+              {/* Center Spindle Teeth Hub */}
               <div
                 className="pointer-events-none absolute top-[6px] right-0 bottom-[6px] left-[48px] z-[15] flex items-center justify-center"
                 style={{ transform: "translateZ(1px)" }}
               >
-                <div className="relative h-[90px] w-[90px] rounded-full border border-[#222] bg-[#111]/80 backdrop-blur-xs flex items-center justify-center shadow-lg">
-                  <div className="absolute h-[40px] w-[40px] rounded-full border border-[#0a0a0a] bg-black/60" />
-                  <div className="flex h-[24px] w-[24px] items-center justify-center rounded-full border border-[#333] bg-[#0a0a0a]">
-                    <div className="h-[12px] w-[12px] rounded-full bg-[#222] shadow-inner" />
+                <div className="relative h-[90px] w-[90px] rounded-full border border-[#3b2a20] bg-[#1a1410]/90 backdrop-blur-xs flex items-center justify-center shadow-lg">
+                  <div className="absolute h-[40px] w-[40px] rounded-full border border-[#160f0b] bg-[#0c0907]" />
+                  <div className="flex h-[24px] w-[24px] items-center justify-center rounded-full border border-[#4a3528] bg-[#080605]">
+                    <div className="h-[12px] w-[12px] rounded-full bg-[#1e1713] shadow-inner" />
                   </div>
                 </div>
               </div>
 
-              {/* Front Acrylic Door (3D Angled -25deg with Album Art) */}
+              {/* Front Acrylic Door (-25deg with User Album Cover) */}
               <div
                 className="relative z-20 group"
                 style={{
@@ -488,47 +561,47 @@ export function RetroCdPlayerExperience() {
                     className="h-full w-full object-cover transition-opacity duration-300"
                   />
 
-                  {/* Dynamic Editable Badge Hover Overlay */}
+                  {/* Hover Overlay for Customizing Cover */}
                   <div
                     onClick={() => setCustomizerOpen(true)}
-                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-2 cursor-pointer transition-opacity duration-200 z-30 backdrop-blur-xs text-white"
-                    title="Click to customize album cover and audio"
+                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-opacity duration-200 z-30 backdrop-blur-xs text-white"
+                    title="Click to replace cover photo"
                   >
-                    <div className="p-3 rounded-full bg-black/70 border border-white/20 shadow-xl">
-                      <ImageIcon size={28} className="text-[#33dd33]" />
+                    <div className="p-3.5 rounded-full bg-black/80 border border-[#ff7a45]/50 shadow-[0_0_15px_rgba(255,122,69,0.3)]">
+                      <ImageIcon size={26} className="text-[#ff7a45]" />
                     </div>
-                    <span className="font-mono text-xs uppercase tracking-widest bg-black/80 px-3 py-1 rounded border border-white/10 font-semibold">
+                    <span className="font-mono text-xs uppercase tracking-widest bg-black/90 px-3.5 py-1.5 rounded border border-white/20 font-bold text-[#ffb28d]">
                       REPLACE COVER PHOTO
                     </span>
                   </div>
                 </div>
 
-                {/* Hinge Arms */}
-                <div className="absolute top-0 -left-[48px] z-20 h-[6px] w-[48px] bg-black/40 border-t border-white/20" />
-                <div className="absolute bottom-0 -left-[48px] z-20 h-[6px] w-[48px] bg-black/40 border-b border-black/80" />
+                {/* Hinge Bracket */}
+                <div className="absolute top-0 -left-[48px] z-20 h-[6px] w-[48px] bg-black/50 border-t border-[#ff7a45]/20" />
+                <div className="absolute bottom-0 -left-[48px] z-20 h-[6px] w-[48px] bg-black/50 border-b border-black/90" />
 
-                {/* Transparent Acrylic Glare and Plastic Borders */}
+                {/* Acrylic Glare & Bevels */}
                 <div className="pointer-events-none absolute inset-0">
-                  <div className="absolute inset-x-0 top-0 h-[6px] bg-white/10 border-b border-white/15" />
-                  <div className="absolute inset-x-0 bottom-0 h-[6px] bg-black/30 border-t border-white/10" />
-                  <div className="absolute top-[6px] bottom-[6px] left-0 w-[6px] bg-black/40" />
-                  <div className="absolute top-[6px] right-0 bottom-[6px] w-[6px] bg-white/10" />
+                  <div className="absolute inset-x-0 top-0 h-[6px] bg-white/15 border-b border-white/20" />
+                  <div className="absolute inset-x-0 bottom-0 h-[6px] bg-black/40 border-t border-white/10" />
+                  <div className="absolute top-[6px] bottom-[6px] left-0 w-[6px] bg-black/50" />
+                  <div className="absolute top-[6px] right-0 bottom-[6px] w-[6px] bg-white/15" />
 
-                  {/* Molded Booklet Retention Tabs */}
-                  <div className="absolute top-[15%] right-[6px] h-[35px] w-[5px] bg-white/15 rounded-l-[1px]" />
-                  <div className="absolute right-[6px] bottom-[15%] h-[35px] w-[5px] bg-white/15 rounded-l-[1px]" />
-                  <div className="absolute top-[6px] left-[15%] h-[4px] w-[25px] bg-white/20 rounded-b-[1px]" />
-                  <div className="absolute bottom-[6px] left-[15%] h-[4px] w-[25px] bg-white/20 rounded-t-[1px]" />
+                  {/* Booklet Tabs */}
+                  <div className="absolute top-[15%] right-[6px] h-[35px] w-[5px] bg-white/20 rounded-l-[1px]" />
+                  <div className="absolute right-[6px] bottom-[15%] h-[35px] w-[5px] bg-white/20 rounded-l-[1px]" />
+                  <div className="absolute top-[6px] left-[15%] h-[4px] w-[25px] bg-white/25 rounded-b-[1px]" />
+                  <div className="absolute bottom-[6px] left-[15%] h-[4px] w-[25px] bg-white/25 rounded-t-[1px]" />
 
-                  {/* 1px Specular Border */}
-                  <div className="absolute inset-0 rounded-[2px] border border-white/30" />
+                  {/* Specular Perimeter Border */}
+                  <div className="absolute inset-0 rounded-[2px] border border-white/35" />
 
-                  {/* Diagonal Acrylic Reflection Glare */}
+                  {/* Diagonal Reflection Streak */}
                   <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
                       background:
-                        "linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.03) 40%, transparent 60%)",
+                        "linear-gradient(130deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.04) 38%, transparent 58%)",
                     }}
                   />
                 </div>
@@ -538,104 +611,157 @@ export function RetroCdPlayerExperience() {
         </div>
       </div>
 
-      {/* Tactile Retro Player Control Dock */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 max-w-[calc(100vw-32px)]">
-        <div className="relative overflow-hidden rounded-[8px] border border-[#666]/50 bg-gradient-to-b from-[#6a6a6a] via-[#585858] to-[#484848] p-[3px] shadow-[0_4px_20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.25)]">
-          {/* Subtle Horizontal Brush Ridges */}
-          <div
-            className="pointer-events-none absolute inset-0 rounded-[8px] opacity-[0.04]"
-            aria-hidden="true"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(255,255,255,0.6) 1px, transparent 2px)",
-              backgroundSize: "3px 100%",
-            }}
-          />
+      {/* Ascend OS Audiophile Transport Console */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-[720px] px-4">
+        <div className="relative overflow-hidden rounded-lg border border-[#ff7a45]/30 bg-gradient-to-b from-[#241c16] via-[#17110d] to-[#0c0907] p-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.1)]">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Left: VFD Time & Track Display */}
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col justify-center rounded bg-[#060809] border border-cyan-500/30 px-3 py-1.5 shadow-[inset_0_2px_4px_rgba(0,0,0,0.9)]">
+                <div className="flex items-center gap-2 font-mono text-[9px] text-cyan-400 font-bold tracking-wider">
+                  <span className="text-[#a59682]">TRACK</span>
+                  <span className="text-[#00f0ff]">01</span>
+                  <span className="text-zinc-600">|</span>
+                  <span className="text-[#33dd33]">
+                    {formatTime(audioCurrentTime)}
+                  </span>
+                </div>
+                <div className="font-mono text-[8px] tracking-widest text-[#a89484] uppercase truncate max-w-[130px]">
+                  {albumState.albumTitle}
+                </div>
+              </div>
 
-          <div className="relative flex items-center gap-1.5 sm:gap-2 rounded-[5px] border border-[#1a1a1a] bg-gradient-to-b from-[#1e1e1e] to-[#141414] p-1.5 shadow-[inset_0_2px_6px_rgba(0,0,0,0.6)]">
-            {/* Play / Pause Tactile Button */}
-            <div className="rounded-[4px] bg-[#0a0a0a] p-[1px] pb-[2px] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_0_rgba(255,255,255,0.04)]">
+              {/* Stereo Dual VU Level Meters */}
+              <div className="flex flex-col gap-1 rounded bg-[#050708] border border-zinc-800 p-1.5 shadow-inner">
+                {/* Channel L */}
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-[7px] text-[#a59682] w-2.5">L</span>
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <span
+                        key={`vu-l-${i}`}
+                        className={`h-2.5 w-1 rounded-xs transition-colors duration-75 ${
+                          i < vuLeft
+                            ? i >= 10
+                              ? "bg-red-500 shadow-[0_0_5px_#ef4444]"
+                              : i >= 8
+                              ? "bg-amber-400 shadow-[0_0_4px_#fbbf24]"
+                              : "bg-[#33dd33] shadow-[0_0_4px_#22c55e]"
+                            : "bg-zinc-800/80"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Channel R */}
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-[7px] text-[#a59682] w-2.5">R</span>
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <span
+                        key={`vu-r-${i}`}
+                        className={`h-2.5 w-1 rounded-xs transition-colors duration-75 ${
+                          i < vuRight
+                            ? i >= 10
+                              ? "bg-red-500 shadow-[0_0_5px_#ef4444]"
+                              : i >= 8
+                              ? "bg-amber-400 shadow-[0_0_4px_#fbbf24]"
+                              : "bg-[#33dd33] shadow-[0_0_4px_#22c55e]"
+                            : "bg-zinc-800/80"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Tactile Audio Controls */}
+            <div className="flex items-center gap-2">
+              {/* Previous */}
+              <button
+                type="button"
+                onClick={() => setAudioCurrentTime(0)}
+                className="ascend-cd-deck__btn p-2"
+                title="Previous track / Restart"
+                aria-label="Previous track"
+              >
+                <SkipBack size={13} />
+              </button>
+
+              {/* Main Play / Pause Tactile Switch */}
               <button
                 type="button"
                 onClick={togglePlay}
-                className="group flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[3px] border border-t-[#5a5a5a] border-x-[#444] border-b-[#2a2a2a] bg-[#3d3d3d] px-3 py-2 font-sans text-[9px] font-semibold tracking-[0.15em] uppercase text-[#ccc] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_1px_2px_rgba(0,0,0,0.5)] transition-colors duration-75 hover:text-white active:translate-y-[1px] active:bg-[#2a2a2a] active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.7)] sm:gap-2 sm:px-4 sm:py-2 sm:text-[10px] sm:tracking-[0.2em]"
-                aria-label={isPlaying ? "Pause track" : "Play demo track"}
+                className={`flex items-center gap-2 rounded border px-4 py-1.5 font-mono text-[11px] font-bold tracking-wider uppercase transition-all shadow-md ${
+                  isPlaying
+                    ? "border-[#ff7a45] bg-[#2a170e] text-[#ffb28d] shadow-[0_0_12px_rgba(255,122,69,0.35)]"
+                    : "border-zinc-700 bg-zinc-800/90 text-zinc-200 hover:border-[#ff7a45]/50 hover:text-white"
+                }`}
+                aria-label={isPlaying ? "Pause playback" : "Start playback"}
               >
                 {isPlaying ? (
                   <>
-                    <Pause size={12} className="text-[#33dd33]" />
-                    <span>PAUSE DEMO</span>
+                    <Pause size={13} className="text-[#ff7a45]" />
+                    <span>PAUSE</span>
                   </>
                 ) : (
                   <>
-                    <Play size={12} className="opacity-80 group-hover:text-[#33dd33]" />
-                    <span>PLAY DEMO</span>
+                    <Play size={13} className="text-[#33dd33]" />
+                    <span>PLAY</span>
                   </>
                 )}
               </button>
-            </div>
 
-            {/* Phosphor Green Digital LCD Screen */}
-            <div className="flex items-center gap-2 self-stretch rounded-[3px] border border-[#0a0a0a] bg-[#060806] px-2.5 shadow-[inset_0_1px_4px_rgba(0,0,0,0.9)] sm:px-3.5">
-              <span
-                className="font-mono text-[9px] leading-none tracking-[0.2em] whitespace-nowrap select-none font-bold"
-                style={{
-                  color: "#33dd33",
-                  textShadow:
-                    "0 0 6px rgba(51,221,51,0.6), 0 0 12px rgba(51,221,51,0.25)",
-                }}
+              {/* Next */}
+              <button
+                type="button"
+                onClick={() => setAudioCurrentTime(0)}
+                className="ascend-cd-deck__btn p-2"
+                title="Next track"
+                aria-label="Next track"
               >
-                {isPlaying
-                  ? albumState.audioUrl
-                    ? `TRK ${formatTime(audioCurrentTime)}`
-                    : "SYNTH CHORDS"
-                  : "DAY 01"}
-              </span>
+                <SkipForward size={13} />
+              </button>
 
-              {isPlaying && (
-                <span className="flex h-1.5 w-1.5 rounded-full bg-[#33dd33] animate-pulse shadow-[0_0_6px_#33dd33]" />
-              )}
-            </div>
-
-            {/* Customizer Drawer Trigger Button */}
-            <div className="rounded-[4px] bg-[#0a0a0a] p-[1px] pb-[2px] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_0_rgba(255,255,255,0.04)]">
+              {/* Customize Drawer Trigger */}
               <button
                 type="button"
                 onClick={() => setCustomizerOpen(prev => !prev)}
-                className={`group flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-[3px] border border-t-[#5a5a5a] border-x-[#444] border-b-[#2a2a2a] ${
-                  customizerOpen ? "bg-[#252525] text-white border-green-500/50" : "bg-[#3d3d3d] text-[#ccc]"
-                } px-2.5 py-2 font-sans text-[9px] font-semibold tracking-[0.15em] uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_1px_2px_rgba(0,0,0,0.5)] transition-colors duration-75 hover:text-white active:translate-y-[1px] active:bg-[#2a2a2a] sm:gap-2 sm:px-3 sm:py-2 sm:text-[10px] sm:tracking-[0.15em]`}
-                aria-label="Customize cover photo and music"
+                className={`ascend-cd-deck__btn ${
+                  customizerOpen ? "border-[#ff7a45] text-[#ffb28d]" : ""
+                }`}
+                aria-label="Open album customizer"
+                title="Customize cover photo & audio"
               >
-                <Sliders size={12} className={customizerOpen ? "text-[#33dd33]" : "opacity-80"} />
-                <span className="hidden xs:inline">CUSTOMIZE</span>
+                <Sliders size={12} className={customizerOpen ? "text-[#ff7a45]" : ""} />
+                <span className="hidden sm:inline">CUSTOMIZE</span>
               </button>
-            </div>
 
-            {/* Mute / Unmute Button */}
-            <div className="rounded-[4px] bg-[#0a0a0a] p-[1px] pb-[2px] shadow-[inset_0_1px_3px_rgba(0,0,0,0.9),0_1px_0_rgba(255,255,255,0.04)]">
+              {/* Volume / Mute Button */}
               <button
                 type="button"
                 onClick={() => setIsMuted(prev => !prev)}
-                className="flex cursor-pointer items-center justify-center rounded-[3px] border border-t-[#5a5a5a] border-x-[#444] border-b-[#2a2a2a] bg-[#3d3d3d] p-2 text-[#ccc] shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_1px_2px_rgba(0,0,0,0.5)] hover:text-white active:translate-y-[1px] active:bg-[#2a2a2a]"
-                aria-label={isMuted ? "Unmute audio" : "Mute audio"}
+                className="ascend-cd-deck__btn p-2"
+                aria-label={isMuted ? "Unmute" : "Mute"}
                 title={isMuted ? "Unmute audio" : "Mute audio"}
               >
-                {isMuted ? <VolumeX size={12} className="text-red-400" /> : <Volume2 size={12} />}
+                {isMuted ? <VolumeX size={13} className="text-red-400" /> : <Volume2 size={13} />}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Album & Music Customizer Drawer Panel */}
+      {/* Album Customizer Drawer Panel */}
       {customizerOpen && (
-        <div className="absolute inset-x-3 bottom-20 z-40 sm:inset-x-auto sm:right-6 sm:w-96 rounded-xl border border-zinc-700/80 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-4 duration-200 text-zinc-200 font-sans text-xs">
+        <div className="absolute inset-x-3 bottom-24 z-40 sm:inset-x-auto sm:right-6 sm:w-96 rounded-xl border border-[#ff7a45]/30 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-4 duration-200 text-zinc-200 font-sans text-xs">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
             <div className="flex items-center gap-2">
-              <Disc3 size={16} className="text-[#33dd33]" />
+              <Disc3 size={16} className="text-[#ff7a45]" />
               <span className="font-mono text-[11px] font-bold tracking-wider uppercase text-zinc-100">
-                CD MASTERING · CUSTOMIZER
+                ASCEND DECK · CUSTOMIZER
               </span>
             </div>
             <button
@@ -700,7 +826,7 @@ export function RetroCdPlayerExperience() {
             {/* 2. Music Track Section */}
             <div className="space-y-2">
               <label className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-                <Music size={12} className="text-[#33dd33]" />
+                <Music size={12} className="text-[#ff7a45]" />
                 <span>Audio Track & Music</span>
               </label>
 
@@ -708,7 +834,7 @@ export function RetroCdPlayerExperience() {
                 <label className="flex items-center justify-center gap-1.5 w-full cursor-pointer rounded border border-zinc-700 bg-zinc-800/80 hover:bg-zinc-700 px-3 py-1.5 text-[11px] font-medium text-zinc-200 transition-colors">
                   <Upload size={12} />
                   <span className="truncate">
-                    {audioUploadName ? `Uploaded: ${audioUploadName}` : "Upload MP3 / Audio File"}
+                    {audioUploadName ? `Loaded: ${audioUploadName}` : "Upload MP3 / Audio File"}
                   </span>
                   <input
                     type="file"
@@ -724,14 +850,14 @@ export function RetroCdPlayerExperience() {
                   value={albumState.audioUrl || ""}
                   onChange={(e) => {
                     const val = e.target.value.trim();
-                    saveAlbumState({ audioUrl: val || null, useProceduralSynth: !val });
+                    saveAlbumState({ audioUrl: val || null });
                   }}
-                  className="w-full rounded border border-zinc-800 bg-zinc-900/90 px-2 py-1 text-[10px] text-zinc-300 placeholder-zinc-500 focus:border-[#33dd33]/50 focus:outline-none"
+                  className="w-full rounded border border-zinc-800 bg-zinc-900/90 px-2 py-1 text-[10px] text-zinc-300 placeholder-zinc-500 focus:border-[#ff7a45]/50 focus:outline-none"
                 />
 
                 {!albumState.audioUrl && (
-                  <div className="flex items-center gap-2 rounded bg-emerald-950/40 border border-emerald-800/40 p-2 text-[10px] text-emerald-300">
-                    <Sparkles size={12} className="shrink-0 text-emerald-400" />
+                  <div className="flex items-center gap-2 rounded bg-amber-950/30 border border-amber-800/30 p-2 text-[10px] text-amber-300">
+                    <Sparkles size={12} className="shrink-0 text-[#ff7a45]" />
                     <span>Default mode: Built-in analog lo-fi synth chord progression is active.</span>
                   </div>
                 )}
@@ -751,7 +877,7 @@ export function RetroCdPlayerExperience() {
               />
             </div>
 
-            {/* Reset Defaults Button */}
+            {/* Actions */}
             <div className="pt-2 flex items-center justify-between border-t border-zinc-800/80 text-[11px]">
               <button
                 type="button"
@@ -765,7 +891,7 @@ export function RetroCdPlayerExperience() {
               <button
                 type="button"
                 onClick={() => setCustomizerOpen(false)}
-                className="flex items-center gap-1 rounded bg-[#33dd33]/20 border border-[#33dd33]/40 px-3 py-1 font-mono text-[10px] font-bold text-[#33dd33] hover:bg-[#33dd33]/30 transition-colors"
+                className="flex items-center gap-1 rounded bg-[#ff7a45]/20 border border-[#ff7a45]/40 px-3 py-1 font-mono text-[10px] font-bold text-[#ff7a45] hover:bg-[#ff7a45]/30 transition-colors"
               >
                 <Check size={12} />
                 <span>APPLY & CLOSE</span>
