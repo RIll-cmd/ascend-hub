@@ -973,6 +973,27 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [reduceMotion, tvSignalTransition]);
 
+  const scrollTvIntoView = useCallback((serviceId: VisionEyeServiceId) => {
+    const trigger = cameraSceneRef.current?.querySelector<HTMLElement>(
+      `[data-status-service-id="${serviceId}"]`,
+    );
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const headerHeight = 60;
+    const isComfortablyVisible =
+      rect.top >= headerHeight + 15 &&
+      rect.bottom <= window.innerHeight - 15;
+
+    if (!isComfortablyVisible) {
+      trigger.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+    }
+  }, [reduceMotion]);
+
   useEffect(() => {
     if (edit || focusedStatusTv || active || rowTemplateModalOpen || slotPickerTarget || shelfCalibratorOpen) return;
 
@@ -992,11 +1013,6 @@ export default function Home() {
 
       const command = getVisionEyeCommand(event);
       if (!command) return;
-      const visibleTrigger = cameraSceneRef.current?.querySelector<HTMLElement>(
-        `[data-status-service-id="${selectedVisionEyeServiceId}"]`,
-      );
-      const visibleRect = visibleTrigger?.getBoundingClientRect();
-      if (!visibleRect || visibleRect.bottom <= 0 || visibleRect.top >= window.innerHeight) return;
 
       if (command === "activate") {
         if (event.repeat || visionEyeActivating) return;
@@ -1009,6 +1025,7 @@ export default function Home() {
         if (!selectedTarget || !trigger) return;
 
         event.preventDefault();
+        scrollTvIntoView(selectedVisionEyeServiceId);
         activateStatusTv({
           channel: selectedTarget.channel,
           serviceId: selectedTarget.serviceId,
@@ -1021,12 +1038,17 @@ export default function Home() {
         command,
         visionEyeTargets,
       );
-      if (!nextTarget) return;
+      if (!nextTarget) {
+        event.preventDefault();
+        scrollTvIntoView(selectedVisionEyeServiceId);
+        return;
+      }
 
       event.preventDefault();
       setTvSignalTransition(current => reduceMotion
         ? createTvSignalState(nextTarget.serviceId)
         : beginTvSignalTransition(current, nextTarget.serviceId, command));
+      scrollTvIntoView(nextTarget.serviceId);
     };
 
     window.addEventListener("keydown", handleVisionEyeKey);
@@ -1044,6 +1066,7 @@ export default function Home() {
     tvSignalTransition.phase,
     visionEyeActivating,
     visionEyeTargets,
+    scrollTvIntoView,
   ]);
 
   useEffect(() => {
