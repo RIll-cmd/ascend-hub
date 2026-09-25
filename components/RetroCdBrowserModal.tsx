@@ -73,7 +73,7 @@ export function RetroCdBrowserModal({
             <span>ASCEND OS // CD-DA TRANSPORT // 44.1kHz 16-BIT LINEAR PCM</span>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="ascend-cd-deck__actions">
             <button
               type="button"
               onClick={handleRefresh}
