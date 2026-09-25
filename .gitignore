@@ -57,6 +57,7 @@ next-env.d.ts
 /.sites-runtime/
 /.agents/
 /.codex/
+/.cursor/
 /outputs/
 /work/
 /*-qa.png

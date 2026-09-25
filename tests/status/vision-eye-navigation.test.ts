@@ -103,6 +103,8 @@ test("page integrates selection-only movement and Space activation", async () =>
   assert.match(source, /activateStatusTv/);
   assert.match(source, /data-status-service-id/);
   assert.match(source, /<VisionEyeNavigator/);
+  assert.match(source, /scrollTvIntoView/);
+  assert.match(source, /scrollIntoView/);
 });
 
 test("starts a TV signal transfer at the source collapse phase", () => {
