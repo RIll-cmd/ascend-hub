@@ -4,14 +4,18 @@ import React, { useState, useEffect } from "react";
 import { X, RefreshCw } from "lucide-react";
 import { RetroCdPlayerExperience } from "./RetroCdPlayerExperience";
 
+import type { SpotifyPlaybackState } from "@/lib/spotify";
+
 interface RetroCdBrowserModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  spotifyData?: SpotifyPlaybackState | null;
 }
 
 export function RetroCdBrowserModal({
   open,
   onOpenChange,
+  spotifyData,
 }: RetroCdBrowserModalProps) {
   const [mounted, setMounted] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
@@ -52,6 +56,18 @@ export function RetroCdBrowserModal({
       aria-modal="true"
       aria-label="Launch Week Spring 2026 — CD Player Experience"
     >
+      {/* Ambient Room Spill Glow from Active Album Art */}
+      {spotifyData?.albumImageUrl && (
+        <div
+          className="pointer-events-none absolute -inset-24 opacity-35 filter blur-[95px] saturate-150 transition-opacity duration-1000 scale-110"
+          style={{
+            backgroundImage: `url(${spotifyData.albumImageUrl})`,
+            backgroundPosition: "center",
+            backgroundSize: "cover",
+          }}
+        />
+      )}
+
       <div className="launch-retro-browser focus:outline-none animate-in zoom-in-95 duration-200">
         <div className="ascend-cd-deck__header">
           <div className="ascend-cd-deck__leds">
@@ -67,10 +83,33 @@ export function RetroCdBrowserModal({
               <span className="ascend-cd-deck__led-dot ascend-cd-deck__led-dot--opt" />
               <span className="hidden sm:inline">OPTICAL</span>
             </div>
+            <div
+              className="ascend-cd-deck__led"
+              title={
+                spotifyData?.connected
+                  ? `Spotify Connected: ${spotifyData.title} by ${spotifyData.artist}`
+                  : "Spotify Sync: Offline"
+              }
+            >
+              <span
+                className={`ascend-cd-deck__led-dot ${
+                  spotifyData?.isPlaying
+                    ? "ascend-cd-deck__led-dot--laser"
+                    : spotifyData?.connected
+                    ? "ascend-cd-deck__led-dot--opt"
+                    : "opacity-25 bg-[#8f8174]"
+                }`}
+              />
+              <span className="hidden sm:inline">SPOTIFY</span>
+            </div>
           </div>
 
           <div className="ascend-cd-deck__vfd">
-            <span>ASCEND OS // CD-DA TRANSPORT // 44.1kHz 16-BIT LINEAR PCM</span>
+            <span>
+              {spotifyData?.connected && spotifyData.title
+                ? `SPOTIFY // ${spotifyData.title.toUpperCase()} // ${spotifyData.artist.toUpperCase()}`
+                : "ASCEND OS // CD-DA TRANSPORT // 44.1kHz 16-BIT LINEAR PCM"}
+            </span>
           </div>
 
           <div className="ascend-cd-deck__actions">
@@ -98,7 +137,7 @@ export function RetroCdBrowserModal({
         </div>
 
         <div className="launch-retro-browser__viewport relative">
-          <RetroCdPlayerExperience key={iframeKey} />
+          <RetroCdPlayerExperience key={iframeKey} spotifyData={spotifyData} />
           <div className="launch-retro-browser__scanlines pointer-events-none" aria-hidden="true" />
         </div>
       </div>

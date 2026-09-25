@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import type { SpotifyPlaybackState } from "@/lib/spotify";
 import {
   Play,
   Pause,
@@ -37,7 +38,13 @@ const DEFAULT_ALBUM_STATE: CdAlbumState = {
 
 const STORAGE_KEY = "ascend_retro_cd_settings";
 
-export function RetroCdPlayerExperience() {
+interface RetroCdPlayerExperienceProps {
+  spotifyData?: SpotifyPlaybackState | null;
+}
+
+export function RetroCdPlayerExperience({
+  spotifyData = null,
+}: RetroCdPlayerExperienceProps) {
   const [albumState, setAlbumState] = useState<CdAlbumState>(DEFAULT_ALBUM_STATE);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -46,6 +53,10 @@ export function RetroCdPlayerExperience() {
   const [rotationDeg, setRotationDeg] = useState(0);
   const [imageUploadLoading, setImageUploadLoading] = useState(false);
   const [audioUploadName, setAudioUploadName] = useState<string | null>(null);
+
+  // Spotify live synchronization state
+  const [spotifyState, setSpotifyState] = useState<SpotifyPlaybackState | null>(spotifyData);
+  const [spotifySyncEnabled, setSpotifySyncEnabled] = useState<boolean>(true);
 
   // VU Meter state (Left and Right levels: 0 to 12)
   const [vuLeft, setVuLeft] = useState(0);
@@ -97,6 +108,68 @@ export function RetroCdPlayerExperience() {
       return next;
     });
   }, []);
+
+  // Load saved Spotify sync preference
+  useEffect(() => {
+    try {
+      const savedSync = localStorage.getItem("ascend_retro_cd_spotify_sync");
+      if (savedSync !== null) {
+        setSpotifySyncEnabled(savedSync === "true");
+      }
+    } catch {}
+  }, []);
+
+  // Sync spotifyData prop when updated from parent
+  useEffect(() => {
+    if (spotifyData) {
+      setSpotifyState(spotifyData);
+    }
+  }, [spotifyData]);
+
+  // Fast live poller for Spotify currently playing state (every 2.5s)
+  useEffect(() => {
+    let isMounted = true;
+    const pollSpotify = async () => {
+      try {
+        const res = await fetch("/api/spotify/currently-playing");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setSpotifyState(data);
+          }
+        }
+      } catch {}
+    };
+
+    pollSpotify();
+    const interval = setInterval(pollSpotify, 2500);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Computed Spotify & Playback properties
+  const isSpotifyActive = Boolean(
+    spotifySyncEnabled &&
+    spotifyState?.connected &&
+    spotifyState?.albumImageUrl
+  );
+  const activeCoverUrl = isSpotifyActive
+    ? spotifyState!.albumImageUrl
+    : albumState.coverUrl;
+  const activeTitle = isSpotifyActive
+    ? (spotifyState?.title || albumState.albumTitle).toUpperCase()
+    : albumState.albumTitle;
+  const activeArtist = isSpotifyActive
+    ? (spotifyState?.artist || albumState.artistSubtitle).toUpperCase()
+    : albumState.artistSubtitle;
+  const effectiveIsPlaying = isSpotifyActive
+    ? Boolean(spotifyState?.isPlaying || isPlaying)
+    : isPlaying;
+  const effectiveTime = isSpotifyActive && spotifyState?.progressMs
+    ? Math.floor(spotifyState.progressMs / 1000)
+    : audioCurrentTime;
 
   // Web Audio Synth Engine
   const stopProceduralSynth = useCallback(() => {
@@ -189,29 +262,33 @@ export function RetroCdPlayerExperience() {
   }, [albumState.volume, isMuted, stopProceduralSynth]);
 
   const togglePlay = useCallback(() => {
-    if (isPlaying) {
-      setIsPlaying(false);
-      if (audioRef.current && albumState.audioUrl) {
-        audioRef.current.pause();
-      }
-      stopProceduralSynth();
-      setVuLeft(0);
-      setVuRight(0);
+    if (isSpotifyActive) {
+      setIsPlaying(prev => !prev);
     } else {
-      setIsPlaying(true);
-      if (albumState.audioUrl && audioRef.current) {
-        audioRef.current.play().catch(() => {
-          startProceduralSynth();
-        });
+      if (isPlaying) {
+        setIsPlaying(false);
+        if (audioRef.current && albumState.audioUrl) {
+          audioRef.current.pause();
+        }
+        stopProceduralSynth();
+        setVuLeft(0);
+        setVuRight(0);
       } else {
-        startProceduralSynth();
+        setIsPlaying(true);
+        if (albumState.audioUrl && audioRef.current) {
+          audioRef.current.play().catch(() => {
+            startProceduralSynth();
+          });
+        } else {
+          startProceduralSynth();
+        }
       }
     }
-  }, [isPlaying, albumState.audioUrl, stopProceduralSynth, startProceduralSynth]);
+  }, [isSpotifyActive, isPlaying, albumState.audioUrl, stopProceduralSynth, startProceduralSynth]);
 
   // Optical Disc Spin & VU Meters Animation Loop
   useEffect(() => {
-    if (!isPlaying) {
+    if (!effectiveIsPlaying) {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       lastTimeRef.current = null;
       setVuLeft(0);
@@ -244,7 +321,7 @@ export function RetroCdPlayerExperience() {
     return () => {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
-  }, [isPlaying]);
+  }, [effectiveIsPlaying]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -332,13 +409,43 @@ export function RetroCdPlayerExperience() {
       className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden select-none"
       style={{
         backgroundColor: "#0b0705",
-        backgroundImage: `
-          linear-gradient(rgba(255, 255, 255, 0.006), rgba(255, 255, 255, 0.006)),
-          repeating-linear-gradient(90deg, transparent 0, transparent 3px, rgba(255, 255, 255, 0.008) 4px),
-          radial-gradient(circle at 50% 48%, rgba(93, 54, 31, 0.12) 0%, transparent 55%)
-        `,
       }}
     >
+      {/* Dynamic Blurred Album Art Ambient Stage Background */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden select-none">
+        {activeCoverUrl ? (
+          <div
+            className="absolute -inset-10 sm:-inset-16 transition-all duration-1000 ease-out"
+            style={{
+              backgroundImage: `url(${activeCoverUrl})`,
+              backgroundPosition: "center",
+              backgroundSize: "cover",
+              filter: "blur(46px) saturate(1.45) brightness(0.52)",
+              transform: "scale(1.22)",
+              opacity: 0.88,
+            }}
+          />
+        ) : null}
+
+        {/* Smoked Vintage Hardware Vignette & Brushed Texture */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 48%, rgba(11, 7, 5, 0.15) 0%, rgba(11, 7, 5, 0.48) 55%, rgba(11, 7, 5, 0.88) 90%, #0b0705 100%)",
+          }}
+        />
+        <div
+          className="absolute inset-0 opacity-25 pointer-events-none"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(255, 255, 255, 0.006), rgba(255, 255, 255, 0.006)),
+              repeating-linear-gradient(90deg, transparent 0, transparent 3px, rgba(255, 255, 255, 0.008) 4px)
+            `,
+          }}
+        />
+      </div>
+
       {albumState.audioUrl && (
         <audio
           ref={audioRef}
@@ -452,7 +559,7 @@ export function RetroCdPlayerExperience() {
                       className="absolute inset-0 rounded-full"
                       style={{
                         transform: `rotate(${rotationDeg}deg) translateZ(0px)`,
-                        transition: isPlaying ? "none" : "transform 0.6s ease-out",
+                        transition: effectiveIsPlaying ? "none" : "transform 0.6s ease-out",
                       }}
                     >
                       {/* Mirror Silver Substrate Base */}
@@ -499,8 +606,8 @@ export function RetroCdPlayerExperience() {
 
                       {/* Center Clamping Hub & Typography */}
                       <div className="absolute inset-[24%] rounded-full border border-[rgba(153,92,48,0.35)] bg-radial from-[#181310] to-[#0c0907] flex flex-col items-center justify-between p-7 shadow-inner">
-                        <span className="font-mono text-[9px] tracking-[0.22em] text-[#d79351] uppercase font-bold text-center">
-                          ASCEND OS · CONTINUOUS PROGRESSION
+                        <span className="font-mono text-[9px] tracking-[0.22em] text-[#d79351] uppercase font-bold text-center truncate max-w-[200px]">
+                          {isSpotifyActive ? (spotifyState?.album || "SPOTIFY STREAM").toUpperCase() : "ASCEND OS · CONTINUOUS PROGRESSION"}
                         </span>
 
                         {/* Center Spindle Hole (15mm Clear Polycarbonate Ring) */}
@@ -508,8 +615,8 @@ export function RetroCdPlayerExperience() {
                           <div className="size-10 rounded-full border border-white/20 bg-transparent" />
                         </div>
 
-                        <span className="font-mono text-[8px] tracking-[0.18em] text-[#d6c8b9]/80 uppercase text-center font-medium">
-                          DIGITAL AUDIO · 44.1 kHz PCM
+                        <span className="font-mono text-[8px] tracking-[0.18em] text-[#d6c8b9]/80 uppercase text-center font-medium truncate max-w-[200px]">
+                          {isSpotifyActive ? (spotifyState?.artist || "AUDIO STREAM").toUpperCase() : "DIGITAL AUDIO · 44.1 kHz PCM"}
                         </span>
                       </div>
                     </div>
@@ -544,8 +651,8 @@ export function RetroCdPlayerExperience() {
                 {/* Album Cover Art */}
                 <div className="absolute top-[4px] right-[4px] bottom-[4px] left-[4px] overflow-hidden rounded-[2px] bg-black shadow-2xl">
                   <img
-                    src={albumState.coverUrl}
-                    alt={albumState.albumTitle}
+                    src={activeCoverUrl}
+                    alt={activeTitle}
                     draggable={false}
                     className="h-full w-full object-cover transition-opacity duration-300"
                   />
@@ -554,13 +661,13 @@ export function RetroCdPlayerExperience() {
                   <div
                     onClick={() => setCustomizerOpen(true)}
                     className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center gap-2.5 cursor-pointer transition-opacity duration-200 z-30 backdrop-blur-xs text-white"
-                    title="Click to replace cover photo"
+                    title={isSpotifyActive ? "Click to customize album cover or Spotify sync" : "Click to replace cover photo"}
                   >
                     <div className="p-3 rounded-full bg-[#110c08]/90 border border-[rgba(153,92,48,0.45)] shadow-md">
                       <ImageIcon size={22} className="text-[#d79351]" />
                     </div>
                     <span className="font-mono text-[10px] uppercase tracking-widest bg-[#110c08]/95 px-3 py-1.5 rounded-[3px] border border-[rgba(153,92,48,0.35)] font-bold text-[#d6c8b9]">
-                      REPLACE COVER PHOTO
+                      {isSpotifyActive ? "CUSTOMIZE / SPOTIFY SYNC" : "REPLACE COVER PHOTO"}
                     </span>
                   </div>
                 </div>
@@ -625,15 +732,19 @@ export function RetroCdPlayerExperience() {
                 }}
               >
                 <div className="flex items-center gap-2 font-mono text-[9px] font-semibold tracking-wider">
-                  <span className="text-[#8f8174]">TRACK</span>
-                  <span className="text-[#eba763]">01</span>
+                  <span className="text-[#8f8174]">
+                    {isSpotifyActive ? "SPOTIFY" : "TRACK"}
+                  </span>
+                  <span className="text-[#eba763]">
+                    {isSpotifyActive ? (effectiveIsPlaying ? "PLAY" : "IDLE") : "01"}
+                  </span>
                   <span className="text-[#55463a]">/</span>
                   <span className="text-[#d79351]">
-                    {formatTime(audioCurrentTime)}
+                    {formatTime(effectiveTime)}
                   </span>
                 </div>
                 <div className="font-mono text-[8px] tracking-[0.14em] text-[#d6c8b9] uppercase truncate max-w-[130px] sm:max-w-[160px] mt-0.5">
-                  {albumState.albumTitle}
+                  {activeTitle}
                 </div>
               </div>
 
@@ -718,14 +829,14 @@ export function RetroCdPlayerExperience() {
                   type="button"
                   onClick={togglePlay}
                   className="ascend-cd-deck__btn px-3 py-1 font-mono text-[10px] font-bold tracking-wider uppercase transition-all"
-                  aria-label={isPlaying ? "Pause playback" : "Start playback"}
-                  title={isPlaying ? "Pause playback" : "Start playback"}
+                  aria-label={effectiveIsPlaying ? "Pause playback" : "Start playback"}
+                  title={effectiveIsPlaying ? "Pause playback" : "Start playback"}
                   style={{
-                    borderColor: isPlaying ? "rgba(215, 147, 81, 0.5)" : undefined,
-                    color: isPlaying ? "#eba763" : undefined,
+                    borderColor: effectiveIsPlaying ? "rgba(215, 147, 81, 0.5)" : undefined,
+                    color: effectiveIsPlaying ? "#eba763" : undefined,
                   }}
                 >
-                  {isPlaying ? (
+                  {effectiveIsPlaying ? (
                     <>
                       <Pause size={12} className="text-[#d79351]" />
                       <span>PAUSE</span>
@@ -818,6 +929,65 @@ export function RetroCdPlayerExperience() {
           </div>
 
           <div className="mt-3 space-y-4 max-h-[60vh] overflow-y-auto pr-1">
+            {/* 0. Spotify Synchronization Section */}
+            <div className="space-y-2 rounded-[4px] border border-[rgba(153,92,48,0.25)] bg-[#120d09]/80 p-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`size-2 rounded-full ${
+                      spotifyState?.connected
+                        ? spotifyState.isPlaying
+                          ? "bg-[#56b347] shadow-[0_0_8px_#56b347]"
+                          : "bg-[#d79351] shadow-[0_0_6px_#d79351]"
+                        : "bg-[#55463a]"
+                    }`}
+                  />
+                  <span className="font-mono text-[9px] font-bold tracking-wider uppercase text-[#d6c8b9]">
+                    SPOTIFY SYNC
+                  </span>
+                  {spotifyState?.connected && (
+                    <span className="rounded-[2px] bg-[#1f150e] border border-[rgba(153,92,48,0.3)] px-1.5 py-0.5 font-mono text-[7px] text-[#eba763]">
+                      {spotifyState.demoMode ? "DEMO MODE" : "CONNECTED"}
+                    </span>
+                  )}
+                </div>
+
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={spotifySyncEnabled}
+                    onChange={(e) => {
+                      const val = e.target.checked;
+                      setSpotifySyncEnabled(val);
+                      try {
+                        localStorage.setItem("ascend_retro_cd_spotify_sync", String(val));
+                      } catch {}
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-7 h-4 bg-[#21160f] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-[#d6c8b9] after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-[#d79351]" />
+                </label>
+              </div>
+
+              {spotifyState?.connected ? (
+                <div className="text-[10px] space-y-1 text-[#8f8174]">
+                  <div className="truncate">
+                    <span className="text-[#eba763] font-medium">{spotifyState.title}</span>
+                    {spotifyState.artist && <span> · {spotifyState.artist}</span>}
+                  </div>
+                  <p className="text-[9px] text-[#8f8174]/80">
+                    {spotifySyncEnabled
+                      ? "Automatically synchronizing active album cover art, background blur, and track titles."
+                      : "Sync disabled. Using custom uploaded cover and audio archive."}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[9px] text-[#8f8174]">
+                  Spotify is not connected. Use the top navigation SPOTIFY setup to link your account.
+                </p>
+              )}
+            </div>
+
             {/* 1. Cover Photo Section */}
             <div className="space-y-2">
               <label className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-[#8f8174]">

@@ -2485,6 +2485,7 @@ export default function Home() {
       <RetroCdBrowserModal
         open={cdPlayerModalOpen}
         onOpenChange={setCdPlayerModalOpen}
+        spotifyData={spotifyData}
       />
 
       {youtubeModalOpen && (
