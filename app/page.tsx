@@ -58,6 +58,7 @@ import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../componen
 import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
+import { RetroCdBrowserModal } from "../components/RetroCdBrowserModal";
 import { ShelfStatusTv } from "../components/status/ShelfStatusTv";
 import { AgentAuxiliaryPanel } from "../components/status/AgentAuxiliaryPanel";
 import { VisionEyeNavigator } from "../components/status/VisionEyeNavigator";
@@ -73,6 +74,7 @@ import {
   getVisionEyeCommand,
   isVisionEyeKeyboardTarget,
   type VisionEyeTarget,
+  type VisionEyeServiceId,
 } from "../components/status/vision-eye-navigation";
 import { findCrtConfigByCollectibleId, getCrtProfile } from "../components/crt-tv-config";
 import { useStatusShelf } from "./status/use-status-shelf";
@@ -418,6 +420,7 @@ export default function Home() {
     isLive?: boolean;
   } | null>(null);
   const [youtubeSearchLoaded, setYoutubeSearchLoaded] = useState(false);
+  const [cdPlayerModalOpen, setCdPlayerModalOpen] = useState(false);
 
   const refreshSpotifyStatus = useCallback(async () => {
     try {
@@ -995,7 +998,7 @@ export default function Home() {
   }, [reduceMotion]);
 
   useEffect(() => {
-    if (edit || focusedStatusTv || active || rowTemplateModalOpen || slotPickerTarget || shelfCalibratorOpen) return;
+    if (edit || focusedStatusTv || active || rowTemplateModalOpen || slotPickerTarget || shelfCalibratorOpen || cdPlayerModalOpen) return;
 
     const handleVisionEyeKey = (event: KeyboardEvent) => {
       if (
@@ -1067,6 +1070,7 @@ export default function Home() {
     visionEyeActivating,
     visionEyeTargets,
     scrollTvIntoView,
+    cdPlayerModalOpen,
   ]);
 
   useEffect(() => {
@@ -1843,6 +1847,23 @@ export default function Home() {
                                               />
                                             )}
                                           </div>
+                                        ) : def.id === "cd-player" ? (
+                                          <button
+                                            type="button"
+                                            className="cubby-cd-player-trigger"
+                                            aria-label="Open CD Player Spring 2026 launch week experience"
+                                            onClick={() => setCdPlayerModalOpen(true)}
+                                          >
+                                            <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`}>
+                                              <img className="prop-off" src={def.offSrc} alt={def.label} draggable={false} />
+                                              {def.onSrc !== def.offSrc && (
+                                                <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
+                                              )}
+                                            </div>
+                                            <span className="cubby-cd-player-trigger__badge" aria-hidden="true">
+                                              PLAY CD · SPRING 2026
+                                            </span>
+                                          </button>
                                         ) : (
                                           <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`}>
                                             <img className="prop-off" src={def.offSrc} alt={def.label} draggable={false} />
@@ -2460,6 +2481,11 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <RetroCdBrowserModal
+        open={cdPlayerModalOpen}
+        onOpenChange={setCdPlayerModalOpen}
+      />
 
       {youtubeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
