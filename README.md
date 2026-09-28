@@ -1,6 +1,6 @@
 # Ascend Hub
 
-A customizable retro dashboard for the Ascend ecosystem, with CRT-style televisions that display live AI service status. Currently supports Codex CLI, Antigravity CLI, and my Personal Projects (Core and Vision).
+A customizable retro dashboard (ZZZ Themed) for the Ascend ecosystem, with CRT-style televisions that display live AI service status. Currently supports Codex CLI, Antigravity CLI, and my Personal Projects (Core and Vision).
 
 Future Ideas: Agent Orchestration.
 
