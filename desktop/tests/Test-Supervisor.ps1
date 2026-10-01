@@ -111,6 +111,16 @@ try {
         [System.IO.File]::ReadAllText($_.FullName)
     }) -join "`n"
     Assert (-not $allLogs.Contains('private fixture message')) 'raw child stdout must not be persisted'
+
+    $missingProfile = New-Object Ascend.Desktop.Supervisor((Join-Path $runtimeDirectory 'absent.json'),
+        $logs, $true)
+    try {
+        Assert ($missingProfile.Start('hub', $false)) 'missing profile case should enter startup'
+        $missing = Wait-State $missingProfile 'hub' @('failed')
+        Assert ($missing.FailureCode -eq 'profile-missing') 'missing profile must report a repairable code'
+    } finally {
+        $missingProfile.Dispose()
+    }
     Write-Output 'supervisor fixture checks passed'
 } finally {
     if ($null -ne $supervisor) { $supervisor.Dispose() }

@@ -1,13 +1,14 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Ascend Desktop" Width="600" Height="510" MinWidth="520" MinHeight="450"
+        Title="Ascend Desktop" Width="760" Height="600" MinWidth="540" MinHeight="420"
         WindowStartupLocation="CenterScreen" Background="#08111E" Foreground="#E9F2FF"
         FontFamily="Segoe UI" FontSize="13">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
   <Grid Margin="22">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
     <StackPanel Grid.Row="0" Margin="0,0,0,16">
@@ -66,4 +67,5 @@
               DockPanel.Dock="Right" Padding="10,6"/>
     </DockPanel>
   </Grid>
+  </ScrollViewer>
 </Window>

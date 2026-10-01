@@ -80,7 +80,7 @@ try {
         $prefix = if ($component -eq 'vision') { 'Vision' } else { 'Hub' }
         $ui["${prefix}State"].Text = $snapshot.State.ToUpperInvariant()
         $elapsed = [math]::Floor($snapshot.ElapsedSeconds)
-        $ui["${prefix}Stage"].Text = "$($snapshot.Stage) · ${elapsed}s"
+        $ui["${prefix}Stage"].Text = "$($snapshot.Stage) - ${elapsed}s"
         $ui["${prefix}Capabilities"].Text = $snapshot.Capabilities
         $canStart = $snapshot.State -in @('stopped', 'failed')
         $ui["${prefix}Start"].IsEnabled = $canStart
@@ -122,7 +122,7 @@ try {
     })
 
     $ui['ProfileStatus'].Text = if (Test-Path -LiteralPath $ProfilePath) {
-        'Each app starts separately · Core connection is checked inside the app'
+        'Each app starts separately; Core connection is checked inside the app'
     } else {
         'Setup required: run Install-Ascend.ps1 to create the local profile'
     }

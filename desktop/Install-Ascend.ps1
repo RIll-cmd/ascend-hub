@@ -49,6 +49,7 @@ $visionConfig = Resolve-RequiredFile $VisionConfig 'Vision config'
 [void](Resolve-RequiredFile (Join-Path $VisionRoot 'fairy-ui\dist\index.html') 'Fairy UI build')
 [void](Resolve-RequiredFile (Join-Path $VisionRoot 'desktop_host.py') 'Vision recovery host')
 
+$DestinationRoot = [System.IO.Path]::GetFullPath($DestinationRoot)
 $profilePath = Join-Path $DestinationRoot 'profile.json'
 if ((Test-Path -LiteralPath $profilePath) -and -not $Force) {
     throw 'Ascend profile already exists. Re-run with -Force only after reviewing the selected checkout paths.'
@@ -74,7 +75,17 @@ try {
     if (Test-Path -LiteralPath $profilePath) {
         $backupPath = Join-Path $DestinationRoot ('profile-backup-' +
             [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfff') + '.json')
-        [System.IO.File]::Replace($temporaryPath, $profilePath, $backupPath)
+        try {
+            [System.IO.File]::Replace($temporaryPath, $profilePath, $backupPath)
+        } catch {
+            if ($_.Exception.GetBaseException() -isnot [System.UnauthorizedAccessException]) {
+                throw
+            }
+            # Windows EFS can deny Replace even when this owner may copy the
+            # encrypted files. Preserve the old profile before overwriting it.
+            [System.IO.File]::Copy($profilePath, $backupPath, $false)
+            [System.IO.File]::Copy($temporaryPath, $profilePath, $true)
+        }
     } else {
         [System.IO.File]::Move($temporaryPath, $profilePath)
     }
@@ -89,7 +100,7 @@ if (-not $SkipShortcuts) {
     foreach ($name in @('Vision', 'Hub')) {
         $shortcut = $shell.CreateShortcut((Join-Path $ShortcutDirectory "Ascend $name.lnk"))
         $shortcut.TargetPath = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
-        $shortcut.Arguments = "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launcherPath`" -Target $name"
+        $shortcut.Arguments = "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launcherPath`" -Target $name -ProfilePath `"$profilePath`""
         $shortcut.WorkingDirectory = $HubRoot
         $shortcut.Description = "Start Ascend $name with startup status and recovery controls"
         $shortcut.Save()

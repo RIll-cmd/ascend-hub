@@ -28,6 +28,7 @@ namespace Ascend.Desktop {
         public ComponentProfile hub { get; set; }
         public ComponentProfile vision { get; set; }
         public static Profile Read(string path) {
+            if (!File.Exists(path)) throw new InvalidOperationException("profile-missing");
             var profile = new JavaScriptSerializer().Deserialize<Profile>(File.ReadAllText(path));
             if (profile == null || profile.schemaVersion != 1) throw new InvalidOperationException("profile-schema"); return profile;
         }
@@ -216,7 +217,7 @@ namespace Ascend.Desktop {
         static string NewToken() { var bytes=new byte[32];using(var random=RandomNumberGenerator.Create())random.GetBytes(bytes);return Convert.ToBase64String(bytes); }
         static string SafeCode(Exception error) { string code=error is InvalidOperationException?error.Message:"supervisor-error";return System.Text.RegularExpressions.Regex.IsMatch(code,"^[a-z][a-z0-9-]{0,70}$")?code:"supervisor-error"; }
         static string Repair(string code) {
-            switch(code) { case "startup-timeout":return "Startup deadline reached. Check prerequisites, then Retry.";case "port-in-use":return "Hub port is already in use. Stop that app yourself or change the profile port.";case "prerequisite-timeout":return "Runtime/import probe stalled after 20 seconds. Repair the selected environment.";case "prerequisite-failed":return "Runtime/import/config check failed. Repair the selected environment; no packages were installed.";case "release-unverified":return "Portable release has not been verified. Use the documented release check.";default:return "Installation/startup failed ("+code+"). Check the profile and desktop README, then Retry."; }
+            switch(code) { case "profile-missing":return "Launcher profile missing. Reinstall the desktop shortcuts, then Retry.";case "startup-timeout":return "Startup deadline reached. Check prerequisites, then Retry.";case "port-in-use":return "Hub port is already in use. Stop that app yourself or change the profile port.";case "prerequisite-timeout":return "Runtime/import probe stalled after 20 seconds. Repair the selected environment.";case "prerequisite-failed":return "Runtime/import/config check failed. Repair the selected environment; no packages were installed.";case "release-unverified":return "Portable release has not been verified. Use the documented release check.";default:return "Installation/startup failed ("+code+"). Check the profile and desktop README, then Retry."; }
         }
         void Log(string component,string code,long duration) {
             try { Directory.CreateDirectory(logDirectory);foreach(string file in Directory.GetFiles(logDirectory,"session-*.jsonl"))if(File.GetLastWriteTimeUtc(file)<DateTime.UtcNow.AddDays(-14))File.Delete(file);
