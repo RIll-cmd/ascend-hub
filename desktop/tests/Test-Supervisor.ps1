@@ -3,6 +3,9 @@
 param([string]$PythonExe = (Get-Command python -ErrorAction Stop).Source)
 
 $ErrorActionPreference = 'Stop'
+if ($PSVersionTable.PSVersion.Major -ne 5) {
+    throw 'This check requires Windows PowerShell 5.1; invoke it with powershell.exe, not pwsh.exe.'
+}
 $desktopDirectory = (Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath
 $fixturePath = Join-Path $PSScriptRoot 'fixture_server.py'
 $runtimeDirectory = Join-Path $env:TEMP ('ascend-supervisor-test-' + [guid]::NewGuid().ToString('N'))

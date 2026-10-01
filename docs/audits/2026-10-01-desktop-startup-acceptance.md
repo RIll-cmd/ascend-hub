@@ -8,12 +8,14 @@
 |---|---|
 | Hub status tests | 41 passed, including two new authenticated health tests. |
 | Vision focused tests | 49 passed across startup, Fairy bridge, camera, recovery host, and runtime health. |
+| Full Vision suite | 1,124 passed, 20 skipped, one dependency deprecation warning. |
 | Fairy frontend | TypeScript/Vite build passed from the selected Vision worktree. |
 | WPF launcher bootstrap | Windows PowerShell 5.1 `Start-Ascend.ps1 -SelfTest` loaded the XAML, compiled the process supervisor, bound controls, and exited 0. |
 | Installer in an isolated test directory | Wrote a profile and two distinct `.lnk` files. Inspected both links: each targets the same launcher with `-Target Vision` or `-Target Hub`. No real desktop shortcut was replaced. |
 | Supervisor fixture | A hung Hub hit its three-second startup deadline while Vision reached ready; the snapshot call stayed under one second. Early child exit, wrong health identity, safe diagnostics, and ten successive Hub/Vision fixture start/stop cycles passed. |
 | Real local Hub + recovery Vision through supervisor | Hub reached ready and Vision recovery reached degraded but usable in 13.5 seconds. Vision reported chat ready, camera/microphone unavailable, AI configured but untested, and Core unchecked. Authenticated Vision Stop exited gracefully. |
 | Real Hub development server | Bound to `127.0.0.1`; authenticated `/api/health` returned 200 with the expected instance/build; wrong token returned 403. An initial dependency optimization was slow but completed. |
+| Installed local shortcuts/profile | Two new desktop links and a profile were created without replacing existing links. Vision code uses the isolated checkout but its original `config.yaml` and `.env`, preserving the existing data paths. The installed-profile supervisor check reached Hub ready and Vision recovery usable in 14.1 seconds, then stopped Vision gracefully. This was a scripted check, not a physical shortcut click. |
 | Full Vision one-shot startup | With feedback/hotkey/tray disabled for the test, model warmup, camera initialization, and a bounded one-second run completed with exit 0. |
 | Full Fairy health and stop | Full Vision served Fairy with chat and camera ready. On this machine microphone initialization failed, and the corrected health reported microphone unavailable. An authenticated shutdown request returned 202; process cleaned up and exited 0. |
 

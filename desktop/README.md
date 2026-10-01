@@ -25,7 +25,7 @@ From a Windows PowerShell terminal, after checking the paths:
   -VisionEnvFile 'D:\ascend-vision\ascend-vision\.env'
 ```
 
-Installation saves only local paths and runtime choices in `%LOCALAPPDATA%\Ascend\Desktop\profile.json`; credentials remain in the existing env file. `-VisionConfig` is optional and defaults to the selected Vision checkout. Use it when testing a code worktree against your existing Vision configuration and data; relative data/model paths resolve from the config file's directory. It creates **Ascend Vision** and **Ascend Hub** shortcuts on the current user's desktop. If a profile already exists, the installer refuses to replace it unless you explicitly add `-Force`; a forced replacement keeps a dated backup. The shortcuts point to the checkout where the installer script lives, so install from a stable checkout after updates are integrated.
+Installation saves only local paths and runtime choices in `%LOCALAPPDATA%\Ascend\Desktop\profile.json`; credentials remain in the existing env file. `-VisionConfig` is optional and defaults to the selected Vision checkout. Use it when testing a code worktree against your existing Vision configuration and data; relative data/model paths resolve from the config file's directory. It creates **Ascend Vision** and **Ascend Hub** shortcuts on the current user's desktop. If a profile already exists, the installer refuses to replace it unless you explicitly add `-Force`; a forced replacement keeps a dated backup. The shortcuts point to the checkout where the installer script lives. If installed from a worktree, preserve that worktree until you reinstall from a stable checkout after integration.
 
 You may open the controls without starting either app:
 

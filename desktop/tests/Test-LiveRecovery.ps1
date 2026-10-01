@@ -3,6 +3,9 @@
 param([Parameter(Mandatory=$true)][string]$ProfilePath)
 
 $ErrorActionPreference = 'Stop'
+if ($PSVersionTable.PSVersion.Major -ne 5) {
+    throw 'This check requires Windows PowerShell 5.1; invoke it with powershell.exe, not pwsh.exe.'
+}
 $desktopDirectory = (Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath
 $profile = Get-Content -LiteralPath $ProfilePath -Raw | ConvertFrom-Json
 $listener = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, 0)
