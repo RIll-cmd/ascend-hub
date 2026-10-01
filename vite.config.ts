@@ -35,7 +35,7 @@ const localBindingConfig = {
     : [],
 };
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ command }) => {
   // Use Miniflare's local Request.cf placeholder unless fetching is requested.
   process.env.CLOUDFLARE_CF_FETCH_ENABLED ??= "false";
   process.env.WRANGLER_SEND_METRICS ??= "false";
@@ -47,12 +47,23 @@ export default defineConfig(async () => {
   process.env.WRANGLER_REGISTRY_PATH ??= ".wrangler/dev-registry";
   process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
 
+  // A desktop launch owns one loopback server. The launch identity is available
+  // to the local Worker as a binding, but is never embedded in a production build.
+  const desktopLaunch = command === "serve" && process.env.ASCEND_DESKTOP_LAUNCH === "1";
+  const launchVars = desktopLaunch
+    ? Object.fromEntries(
+        ["ASCEND_LAUNCH_TOKEN", "ASCEND_INSTANCE_ID", "ASCEND_BUILD_ID"]
+          .filter((name) => process.env[name])
+          .map((name) => [name, process.env[name] as string]),
+      )
+    : {};
+
   // Wrangler snapshots its log path while the Cloudflare plugin is imported.
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
     server: {
-      host: "0.0.0.0",
+      host: desktopLaunch ? "127.0.0.1" : "0.0.0.0",
       ...(managedLinux ? { allowedHosts: ["terminal.local"] } : {}),
       ...(isCodexSeatbeltSandbox ? { watch: { useFsEvents: false, usePolling: true } } : {}),
     },
@@ -62,7 +73,7 @@ export default defineConfig(async () => {
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
-        config: localBindingConfig,
+        config: { ...localBindingConfig, vars: launchVars },
       }),
     ],
   };

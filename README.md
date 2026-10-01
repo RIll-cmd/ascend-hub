@@ -1,5 +1,7 @@
 # Ascend Hub
 
+For separate one-click Windows launchers for Hub and Vision, see the [Ascend Desktop setup](desktop/README.md). The launcher keeps startup progress and recovery controls visible when a component stalls.
+
 A customizable retro dashboard for the Ascend ecosystem, with CRT-style televisions that display live AI service status. Currently supports Codex CLI, Antigravity CLI, and my Personal Projects (Core and Vision).
 
 Future Ideas: Agent Orchestration.
