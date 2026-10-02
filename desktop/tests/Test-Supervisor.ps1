@@ -121,6 +121,17 @@ try {
     } finally {
         $missingProfile.Dispose()
     }
+
+    $unreadableProfile = New-Object Ascend.Desktop.Supervisor($runtimeDirectory,
+        $logs, $true)
+    try {
+        Assert ($unreadableProfile.Start('hub', $false)) 'unreadable profile case should enter startup'
+        $unreadable = Wait-State $unreadableProfile 'hub' @('failed')
+        Assert ($unreadable.FailureCode -eq 'profile-inaccessible') `
+            'an existing but unreadable profile must not be reported as missing'
+    } finally {
+        $unreadableProfile.Dispose()
+    }
     Write-Output 'supervisor fixture checks passed'
 } finally {
     if ($null -ne $supervisor) { $supervisor.Dispose() }
