@@ -18,6 +18,7 @@ Hub is the presentation layer—not the status authority. Ascend Core stores nor
 - Separate, instance-bound local-agent adapters with durable operation tracking.
 - Supports Spotify and has custom Ui for any songs.
 - Real Time weather
+- Added game on TV
 
 ## Connected services
 
