@@ -71,7 +71,7 @@ test("uses truthful state-specific details and clamps progress", () => {
   });
 
   assert.equal(stuck.serviceLabel, "ANTIGRAVITY CLI");
-  assert.equal(stuck.stateLabel, "STUCK");
+  assert.equal(stuck.stateLabel, "NEEDS ATTENTION");
   assert.equal(stuck.detail, "Needs attention");
   assert.ok(stuck.signals.some(signal => signal.label === "PROGRESS" && signal.value === "100%"));
   assert.ok(stuck.signals.some(signal => signal.label === "RETRY" && signal.value === "AVAILABLE"));
@@ -136,4 +136,18 @@ test("reports loading, unavailable, and missing-service states without exposing 
 
   const missing = buildAgentAuxiliaryModel({ assignment, service: null, loading: false, error: null, stale: false, nowMs: NOW });
   assert.equal(missing.detail, "NO INSTANCE REPORTED");
+});
+
+test("the auxiliary model uses the same derived freshness for old and missing reports", () => {
+  const assignment = { channel: "CH 03", serviceId: "codex-cli" } as const;
+  const model = buildAgentAuxiliaryModel({ assignment, service: workingService, loading: false, error: null, stale: false, nowMs: NOW + 60_000 });
+  assert.equal(model.signalLabel, "STALE");
+  assert.equal(model.presentation.freshness, "stale");
+  assert.equal(model.presentation.heading, "Last known working");
+  assert.match(model.copyText, /Last known working/i);
+  assert.doesNotMatch(model.copyText, /LIVE/);
+  const missing = buildAgentAuxiliaryModel({ assignment, service: null, loading: false, error: null, stale: false, nowMs: NOW });
+  assert.equal(missing.presentation.lifecycle, null);
+  assert.equal(missing.presentation.freshness, "unavailable");
+  assert.doesNotMatch(missing.copyText, /STATE: OFFLINE|LIVE/);
 });

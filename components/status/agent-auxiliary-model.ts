@@ -1,6 +1,6 @@
 import type { ShelfServiceStatus } from "../../app/status/shelf-contract";
 import type { ShelfTvAssignment } from "./shelf-tv-assignment";
-import { getStatusPresentation, safeStatusText } from "./status-presentation";
+import { deriveShelfTvPresentation, getStatusPresentation, safeStatusText, statusReportAgeMs, type ShelfTvPresentation } from "./status-presentation";
 
 export interface AgentAuxiliarySignal {
   label: string;
@@ -9,6 +9,7 @@ export interface AgentAuxiliarySignal {
 }
 
 export interface AgentAuxiliaryModel {
+  presentation: ShelfTvPresentation;
   headingId: string;
   channel: ShelfTvAssignment["channel"];
   serviceLabel: string;
@@ -18,6 +19,10 @@ export interface AgentAuxiliaryModel {
   signalLabel: "LIVE" | "STALE" | "NO SIGNAL" | "CONNECTING";
   signals: AgentAuxiliarySignal[];
   copyText: string;
+  activity?: string | null;
+  issue?: string | null;
+  progress?: number | null;
+  retryable?: boolean;
 }
 
 export interface AgentAuxiliaryModelInput {
@@ -27,6 +32,8 @@ export interface AgentAuxiliaryModelInput {
   error: string | null;
   stale: boolean;
   nowMs: number;
+  selectedInstanceId?: string | null;
+  presentation?: ShelfTvPresentation;
 }
 
 const SERVICE_LABELS: Record<ShelfTvAssignment["serviceId"], string> = {
@@ -38,9 +45,9 @@ const SERVICE_LABELS: Record<ShelfTvAssignment["serviceId"], string> = {
 
 function relativeAge(iso: string | undefined, nowMs: number): string {
   if (!iso) return "UNKNOWN";
-  const then = Date.parse(iso);
-  if (!Number.isFinite(then)) return "UNKNOWN";
-  const seconds = Math.max(0, Math.floor((nowMs - then) / 1000));
+  const ageMs = statusReportAgeMs(iso, nowMs);
+  if (ageMs === null) return "UNKNOWN";
+  const seconds = Math.floor(ageMs / 1000);
   if (seconds < 60) return `${seconds}S AGO`;
   if (seconds < 3_600) return `${Math.floor(seconds / 60)}M AGO`;
   if (seconds < 86_400) return `${Math.floor(seconds / 3_600)}H AGO`;
@@ -52,42 +59,44 @@ function clampProgress(progress: number | undefined): number | null {
   return Math.round(Math.min(100, Math.max(0, progress)));
 }
 
-function noServiceModel(input: AgentAuxiliaryModelInput): AgentAuxiliaryModel {
+function noServiceModel(input: AgentAuxiliaryModelInput, presentation: ShelfTvPresentation): AgentAuxiliaryModel {
   const serviceLabel = SERVICE_LABELS[input.assignment.serviceId];
-  const signalLabel = input.loading ? "CONNECTING" : "NO SIGNAL";
-  const detail = input.loading
+  const signalLabel = presentation.freshness === "loading" ? "CONNECTING" : "NO SIGNAL";
+  const detail = presentation.freshness === "loading"
     ? "OPENING STATUS CHANNEL"
     : input.error
       ? "STATUS AUTHORITY UNAVAILABLE"
       : "NO INSTANCE REPORTED";
-  const signals: AgentAuxiliarySignal[] = [
-    { label: "STATUS FEED", value: signalLabel, tone: input.loading ? "normal" : "warning" },
-  ];
+  const instance = safeStatusText(input.selectedInstanceId, 48);
+  const signals: AgentAuxiliarySignal[] = instance ? [{ label: "INSTANCE", value: instance, tone: "muted" }] : [];
 
   return {
+    presentation,
     headingId: `agent-console-${input.assignment.serviceId}`,
     channel: input.assignment.channel,
     serviceLabel,
-    stateLabel: signalLabel,
+    stateLabel: presentation.heading.toUpperCase(),
     stateSymbol: "·",
     detail,
     signalLabel,
     signals,
     copyText: [
       `${serviceLabel} · ${input.assignment.channel}`,
-      `STATE: ${signalLabel}`,
-      `DETAIL: ${detail}`,
+      `STATE: ${presentation.heading}`,
+      `DETAIL: ${presentation.explanation}`,
+      ...signals.map(signal => `${signal.label}: ${signal.value}`),
     ].join("\n"),
   };
 }
 
 export function buildAgentAuxiliaryModel(input: AgentAuxiliaryModelInput): AgentAuxiliaryModel {
-  const { assignment, service, stale, nowMs } = input;
-  if (!service) return noServiceModel(input);
+  const { assignment, service, nowMs } = input;
+  const tvPresentation = input.presentation ?? deriveShelfTvPresentation(input);
+  if (!service) return noServiceModel(input, tvPresentation);
 
   const serviceLabel = SERVICE_LABELS[assignment.serviceId];
   const presentation = getStatusPresentation(service);
-  const stateLabel = presentation.label.toUpperCase();
+  const stateLabel = tvPresentation.heading.toUpperCase();
   const heartbeatAge = relativeAge(service.lastHeartbeatAt, nowMs);
   const activity = safeStatusText(service.activity?.label ?? service.activity?.kind, 80);
   const issue = safeStatusText(service.issue?.message ?? service.issue?.code, 80);
@@ -98,11 +107,11 @@ export function buildAgentAuxiliaryModel(input: AgentAuxiliaryModelInput): Agent
       ? issue ?? "ATTENTION REQUIRED"
       : service.state === "offline"
         ? `LAST CONTACT ${heartbeatAge}`
-        : "HEARTBEAT CONFIRMED";
+        : tvPresentation.freshness === "current" ? "HEARTBEAT CONFIRMED" : "LAST KNOWN IDLE";
   const progress = clampProgress(service.activity?.progress);
   const signals: AgentAuxiliarySignal[] = [
     { label: "STATE SINCE", value: relativeAge(service.stateSince, nowMs), tone: "normal" },
-    { label: "LAST HEARTBEAT", value: heartbeatAge, tone: service.state === "offline" ? "warning" : "positive" },
+    { label: "LAST HEARTBEAT", value: heartbeatAge, tone: service.state === "offline" || tvPresentation.freshness !== "current" ? "warning" : "positive" },
   ];
 
   if (service.activity?.startedAt) {
@@ -120,16 +129,18 @@ export function buildAgentAuxiliaryModel(input: AgentAuxiliaryModelInput): Agent
   }
   signals.push({ label: "INSTANCE", value: instance, tone: "muted" });
 
-  const signalLabel = stale ? "STALE" : "LIVE";
+  const signalLabel = tvPresentation.freshness === "current" ? "LIVE" : "STALE";
   const copyText = [
     `${serviceLabel} · ${assignment.channel}`,
     `STATE: ${stateLabel}`,
     `DETAIL: ${detail}`,
     `SIGNAL: ${signalLabel}`,
+    `REPORT: ${tvPresentation.explanation}`,
     ...signals.map(signal => `${signal.label}: ${signal.value}`),
   ].join("\n");
 
   return {
+    presentation: tvPresentation,
     headingId: `agent-console-${assignment.serviceId}`,
     channel: assignment.channel,
     serviceLabel,
@@ -139,5 +150,9 @@ export function buildAgentAuxiliaryModel(input: AgentAuxiliaryModelInput): Agent
     signalLabel,
     signals,
     copyText,
+    activity,
+    issue,
+    progress,
+    retryable: service.issue?.retryable,
   };
 }

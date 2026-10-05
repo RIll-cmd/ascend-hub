@@ -60,6 +60,8 @@ next-env.d.ts
 /.cursor/
 /outputs/
 /work/
+/.worktrees/
+/.playwright-cli/
 /*-qa.png
 /*.tsbuildinfo
 

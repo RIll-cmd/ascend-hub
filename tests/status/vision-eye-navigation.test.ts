@@ -102,6 +102,7 @@ test("page integrates selection-only movement and Space activation", async () =>
   assert.match(source, /getVisionEyeCommand/);
   assert.match(source, /activateStatusTv/);
   assert.match(source, /data-status-service-id/);
+  assert.match(source, /aria-label=\{getShelfTvAccessibleLabel\(statusAssignment, statusSlot\?\.presentation/);
   assert.match(source, /<VisionEyeNavigator/);
   assert.match(source, /scrollTvIntoView/);
   assert.match(source, /scrollIntoView/);
@@ -159,7 +160,7 @@ test("does not animate when selecting the already active TV", () => {
   assert.equal(beginTvSignalTransition(initial, "ascend-core", "right"), initial);
 });
 
-test("renders the eye inside each CRT receiver instead of as a moving scene entity", async () => {
+test("renders full-screen Fairy over the mounted CRT status", async () => {
   const navigator = await readFile("components/status/VisionEyeNavigator.tsx", "utf8");
   const receiver = await readFile("components/status/ShelfStatusTv.tsx", "utf8");
 
@@ -167,5 +168,6 @@ test("renders the eye inside each CRT receiver instead of as a moving scene enti
   assert.doesNotMatch(navigator, /eyeX|eyeY|useMotionValue/);
   assert.match(receiver, /TvSignalScreenMode/);
   assert.match(receiver, /shelf-status-tv__entity-layer/);
+  assert.doesNotMatch(receiver, /is-suppressed/);
   assert.match(receiver, /VisionEyeEntity/);
 });

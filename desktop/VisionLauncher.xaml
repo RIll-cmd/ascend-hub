@@ -1,0 +1,94 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Ascend Vision" Width="520" Height="820" MinWidth="420" MinHeight="460" Background="{DynamicResource Base}" Foreground="{DynamicResource Ink}" FontFamily="Segoe UI" FontSize="14" WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <ResourceDictionary>
+      <SolidColorBrush x:Key="Base" Color="#090D1B"/>
+      <SolidColorBrush x:Key="Surface" Color="#171C35"/>
+      <SolidColorBrush x:Key="Ink" Color="#ECEEFF"/>
+      <SolidColorBrush x:Key="Secondary" Color="#AEB8D1"/>
+      <SolidColorBrush x:Key="Accent" Color="#747DFF"/>
+      <SolidColorBrush x:Key="Edge" Color="#363D60"/>
+      <SolidColorBrush x:Key="ActionInk" Color="#090D1B"/>
+    </ResourceDictionary>
+  </Window.Resources>
+  <ScrollViewer Background="{DynamicResource Base}" x:Name="Scroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel x:Name="Composition" Margin="32">
+      <TextBlock Text="Ascend Vision" FontSize="22" FontWeight="SemiBold"/>
+      <Image Source="{DynamicResource FairyArtwork}" Width="212" Height="212" Margin="0,22,0,25" AutomationProperties.Name="Fairy celestial eye"/>
+      
+
+      <TextBlock x:Name="State" Text="Ready when you are" FontSize="27" FontWeight="SemiBold"/>
+      <Grid Margin="0,7,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Chat" Foreground="{DynamicResource Secondary}"/>
+        <TextBlock x:Name="ChatStatus" Grid.Column="1" Text="Not checked" TextAlignment="Right"/>
+      </Grid>
+      <Grid Margin="0,7,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Camera" Foreground="{DynamicResource Secondary}"/>
+        <TextBlock x:Name="CameraStatus" Grid.Column="1" Text="Not checked" TextAlignment="Right"/>
+      </Grid>
+      <Grid Margin="0,7,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Microphone" Foreground="{DynamicResource Secondary}"/>
+        <TextBlock x:Name="MicrophoneStatus" Grid.Column="1" Text="Not checked" TextAlignment="Right"/>
+      </Grid>
+      <Grid Margin="0,7,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Core" Foreground="{DynamicResource Secondary}"/>
+        <TextBlock x:Name="CoreStatus" Grid.Column="1" Text="Not checked" TextAlignment="Right"/>
+      </Grid>
+      <TextBlock x:Name="Stage" Margin="0,8,0,0" Foreground="{DynamicResource Secondary}"/>
+      
+
+      <TextBlock x:Name="Timing" Margin="0,5,0,0" Foreground="{DynamicResource Secondary}" FontSize="12"/>
+      
+
+      <Button x:Name="Primary" Style="{DynamicResource PrimaryAction}" Content="_Start Vision" AutomationProperties.Name="Start Vision"/>
+      
+
+      <WrapPanel>
+        <Button x:Name="Cancel" Content="_Cancel startup" Visibility="Collapsed"/>
+        <Button x:Name="Stop" Content="S_top Vision" Visibility="Collapsed"/>
+        <Button x:Name="Force" Content="_Force stop" Visibility="Collapsed"/>
+        <Button x:Name="ChatRecovery" Content="Start c_hat only"/>
+      </WrapPanel>
+      
+
+      <TextBlock Text="Chat only leaves camera, microphone, speech and gestures unavailable." FontSize="12" Foreground="{DynamicResource Secondary}"/>
+      
+
+      <Expander x:Name="Details" Header="_Diagnostics" Margin="0,12,0,0" Foreground="{DynamicResource Ink}">
+        <StackPanel Margin="0,10,0,0">
+          <TextBlock x:Name="Failure" Text="No startup attempt yet." Foreground="{DynamicResource Secondary}"/>
+          <Button x:Name="Diagnostics" Content="Open _diagnostics folder" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+        </StackPanel>
+      </Expander>
+      
+
+      <TextBlock x:Name="ProfileStatus" Margin="0,18,0,0" FontSize="12" Foreground="{DynamicResource Secondary}"/>
+      
+
+      <Border x:Name="CloseActions" Visibility="Collapsed" BorderBrush="{DynamicResource Accent}" BorderThickness="1" Padding="12" Margin="0,16,0,0">
+        <StackPanel>
+          <TextBlock Text="Stop this app before closing?"/>
+          <WrapPanel Margin="0,10,0,0">
+            <Button x:Name="CloseCancel" Content="Cancel c_losing"/>
+            <Button x:Name="CloseStop" Content="Stop this app and c_lose"/>
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</Window>

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
   const origin = request.nextUrl.origin.replace("localhost", "127.0.0.1");
   const redirectUri = `${origin}/api/spotify/callback`;
-  const scope = "user-read-currently-playing user-read-playback-state";
+  const scope = "user-read-currently-playing user-read-playback-state user-read-recently-played";
 
   const params = new URLSearchParams({
     response_type: "code",

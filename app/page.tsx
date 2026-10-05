@@ -1,5 +1,5 @@
 "use client";
-import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { Rnd } from "react-rnd";
@@ -59,11 +59,11 @@ import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
 import { RetroCdBrowserModal } from "../components/RetroCdBrowserModal";
-import { ShelfStatusTv } from "../components/status/ShelfStatusTv";
+import { getShelfTvAccessibleLabel, ShelfStatusTv, type StatusMediaIssue } from "../components/status/ShelfStatusTv";
 import { AgentAuxiliaryPanel } from "../components/status/AgentAuxiliaryPanel";
 import { VisionEyeNavigator } from "../components/status/VisionEyeNavigator";
 import { buildAgentAuxiliaryModel } from "../components/status/agent-auxiliary-model";
-import { getShelfSceneCameraMotion, type ShelfSceneCameraMotion } from "../components/status/shelf-tv-focus";
+import { deriveShelfTvPresentation } from "../components/status/status-presentation";
 import { getShelfTvAssignment, resolveShelfTvService, type ShelfTvAssignment } from "../components/status/shelf-tv-assignment";
 import {
   advanceTvSignalTransition,
@@ -362,9 +362,12 @@ export default function Home() {
   const [showTrimGuides, setShowTrimGuides] = useState<boolean>(false);
   const [focusedStatusTv, setFocusedStatusTv] = useState<{
     assignment: ShelfTvAssignment;
-    motion: ShelfSceneCameraMotion;
+    slotId: string;
+    collectibleId: string;
     open: boolean;
   } | null>(null);
+  const [selectedStatusInstances, setSelectedStatusInstances] = useState<Record<string, string>>({});
+  const [statusMediaIssues, setStatusMediaIssues] = useState<Record<string, Record<string, StatusMediaIssue>>>({});
   const [tvSignalTransition, setTvSignalTransition] = useState(() =>
     createTvSignalState("ascend-core"),
   );
@@ -734,19 +737,47 @@ export default function Home() {
     setCameraSceneElement(node);
   }, []);
   const cameraMounted = focusedStatusTv !== null;
-  const focusedService = focusedStatusTv
-    ? shelfStatus.current?.services.find(
-        service => service.serviceId === focusedStatusTv.assignment.serviceId,
-      ) ?? null
-    : null;
-  const focusedAgentModel = focusedStatusTv
+  const statusTvSlots = useMemo(() => {
+    return ["slot-1-1-t", "slot-1-3-t", "slot-1-1-b", "slot-1-3-b"].map(slotId => {
+      const service = resolveShelfTvService(slotId, shelfStatus.current?.services ?? [],
+        selectedStatusInstances[slotId], shelfStatus.nowMs);
+      const presentation = deriveShelfTvPresentation({
+        service, loading: Boolean(shelfStatus.loading && !shelfStatus.current), error: shelfStatus.error,
+        stale: Boolean(shelfStatus.stale), nowMs: shelfStatus.nowMs,
+        selectedInstanceId: selectedStatusInstances[slotId],
+      });
+      return { slotId, service, presentation };
+    });
+  }, [shelfStatus.current, shelfStatus.loading, shelfStatus.error, shelfStatus.stale, shelfStatus.nowMs, selectedStatusInstances]);
+
+  // Initialize identity before children commit, so a poll cannot display a replacement first.
+  const unrememberedSlots = statusTvSlots.filter(slot => slot.service && selectedStatusInstances[slot.slotId] === undefined);
+  if (unrememberedSlots.length > 0) {
+    const next = { ...selectedStatusInstances };
+    for (const slot of unrememberedSlots) next[slot.slotId] = slot.service!.instanceId;
+    setSelectedStatusInstances(next);
+  }
+
+  const onStatusMediaChange = useCallback((serviceId: ShelfTvAssignment["serviceId"], issue: StatusMediaIssue, mediaId: string) => {
+    setStatusMediaIssues(current => current[serviceId]?.[mediaId] === issue ? current : {
+      ...current, [serviceId]: { ...current[serviceId], [mediaId]: issue },
+    });
+  }, []);
+  const focusedSlot = focusedStatusTv ? statusTvSlots.find(slot => slot.slotId === focusedStatusTv.slotId) : null;
+  const focusedService = focusedSlot?.service ?? null;
+  const focusedMediaIssues = Object.values(statusMediaIssues[focusedStatusTv?.assignment.serviceId ?? ""] ?? {});
+  const focusedMediaIssue: StatusMediaIssue = focusedMediaIssues.includes("unavailable") ? "unavailable"
+    : focusedMediaIssues.includes("autoplay") ? "autoplay" : null;
+  const focusedAgentModel = focusedStatusTv && focusedSlot
     ? buildAgentAuxiliaryModel({
         assignment: focusedStatusTv.assignment,
         service: focusedService,
-        loading: shelfStatus.loading && !shelfStatus.current,
+        presentation: focusedSlot.presentation,
+        loading: Boolean(shelfStatus.loading && !shelfStatus.current),
         error: shelfStatus.error,
         stale: Boolean(shelfStatus.stale),
-        nowMs: shelfStatus.current ? Date.parse(shelfStatus.current.generatedAt) : 0,
+        nowMs: shelfStatus.nowMs,
+        selectedInstanceId: selectedStatusInstances[focusedStatusTv.slotId],
       })
     : null;
   const selectedVisionEyeTarget = visionEyeTargets.find(
@@ -756,48 +787,23 @@ export default function Home() {
   const activateStatusTv = useCallback((
     assignment: ShelfTvAssignment,
     trigger: HTMLButtonElement,
-    withEyeTransition: boolean,
+    _withEyeTransition: boolean,
   ) => {
-    const scene = cameraSceneRef.current;
-    const screen = trigger.querySelector<HTMLElement>(".shelf-status-tv__screen");
-    if (!scene || !screen || focusedStatusTv) return;
-
+    if (focusedStatusTv) return;
+    const slotId = trigger.dataset.statusSlotId;
+    const collectibleId = trigger.dataset.statusCollectibleId;
+    if (!slotId || !collectibleId) return;
+    // Explicit reopen may choose a replacement. Refresh inside the dialog never changes identity.
+    const retained = resolveShelfTvService(slotId, shelfStatus.current?.services ?? [],
+      selectedStatusInstances[slotId], shelfStatus.nowMs);
+    const selected = retained ?? resolveShelfTvService(slotId, shelfStatus.current?.services ?? [], undefined, shelfStatus.nowMs);
+    if (selected) setSelectedStatusInstances(current => ({ ...current, [slotId]: selected.instanceId }));
     setTvSignalTransition(createTvSignalState(assignment.serviceId));
-    if (visionEyeActivationTimerRef.current) {
-      clearTimeout(visionEyeActivationTimerRef.current);
-    }
-
-    const openCamera = () => {
-      const targetBounds = screen.getBoundingClientRect();
-      const sceneBounds = scene.getBoundingClientRect();
-      const focusArea = window.innerWidth > 860
-        ? { left: 0, top: 0, width: window.innerWidth * 0.64, height: window.innerHeight }
-        : undefined;
-
-      cameraTriggerRef.current = trigger;
-      setFocusedStatusTv({
-        assignment,
-        open: true,
-        motion: getShelfSceneCameraMotion(
-          { left: targetBounds.left, top: targetBounds.top, width: targetBounds.width, height: targetBounds.height },
-          { left: sceneBounds.left, top: sceneBounds.top, width: sceneBounds.width, height: sceneBounds.height },
-          { width: window.innerWidth, height: window.innerHeight },
-          focusArea,
-        ),
-      });
-      setVisionEyeActivating(false);
-      visionEyeActivationTimerRef.current = null;
-    };
-
-    if (!withEyeTransition || reduceMotion) {
-      openCamera();
-      return;
-    }
-
-    setVisionEyeActivating(true);
-    visionEyeActivationTimerRef.current = setTimeout(openCamera, 220);
-  }, [focusedStatusTv, reduceMotion]);
-
+    if (visionEyeActivationTimerRef.current) clearTimeout(visionEyeActivationTimerRef.current);
+    cameraTriggerRef.current = trigger;
+    setFocusedStatusTv({ assignment, slotId, collectibleId, open: true });
+    setVisionEyeActivating(false);
+  }, [focusedStatusTv, shelfStatus, selectedStatusInstances]);
   useEffect(() => {
     if (!cameraMounted) return;
 
@@ -809,15 +815,15 @@ export default function Home() {
         setFocusedStatusTv(current => current ? { ...current, open: false } : null);
       } else if (event.key === "Tab") {
         const focusables = Array.from(
-          cameraControlsRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? [],
+          cameraControlsRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], summary, input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])") ?? [],
         );
         if (focusables.length === 0) return;
         const first = focusables[0];
         const last = focusables[focusables.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
+        if (event.shiftKey && (document.activeElement === first || !cameraControlsRef.current?.contains(document.activeElement))) {
           event.preventDefault();
           last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
+        } else if (!event.shiftKey && (document.activeElement === last || !cameraControlsRef.current?.contains(document.activeElement))) {
           event.preventDefault();
           first.focus();
         }
@@ -1579,70 +1585,49 @@ export default function Home() {
         )}
       </section>
 
-      {focusedStatusTv && (
+      {focusedStatusTv && focusedSlot && focusedAgentModel && (
         <>
-          <motion.button
-            type="button"
-            tabIndex={-1}
-            className="shelf-camera-backdrop fixed inset-0"
-            aria-label="Zoom out to the full status shelf"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: focusedStatusTv.open ? 1 : 0 }}
-            transition={{ duration: reduceMotion ? 0.01 : 1.4, ease: [0.77, 0, 0.175, 1] }}
-            onClick={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
-          />
-          <motion.div
-            ref={cameraControlsRef}
-            className="shelf-camera-controls fixed inset-0"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${focusedStatusTv.assignment.channel} ${focusedStatusTv.assignment.serviceId.replaceAll("-", " ")} camera view`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: focusedStatusTv.open ? 1 : 0 }}
-            transition={{ duration: reduceMotion ? 0.01 : 0.7, delay: focusedStatusTv.open && !reduceMotion ? 0.7 : 0 }}
-          >
-            <div className="shelf-camera-readout" aria-hidden="true">
-              <span>CAMERA LOCK</span>
-              <strong>{focusedStatusTv.assignment.channel} · {focusedStatusTv.assignment.serviceId.replaceAll("-", " ")}</strong>
-            </div>
-            <button
-              ref={cameraExitRef}
-              type="button"
-              className="shelf-camera-exit absolute right-6 top-6"
-              onClick={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
-            >
-              <X size={18} /> ZOOM OUT
-            </button>
-            {focusedAgentModel ? (
-              <AgentAuxiliaryPanel
-                model={focusedAgentModel}
-                open={focusedStatusTv.open}
-                reduceMotion={Boolean(reduceMotion)}
+          <motion.button type="button" tabIndex={-1} className="shelf-camera-backdrop fixed inset-0"
+            aria-label="Dismiss status details" aria-hidden="true"
+            initial={{ opacity: 0 }} animate={{ opacity: focusedStatusTv.open ? 1 : 0 }}
+            transition={{ duration: reduceMotion ? 0.01 : 0.26 }}
+            onClick={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)} />
+          <motion.div ref={cameraControlsRef} className="shelf-camera-controls fixed inset-0"
+            role="dialog" aria-modal="true" aria-labelledby={focusedAgentModel.headingId}
+            initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+            animate={{ opacity: focusedStatusTv.open ? 1 : 0, y: focusedStatusTv.open || reduceMotion ? 0 : 10 }}
+            transition={{ duration: reduceMotion ? 0.01 : 0.26, ease: [0.22, 1, 0.36, 1] }}
+            onAnimationComplete={() => {
+              if (!focusedStatusTv.open) setFocusedStatusTv(null);
+            }}>
+            <div className="shelf-camera-detail-layout">
+              <AgentAuxiliaryPanel model={focusedAgentModel} open={focusedStatusTv.open}
+                reduceMotion={Boolean(reduceMotion)} closeRef={cameraExitRef}
                 onClose={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
+                onRefresh={shelfStatus.refresh} refreshing={shelfStatus.refreshing} refreshError={shelfStatus.error}
+                mediaIssue={focusedMediaIssue}
+                compactTv={<ShelfStatusTv assignment={focusedStatusTv.assignment}
+                  profile={getCrtProfile(focusedStatusTv.collectibleId)!} service={focusedService}
+                  presentation={focusedSlot.presentation} loading={Boolean(shelfStatus.loading && !shelfStatus.current)}
+                  error={shelfStatus.error} stale={Boolean(shelfStatus.stale)} reduceMotion={Boolean(reduceMotion)}
+                  mediaId={`focused-${focusedStatusTv.slotId}`}
+                  onMediaStatusChange={onStatusMediaChange} />}
               />
-            ) : null}
+            </div>
           </motion.div>
         </>
       )}
-
       {/* Scrollable WorkOS Multi-Tier Shelves Stack (100% Uncovered & Clean) */}
       <motion.div
         ref={setCameraSceneNode}
         className={`cabinet-shell shelf-camera-scene lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`}
         id="ascend-cabinet-section"
-        animate={focusedStatusTv?.open ? {
-          x: focusedStatusTv.motion.translateX,
-          y: focusedStatusTv.motion.translateY,
-          scale: focusedStatusTv.motion.scale,
-        } : { x: 0, y: 0, scale: 1 }}
-        transition={{ duration: reduceMotion ? 0.01 : 1.4, ease: [0.77, 0, 0.175, 1] }}
-        onAnimationComplete={() => {
-          if (focusedStatusTv && !focusedStatusTv.open) setFocusedStatusTv(null);
-        }}
+        aria-hidden={cameraMounted || undefined}
+        inert={cameraMounted || undefined}
         style={{
           marginTop: `${shelfOffsetY}px`,
           position: "relative",
-          zIndex: focusedStatusTv ? 95 : 15,
+          zIndex: 15,
           transformOrigin: "0 0",
         }}
       >
@@ -1756,9 +1741,8 @@ export default function Home() {
                                   ? COLLECTIBLES.find(c => c.id === slot.collectibleId)
                                   : null;
                                 const statusAssignment = getShelfTvAssignment(slot.id);
-                                const statusService = statusAssignment
-                                  ? resolveShelfTvService(slot.id, shelfStatus.current?.services ?? [])
-                                  : null;
+                                const statusSlot = statusAssignment ? statusTvSlots.find(status => status.slotId === slot.id) : null;
+                                const statusService = statusSlot?.service ?? null;
                                 const statusSignalMode = statusAssignment
                                   ? getTvSignalScreenMode(statusAssignment.serviceId, tvSignalTransition)
                                   : "default";
@@ -1820,23 +1804,29 @@ export default function Home() {
                                                      : ""
                                                 }`}
                                                 data-status-service-id={statusAssignment.serviceId}
+                                                data-status-slot-id={slot.id}
+                                                data-status-collectible-id={def.id}
                                                 data-status-channel={statusAssignment.channel}
                                                 disabled={Boolean(focusedStatusTv)}
-                                                aria-label={`Focus ${statusAssignment.channel} ${statusAssignment.serviceId.replaceAll("-", " ")} status TV`}
+                                                aria-label={getShelfTvAccessibleLabel(statusAssignment, statusSlot?.presentation,
+                                                  statusMediaIssues[statusAssignment.serviceId]?.[`shelf-${slot.id}`])}
                                                 onClick={(event) => activateStatusTv(statusAssignment, event.currentTarget, false)}
                                               >
                                                 <ShelfStatusTv
                                                   assignment={statusAssignment}
                                                   profile={getCrtProfile(def.id)!}
                                                   service={statusService}
-                                                  loading={shelfStatus.loading && !shelfStatus.current}
+                                                  presentation={statusSlot?.presentation}
+                                                  reduceMotion={Boolean(reduceMotion)}
+                                                  mediaId={`shelf-${slot.id}`}
+                                                  onMediaStatusChange={onStatusMediaChange}
+                                                  loading={Boolean(shelfStatus.loading && !shelfStatus.current)}
                                                   error={shelfStatus.error}
                                                   stale={Boolean(shelfStatus.stale)}
                                                   signalMode={statusSignalMode}
                                                   signalDirection={tvSignalTransition.direction}
                                                   signalActivating={visionEyeActivating && statusSignalMode === "active"}
                                                 />
-                                                <span className="shelf-status-tv-trigger__hint" aria-hidden="true">FOCUS</span>
                                               </button>
                                             ) : (
                                               <CrtTvDisplay
@@ -2486,6 +2476,7 @@ export default function Home() {
         open={cdPlayerModalOpen}
         onOpenChange={setCdPlayerModalOpen}
         spotifyData={spotifyData}
+        onOpenSpotifySetup={() => setSpotifyModalOpen(true)}
       />
 
       {youtubeModalOpen && (

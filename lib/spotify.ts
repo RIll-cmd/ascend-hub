@@ -26,6 +26,7 @@ declare global {
     refreshToken?: string;
     demoMode?: boolean;
   } | undefined;
+  var __spotifyLastTrack: Partial<SpotifyPlaybackState> | undefined;
 }
 
 export function getStoredSpotifyTokens(): {
@@ -187,53 +188,97 @@ export async function getCurrentlyPlaying(): Promise<SpotifyPlaybackState> {
     };
   }
 
-  const response = await fetch(CURRENTLY_PLAYING_ENDPOINT, {
-    headers: {
-      Authorization: `Bearer ${tokenData.access_token}`,
-    },
-    cache: "no-store",
-  });
+  let isPlaying = false;
+  let title = "Spotify Ready";
+  let artist = "Playback Idle";
+  let album = "Spotify";
+  let albumImageUrl = "";
+  let songUrl = "";
+  let progressMs = 0;
+  let durationMs = 0;
+  let device: string | undefined;
 
-  if (response.status === 204 || response.status > 400) {
-    return {
-      isPlaying: false,
-      title: "Nothing Playing",
-      artist: "Spotify Ready",
-      album: "Ascend Hub",
-      albumImageUrl: "",
-      songUrl: "",
-      progressMs: 0,
-      durationMs: 0,
-      connected: true,
-      lastUpdated: new Date().toISOString(),
-    };
+  try {
+    const response = await fetch(CURRENTLY_PLAYING_ENDPOINT, {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (response.ok && response.status !== 204) {
+      const song = await response.json().catch(() => null);
+      if (song && song.item) {
+        isPlaying = Boolean(song.is_playing);
+        title = song.item.name || "Unknown Track";
+        artist =
+          song.item.artists?.map((a: { name: string }) => a.name).join(", ") || "Unknown Artist";
+        album = song.item.album?.name || "";
+        albumImageUrl = song.item.album?.images?.[0]?.url || "";
+        songUrl = song.item.external_urls?.spotify || "";
+        progressMs = song.progress_ms || 0;
+        durationMs = song.item.duration_ms || 0;
+        device = song.device?.name;
+
+        // Cache last played active track so it persists when paused
+        if (albumImageUrl) {
+          globalThis.__spotifyLastTrack = {
+            title,
+            artist,
+            album,
+            albumImageUrl,
+            songUrl,
+            durationMs,
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching currently playing:", err);
   }
 
-  const song = await response.json();
-  if (!song || !song.item) {
-    return {
-      isPlaying: false,
-      title: "Nothing Playing",
-      artist: "Spotify Ready",
-      album: "Ascend Hub",
-      albumImageUrl: "",
-      songUrl: "",
-      progressMs: 0,
-      durationMs: 0,
-      connected: true,
-      lastUpdated: new Date().toISOString(),
-    };
+  // If no track currently playing or paused with no item, fallback to recently-played or cached last track
+  if (!albumImageUrl) {
+    const cached = globalThis.__spotifyLastTrack;
+    if (cached && cached.albumImageUrl) {
+      title = cached.title || title;
+      artist = cached.artist || artist;
+      album = cached.album || album;
+      albumImageUrl = cached.albumImageUrl;
+      songUrl = cached.songUrl || songUrl;
+      durationMs = cached.durationMs || durationMs;
+    } else {
+      // Try fetching recently played track from Spotify API
+      try {
+        const recentRes = await fetch("https://api.spotify.com/v1/me/player/recently-played?limit=1", {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+          },
+          cache: "no-store",
+        });
+        if (recentRes.ok) {
+          const recentData = await recentRes.json().catch(() => null);
+          const recentItem = recentData?.items?.[0]?.track;
+          if (recentItem) {
+            title = recentItem.name || "Recent Track";
+            artist = recentItem.artists?.map((a: { name: string }) => a.name).join(", ") || "Unknown Artist";
+            album = recentItem.album?.name || "";
+            albumImageUrl = recentItem.album?.images?.[0]?.url || "";
+            songUrl = recentItem.external_urls?.spotify || "";
+            durationMs = recentItem.duration_ms || 0;
+            globalThis.__spotifyLastTrack = {
+              title,
+              artist,
+              album,
+              albumImageUrl,
+              songUrl,
+              durationMs,
+            };
+          }
+        }
+      } catch (_) {}
+    }
   }
-
-  const isPlaying = Boolean(song.is_playing);
-  const title = song.item.name || "Unknown Track";
-  const artist =
-    song.item.artists?.map((a: { name: string }) => a.name).join(", ") || "Unknown Artist";
-  const album = song.item.album?.name || "";
-  const albumImageUrl = song.item.album?.images?.[0]?.url || "";
-  const songUrl = song.item.external_urls?.spotify || "";
-  const progressMs = song.progress_ms || 0;
-  const durationMs = song.item.duration_ms || 0;
 
   return {
     isPlaying,
@@ -245,7 +290,7 @@ export async function getCurrentlyPlaying(): Promise<SpotifyPlaybackState> {
     progressMs,
     durationMs,
     connected: true,
-    device: song.device?.name,
+    device,
     lastUpdated: new Date().toISOString(),
   };
 }

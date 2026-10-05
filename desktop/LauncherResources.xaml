@@ -1,0 +1,24 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style>
+  <Style x:Key="FocusRing" TargetType="Control"><Setter Property="Template"><Setter.Value><ControlTemplate><Rectangle Margin="-3" Stroke="{DynamicResource Accent}" StrokeThickness="2" StrokeDashArray="2 1" RadiusX="3" RadiusY="3"/></ControlTemplate></Setter.Value></Setter></Style>
+  <Style TargetType="Button">
+    <Setter Property="Foreground" Value="{DynamicResource Ink}"/><Setter Property="Background" Value="{DynamicResource Surface}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource Edge}"/><Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="16,10"/><Setter Property="MinHeight" Value="42"/><Setter Property="Margin" Value="0,0,8,8"/>
+    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Chrome" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3" Padding="{TemplateBinding Padding}"><ContentPresenter RecognizesAccessKey="True" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Accent}"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Accent}"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="PrimaryAction" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"><Setter Property="Background" Value="{DynamicResource Accent}"/><Setter Property="Foreground" Value="{DynamicResource ActionInk}"/><Setter Property="BorderBrush" Value="{DynamicResource Accent}"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="FontSize" Value="16"/><Setter Property="MinHeight" Value="48"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="Margin" Value="0,18,0,12"/></Style>
+  <!-- Faithful static translation of FairyEye fallback SVG, viewBox 0 0 400 400. -->
+  <DrawingImage x:Key="FairyArtwork"><DrawingImage.Drawing><DrawingGroup>
+    <GeometryDrawing Brush="#0B1535"><GeometryDrawing.Pen><Pen Brush="#8DB6FF" Thickness="1"/></GeometryDrawing.Pen><GeometryDrawing.Geometry><EllipseGeometry Center="200,200" RadiusX="133" RadiusY="133"/></GeometryDrawing.Geometry></GeometryDrawing>
+    <GeometryDrawing Brush="#04152B" Geometry="M117,86 Q200,116 283,86 L314,117 Q284,200 314,283 L283,314 Q200,284 117,314 L86,283 Q116,200 86,117 Z"/>
+    <GeometryDrawing Brush="#ECEEFF"><GeometryDrawing.Geometry><EllipseGeometry Center="200,200" RadiusX="86" RadiusY="86"/></GeometryDrawing.Geometry></GeometryDrawing>
+    <GeometryDrawing Brush="#8DB6FF"><GeometryDrawing.Geometry><EllipseGeometry Center="200,200" RadiusX="64" RadiusY="64"/></GeometryDrawing.Geometry></GeometryDrawing>
+    <GeometryDrawing Brush="#0B1535"><GeometryDrawing.Pen><Pen Brush="#8DB6FF" Thickness="1"/></GeometryDrawing.Pen><GeometryDrawing.Geometry><EllipseGeometry Center="200,200" RadiusX="58" RadiusY="58"/></GeometryDrawing.Geometry></GeometryDrawing>
+    <GeometryDrawing Brush="#0B1535"><GeometryDrawing.Pen><Pen Brush="#998DB6FF" Thickness="1"/></GeometryDrawing.Pen><GeometryDrawing.Geometry><EllipseGeometry Center="200,200" RadiusX="51" RadiusY="51"/></GeometryDrawing.Geometry></GeometryDrawing>
+    <GeometryDrawing Brush="#0B1535"><GeometryDrawing.Geometry><EllipseGeometry Center="200,200" RadiusX="43" RadiusY="43"/></GeometryDrawing.Geometry></GeometryDrawing>
+    <GeometryDrawing Brush="#ECEEFF"><GeometryDrawing.Geometry><EllipseGeometry Center="229,231" RadiusX="17" RadiusY="17"/></GeometryDrawing.Geometry></GeometryDrawing>
+  </DrawingGroup></DrawingImage.Drawing></DrawingImage>
+  <BitmapImage x:Key="HubArtwork" UriSource="../public/crt-tvs-and-imac/imac1-removebg-preview.png"/>
+</ResourceDictionary>

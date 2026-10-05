@@ -1,57 +1,55 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef } from "react";
-
-import { isStatusShelfResponse, type StatusShelfResponse } from "./shelf-contract";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
   getPollingDelay,
   INITIAL_STATUS_SHELF_STATE,
+  requestStatusShelf,
   statusShelfReducer,
 } from "./shelf-runtime";
 
-const SHELF_ENDPOINT = "/api/status/shelf";
-
-function errorMessage(response: Response): string {
-  if (response.status === 503) return "Status Shelf is not configured on this Hub.";
-  return "Status authority is temporarily unavailable.";
-}
-
 export function useStatusShelf() {
   const [state, dispatch] = useReducer(statusShelfReducer, INITIAL_STATUS_SHELF_STATE);
-  const inFlight = useRef(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const mounted = useRef(false);
+  const inFlight = useRef<{ controller: AbortController; promise: Promise<void> } | null>(null);
 
-  const poll = useCallback(async () => {
-    if (inFlight.current) return;
-    inFlight.current = true;
+  const poll = useCallback((): Promise<void> => {
+    if (!mounted.current) return Promise.resolve();
+    if (inFlight.current) return inFlight.current.promise;
+    const controller = new AbortController();
     dispatch({ type: "loading" });
-
-    try {
-      const response = await fetch(SHELF_ENDPOINT, {
-        cache: "no-store",
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) {
-        dispatch({ type: "failure", error: errorMessage(response) });
-        return;
+    const promise = (async () => {
+      try {
+        const snapshot = await requestStatusShelf({ signal: controller.signal });
+        if (mounted.current && !controller.signal.aborted) {
+          const receivedAt = Date.now();
+          setNowMs(receivedAt);
+          dispatch({ type: "success", snapshot, receivedAt });
+        }
+      } catch (error) {
+        if (mounted.current && !controller.signal.aborted) {
+          const message = error instanceof Error && [
+            "Status Shelf is not configured on this Hub.",
+            "Status authority returned an unsupported snapshot.",
+            "Status request timed out.",
+          ].includes(error.message) ? error.message : "Status authority is temporarily unavailable.";
+          dispatch({ type: "failure", error: message });
+        }
+      } finally {
+        if (inFlight.current?.controller === controller) inFlight.current = null;
       }
-
-      const payload: unknown = await response.json();
-      if (!isStatusShelfResponse(payload)) {
-        dispatch({ type: "failure", error: "Status authority returned an unsupported snapshot." });
-        return;
-      }
-
-      dispatch({ type: "success", snapshot: payload as StatusShelfResponse, receivedAt: Date.now() });
-    } catch {
-      dispatch({ type: "failure", error: "Status authority is temporarily unavailable." });
-    } finally {
-      inFlight.current = false;
-    }
+    })();
+    inFlight.current = { controller, promise };
+    return promise;
   }, []);
 
   useEffect(() => {
+    mounted.current = true;
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const updateClock = () => setNowMs(Date.now());
+    const clock = setInterval(updateClock, 1_000);
 
     const clearTimer = () => {
       if (timer) clearTimeout(timer);
@@ -71,6 +69,7 @@ export function useStatusShelf() {
     };
 
     const refreshWhenVisible = () => {
+      updateClock();
       if (document.hidden) {
         schedule(getPollingDelay(true));
         return;
@@ -85,11 +84,15 @@ export function useStatusShelf() {
 
     return () => {
       disposed = true;
+      mounted.current = false;
       clearTimer();
+      clearInterval(clock);
+      inFlight.current?.controller.abort();
+      inFlight.current = null;
       document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.removeEventListener("focus", refreshWhenVisible);
     };
   }, [poll]);
 
-  return { ...state, refresh: poll };
+  return { ...state, nowMs, refresh: poll };
 }

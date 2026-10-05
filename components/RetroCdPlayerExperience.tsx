@@ -18,7 +18,16 @@ import {
   Disc3,
   SkipBack,
   SkipForward,
+  Grid,
+  Compass,
+  Layers,
+  FileText,
 } from "lucide-react";
+import {
+  AscendAlbumBackdrop,
+  type BackdropVariant,
+  type BackdropIntensity,
+} from "./AscendAlbumBackdrop";
 
 interface CdAlbumState {
   albumTitle: string;
@@ -39,11 +48,19 @@ const DEFAULT_ALBUM_STATE: CdAlbumState = {
 const STORAGE_KEY = "ascend_retro_cd_settings";
 
 interface RetroCdPlayerExperienceProps {
-  spotifyData?: SpotifyPlaybackState | null;
+  spotifyData?: SpotifyPlaybackState | Partial<SpotifyPlaybackState> | null;
+  onSpotifyDataChange?: (data: SpotifyPlaybackState | null) => void;
+  onOpenSpotifySetup?: () => void;
+  defaultBackdropVariant?: BackdropVariant;
+  defaultBackdropIntensity?: BackdropIntensity;
 }
 
 export function RetroCdPlayerExperience({
   spotifyData = null,
+  onSpotifyDataChange,
+  onOpenSpotifySetup,
+  defaultBackdropVariant = "paper-grid",
+  defaultBackdropIntensity = "medium",
 }: RetroCdPlayerExperienceProps) {
   const [albumState, setAlbumState] = useState<CdAlbumState>(DEFAULT_ALBUM_STATE);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -55,8 +72,12 @@ export function RetroCdPlayerExperience({
   const [audioUploadName, setAudioUploadName] = useState<string | null>(null);
 
   // Spotify live synchronization state
-  const [spotifyState, setSpotifyState] = useState<SpotifyPlaybackState | null>(spotifyData);
+  const [spotifyState, setSpotifyState] = useState<SpotifyPlaybackState | Partial<SpotifyPlaybackState> | null>(spotifyData);
   const [spotifySyncEnabled, setSpotifySyncEnabled] = useState<boolean>(true);
+
+  // Editorial Technical Poster Texture state
+  const [backdropVariant, setBackdropVariant] = useState<BackdropVariant>(defaultBackdropVariant);
+  const [backdropIntensity, setBackdropIntensity] = useState<BackdropIntensity>(defaultBackdropIntensity);
 
   // VU Meter state (Left and Right levels: 0 to 12)
   const [vuLeft, setVuLeft] = useState(0);
@@ -119,6 +140,37 @@ export function RetroCdPlayerExperience({
     } catch {}
   }, []);
 
+  // Load saved Backdrop texture settings
+  useEffect(() => {
+    try {
+      const savedVar = localStorage.getItem("ascend_album_backdrop_variant") as BackdropVariant | null;
+      if (
+        savedVar &&
+        ["paper", "paper-grid", "paper-radial", "paper-hybrid", "grid", "radial", "hybrid"].includes(savedVar)
+      ) {
+        setBackdropVariant(savedVar);
+      }
+      const savedInt = localStorage.getItem("ascend_album_backdrop_intensity") as BackdropIntensity | null;
+      if (savedInt && ["subtle", "medium", "strong"].includes(savedInt)) {
+        setBackdropIntensity(savedInt);
+      }
+    } catch {}
+  }, []);
+
+  const handleVariantChange = (v: BackdropVariant) => {
+    setBackdropVariant(v);
+    try {
+      localStorage.setItem("ascend_album_backdrop_variant", v);
+    } catch {}
+  };
+
+  const handleIntensityChange = (i: BackdropIntensity) => {
+    setBackdropIntensity(i);
+    try {
+      localStorage.setItem("ascend_album_backdrop_intensity", i);
+    } catch {}
+  };
+
   // Sync spotifyData prop when updated from parent
   useEffect(() => {
     if (spotifyData) {
@@ -133,9 +185,10 @@ export function RetroCdPlayerExperience({
       try {
         const res = await fetch("/api/spotify/currently-playing");
         if (res.ok) {
-          const data = await res.json();
+          const data = (await res.json()) as SpotifyPlaybackState | null;
           if (isMounted) {
             setSpotifyState(data);
+            onSpotifyDataChange?.(data);
           }
         }
       } catch {}
@@ -147,13 +200,13 @@ export function RetroCdPlayerExperience({
       isMounted = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [onSpotifyDataChange]);
 
   // Computed Spotify & Playback properties
   const isSpotifyActive = Boolean(
     spotifySyncEnabled &&
     spotifyState?.connected &&
-    spotifyState?.albumImageUrl
+    Boolean(spotifyState?.albumImageUrl)
   );
   const activeCoverUrl = isSpotifyActive
     ? spotifyState!.albumImageUrl
@@ -170,6 +223,14 @@ export function RetroCdPlayerExperience({
   const effectiveTime = isSpotifyActive && spotifyState?.progressMs
     ? Math.floor(spotifyState.progressMs / 1000)
     : audioCurrentTime;
+  const effectiveDuration = isSpotifyActive && spotifyState?.durationMs
+    ? Math.floor(spotifyState.durationMs / 1000)
+    : (audioRef.current?.duration && !isNaN(audioRef.current.duration)
+        ? Math.floor(audioRef.current.duration)
+        : 214);
+  const progressPercent = effectiveDuration > 0
+    ? Math.min(100, Math.max(0, (effectiveTime / effectiveDuration) * 100))
+    : 0;
 
   // Web Audio Synth Engine
   const stopProceduralSynth = useCallback(() => {
@@ -411,20 +472,36 @@ export function RetroCdPlayerExperience({
         backgroundColor: "#0b0705",
       }}
     >
-      {/* Dynamic Blurred Album Art Ambient Stage Background */}
+      {/* Dynamic Blurred Song Photo Ambient Stage Background */}
       <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden select-none">
         {activeCoverUrl ? (
-          <div
-            className="absolute -inset-10 sm:-inset-16 transition-all duration-1000 ease-out"
-            style={{
-              backgroundImage: `url(${activeCoverUrl})`,
-              backgroundPosition: "center",
-              backgroundSize: "cover",
-              filter: "blur(46px) saturate(1.45) brightness(0.52)",
-              transform: "scale(1.22)",
-              opacity: 0.88,
-            }}
-          />
+          <>
+            {/* Primary Deep Color Diffusion */}
+            <div
+              className="absolute -inset-16 sm:-inset-24 transition-all duration-1000 ease-out"
+              style={{
+                backgroundImage: `url(${activeCoverUrl})`,
+                backgroundPosition: "center",
+                backgroundSize: "cover",
+                filter: "blur(56px) saturate(1.85) brightness(0.66)",
+                transform: effectiveIsPlaying ? "scale(1.30)" : "scale(1.24)",
+                opacity: 0.95,
+              }}
+            />
+
+            {/* Secondary Vibrant Optical Bloom */}
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[720px] sm:w-[920px] h-[720px] sm:h-[920px] rounded-full transition-all duration-1000 ease-out pointer-events-none"
+              style={{
+                backgroundImage: `url(${activeCoverUrl})`,
+                backgroundPosition: "center",
+                backgroundSize: "cover",
+                filter: "blur(88px) saturate(2.2) brightness(0.58)",
+                opacity: effectiveIsPlaying ? 0.85 : 0.65,
+                transform: effectiveIsPlaying ? "scale(1.08)" : "scale(1)",
+              }}
+            />
+          </>
         ) : null}
 
         {/* Smoked Vintage Hardware Vignette & Brushed Texture */}
@@ -432,11 +509,11 @@ export function RetroCdPlayerExperience({
           className="absolute inset-0"
           style={{
             background:
-              "radial-gradient(circle at 50% 48%, rgba(11, 7, 5, 0.15) 0%, rgba(11, 7, 5, 0.48) 55%, rgba(11, 7, 5, 0.88) 90%, #0b0705 100%)",
+              "radial-gradient(circle at 50% 48%, rgba(11, 7, 5, 0.08) 0%, rgba(11, 7, 5, 0.38) 50%, rgba(11, 7, 5, 0.78) 85%, #0b0705 100%)",
           }}
         />
         <div
-          className="absolute inset-0 opacity-25 pointer-events-none"
+          className="absolute inset-0 opacity-20 pointer-events-none"
           style={{
             backgroundImage: `
               linear-gradient(rgba(255, 255, 255, 0.006), rgba(255, 255, 255, 0.006)),
@@ -445,6 +522,12 @@ export function RetroCdPlayerExperience({
           }}
         />
       </div>
+
+      {/* Editorial / Technical Album-Poster Texture Layer (Layers 1-6) */}
+      <AscendAlbumBackdrop
+        variant={backdropVariant}
+        intensity={backdropIntensity}
+      />
 
       {albumState.audioUrl && (
         <audio
@@ -472,9 +555,12 @@ export function RetroCdPlayerExperience({
             style={{
               width: "480px",
               height: "480px",
-              border: "1px solid rgba(158, 104, 66, 0.12)",
-              background: "radial-gradient(circle at 50% 50%, rgba(93, 54, 31, 0.04) 0%, transparent 68%)",
-              boxShadow: "inset 0 0 30px rgba(0, 0, 0, 0.65)",
+              border: "1px solid rgba(158, 104, 66, 0.025)",
+              background: "radial-gradient(circle at 50% 50%, rgba(93, 54, 31, 0.01) 0%, transparent 80%)",
+              boxShadow: "inset 0 0 28px rgba(0, 0, 0, 0.16)",
+              opacity: 0.58,
+              maskImage: "radial-gradient(circle at 50% 50%, black 72%, rgba(0,0,0,0.6) 88%, transparent 100%)",
+              WebkitMaskImage: "radial-gradient(circle at 50% 50%, black 72%, rgba(0,0,0,0.6) 88%, transparent 100%)",
             }}
           />
 
@@ -654,8 +740,18 @@ export function RetroCdPlayerExperience({
                     src={activeCoverUrl}
                     alt={activeTitle}
                     draggable={false}
-                    className="h-full w-full object-cover transition-opacity duration-300"
+                    className="h-full w-full object-cover transition-all duration-700 ease-out"
                   />
+
+                  {/* Spotify Live Synchronized Pill Badge */}
+                  {isSpotifyActive && (
+                    <div className="absolute top-3 right-3 z-25 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/85 backdrop-blur-md border border-[#56b347]/50 shadow-xl pointer-events-none animate-in fade-in-0 duration-300">
+                      <span className={`size-1.5 rounded-full bg-[#56b347] ${effectiveIsPlaying ? "animate-ping" : ""}`} />
+                      <span className="font-mono text-[8px] font-bold tracking-wider text-[#56b347] uppercase">
+                        {effectiveIsPlaying ? "SPOTIFY PLAYING" : "SPOTIFY SYNC"}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Hover Overlay for Customizing Cover */}
                   <div
@@ -708,71 +804,99 @@ export function RetroCdPlayerExperience({
       </div>
 
       {/* Ascend OS Audiophile Transport Console Faceplate */}
-      <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-[940px] px-3 sm:px-4">
+      <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-[880px] px-3 sm:px-4">
         <div
-          className="relative overflow-hidden rounded-[6px] border p-2 sm:p-2.5"
+          className="relative overflow-hidden rounded-[4px] border p-2 sm:p-2.5"
           style={{
             background:
-              "linear-gradient(180deg, #18110b 0%, #120d09 45%, #0c0805 100%)",
-            borderColor: "rgba(153, 92, 48, 0.38)",
+              "linear-gradient(180deg, #17100b 0%, #100b07 50%, #090604 100%)",
+            borderColor: "rgba(144, 91, 52, 0.28)",
             boxShadow:
-              "inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 -1px 0 rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.65)",
+              "inset 0 1px 0 rgba(255, 255, 255, 0.018), inset 0 -1px 0 rgba(0, 0, 0, 0.55), 0 5px 14px rgba(0, 0, 0, 0.35)",
           }}
         >
-          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3">
-            {/* Group 1: Track Display & Level Meters */}
-            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-              {/* Recessed Track Display */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-3 w-full">
+            {/* Sector 1: Track Display & Level Meters */}
+            <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 justify-self-start">
+              {/* Recessed Track Display with Playback Timeline */}
               <div
-                className="flex flex-col justify-center rounded-[3px] px-2.5 py-1.5 shrink-0"
+                className="flex flex-col justify-center rounded-[3px] px-2.5 py-1.5 shrink-0 min-w-[170px] sm:min-w-[205px]"
                 style={{
-                  background: "#080604",
-                  border: "1px solid rgba(153, 92, 48, 0.35)",
-                  boxShadow: "inset 0 1px 3px rgba(0, 0, 0, 0.95)",
+                  background: "#090705",
+                  border: "1px solid rgba(151, 91, 43, 0.30)",
+                  boxShadow: "inset 0 1px 3px rgba(0, 0, 0, 0.85)",
                 }}
               >
-                <div className="flex items-center gap-2 font-mono text-[9px] font-semibold tracking-wider">
-                  <span className="text-[#8f8174]">
+                {/* Status & Time Row */}
+                <div className="flex items-center justify-between font-mono text-[9px] font-semibold tracking-wider">
+                  <span className="text-[#86796d]">
                     {isSpotifyActive ? "SPOTIFY" : "TRACK"}
                   </span>
-                  <span className="text-[#eba763]">
-                    {isSpotifyActive ? (effectiveIsPlaying ? "PLAY" : "IDLE") : "01"}
-                  </span>
-                  <span className="text-[#55463a]">/</span>
-                  <span className="text-[#d79351]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[#d28a49]">
+                      {isSpotifyActive ? (effectiveIsPlaying ? "PLAY" : "IDLE") : "01"}
+                    </span>
+                    <span className="text-[#55463a]">/</span>
+                    <span className="text-[#d28a49] font-medium">
+                      {formatTime(effectiveTime)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Track Title */}
+                <div className="font-mono text-[8px] tracking-[0.14em] text-[#d0b79f] uppercase truncate max-w-[145px] sm:max-w-[180px] mt-0.5 font-medium">
+                  {activeTitle}
+                </div>
+
+                {/* Thin Amber Playback Timeline: 00:00 ───────●─────── 03:42 */}
+                <div className="flex items-center gap-1.5 mt-1 pt-1 border-t border-[rgba(144,91,52,0.14)]">
+                  <span className="font-mono text-[7.5px] text-[#d28a49] w-6 shrink-0 text-left">
                     {formatTime(effectiveTime)}
                   </span>
-                </div>
-                <div className="font-mono text-[8px] tracking-[0.14em] text-[#d6c8b9] uppercase truncate max-w-[130px] sm:max-w-[160px] mt-0.5">
-                  {activeTitle}
+                  <div className="relative flex-1 h-[2px] bg-[rgba(190,155,120,0.14)] rounded-[1px] overflow-visible">
+                    <div
+                      className="h-full bg-[#b8753f] rounded-l-[1px] transition-all duration-200"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                    <span
+                      className="absolute top-1/2 -translate-y-1/2 -ml-[1.75px] w-[3.5px] h-[3.5px] rounded-full bg-[#eba763] pointer-events-none transition-all duration-200"
+                      style={{ left: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <span className="font-mono text-[7.5px] text-[#9c8a7c] w-6 shrink-0 text-right font-medium">
+                    {formatTime(effectiveDuration)}
+                  </span>
                 </div>
               </div>
 
-              {/* Stereo L/R Level Meters */}
+              {/* Minor Divider: Between Metadata and Meter */}
               <div
-                className="flex flex-col gap-1 rounded-[3px] py-1 pl-2.5 sm:pl-3 border-l shrink-0"
-                style={{
-                  borderLeftColor: "rgba(177, 119, 76, 0.14)",
-                }}
-              >
+                className="w-[1px] h-7 shrink-0 hidden sm:block"
+                style={{ backgroundColor: "rgba(144, 91, 52, 0.13)" }}
+              />
+
+              {/* Stereo L/R Level Meters */}
+              <div className="flex flex-col gap-1 py-1 shrink-0">
                 {/* Channel L */}
                 <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-[8px] text-[#8f8174] w-2.5">L</span>
+                  <span className="font-mono text-[8px] text-[#948174] w-2.5 font-medium">L</span>
                   <div className="flex items-center gap-[2px]">
                     {Array.from({ length: 12 }).map((_, i) => (
                       <span
                         key={`vu-l-${i}`}
-                        className="h-2 w-1 rounded-[1px] transition-colors duration-75"
+                        className="h-2 w-[1.5px] rounded-[0.5px] transition-colors duration-75"
                         style={{
                           backgroundColor:
                             i < vuLeft
                               ? i >= 10
-                                ? "#e27439"
-                                : "#d79351"
-                              : "rgba(208, 181, 153, 0.10)",
+                                ? "#df6c30"
+                                : i >= 8
+                                ? "#d98542"
+                                : "#c9975e"
+                              : "rgba(195, 172, 150, 0.14)",
                           boxShadow:
                             i < vuLeft
-                              ? "0 0 2px rgba(215, 147, 81, 0.25)"
+                              ? "0 0 1px rgba(200, 135, 75, 0.3)"
                               : "none",
                         }}
                       />
@@ -782,22 +906,24 @@ export function RetroCdPlayerExperience({
 
                 {/* Channel R */}
                 <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-[8px] text-[#8f8174] w-2.5">R</span>
+                  <span className="font-mono text-[8px] text-[#948174] w-2.5 font-medium">R</span>
                   <div className="flex items-center gap-[2px]">
                     {Array.from({ length: 12 }).map((_, i) => (
                       <span
                         key={`vu-r-${i}`}
-                        className="h-2 w-1 rounded-[1px] transition-colors duration-75"
+                        className="h-2 w-[1.5px] rounded-[0.5px] transition-colors duration-75"
                         style={{
                           backgroundColor:
                             i < vuRight
                               ? i >= 10
-                                ? "#e27439"
-                                : "#d79351"
-                              : "rgba(208, 181, 153, 0.10)",
+                                ? "#df6c30"
+                                : i >= 8
+                                ? "#d98542"
+                                : "#c9975e"
+                              : "rgba(195, 172, 150, 0.14)",
                           boxShadow:
                             i < vuRight
-                              ? "0 0 2px rgba(215, 147, 81, 0.25)"
+                              ? "0 0 1px rgba(200, 135, 75, 0.3)"
                               : "none",
                         }}
                       />
@@ -807,95 +933,106 @@ export function RetroCdPlayerExperience({
               </div>
             </div>
 
-            {/* Group 2: Transport Buttons, Customize, and Volume */}
-            <div className="flex items-center gap-2 sm:gap-2.5 ml-auto">
-              {/* Transport Buttons: [ Previous ] [ Play ] [ Next ] */}
-              <div
-                className="flex items-center gap-1.5 pl-2.5 sm:pl-3 border-l shrink-0"
-                style={{ borderLeftColor: "rgba(177, 119, 76, 0.14)" }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setAudioCurrentTime(0)}
-                  className="ascend-cd-deck__btn px-2.5 py-1"
-                  title="Previous track / Restart"
-                  aria-label="Previous track"
-                >
-                  <SkipBack size={12} />
-                </button>
+            {/* Sector 2: Centered Transport Group with Major Divider & Optical Shift */}
+            <div className="flex items-center justify-center justify-self-center shrink-0 -translate-x-0 sm:-translate-x-3.5">
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                {/* Major Divider: Before Transport */}
+                <div
+                  className="w-[1px] h-8 shrink-0 hidden sm:block"
+                  style={{ backgroundColor: "rgba(153, 92, 48, 0.22)" }}
+                />
 
-                {/* Main Play / Pause Tactile Switch */}
-                <button
-                  type="button"
-                  onClick={togglePlay}
-                  className="ascend-cd-deck__btn px-3 py-1 font-mono text-[10px] font-bold tracking-wider uppercase transition-all"
-                  aria-label={effectiveIsPlaying ? "Pause playback" : "Start playback"}
-                  title={effectiveIsPlaying ? "Pause playback" : "Start playback"}
-                  style={{
-                    borderColor: effectiveIsPlaying ? "rgba(215, 147, 81, 0.5)" : undefined,
-                    color: effectiveIsPlaying ? "#eba763" : undefined,
-                  }}
-                >
-                  {effectiveIsPlaying ? (
-                    <>
-                      <Pause size={12} className="text-[#d79351]" />
-                      <span>PAUSE</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play size={12} className="text-[#56b347]" fill="#56b347" />
-                      <span>PLAY</span>
-                    </>
-                  )}
-                </button>
+                <div className="flex items-center gap-1 sm:gap-1.5">
+                  {/* Previous Track */}
+                  <button
+                    type="button"
+                    onClick={() => setAudioCurrentTime(0)}
+                    className="ascend-cd-deck__transport-btn px-2.5 py-1"
+                    title="Previous track / Restart"
+                    aria-label="Previous track"
+                  >
+                    <SkipBack size={12} />
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setAudioCurrentTime(0)}
-                  className="ascend-cd-deck__btn px-2.5 py-1"
-                  title="Next track"
-                  aria-label="Next track"
-                >
-                  <SkipForward size={12} />
-                </button>
+                  {/* Main Play / Pause Tactile Switch */}
+                  <button
+                    type="button"
+                    onClick={togglePlay}
+                    className="ascend-cd-deck__transport-btn px-3 py-1 font-mono text-[9.5px] font-bold tracking-wider uppercase gap-1.5"
+                    aria-label={effectiveIsPlaying ? "Pause playback" : "Start playback"}
+                    title={effectiveIsPlaying ? "Pause playback" : "Start playback"}
+                    style={{
+                      borderColor: effectiveIsPlaying ? "rgba(180, 115, 60, 0.55)" : undefined,
+                      color: effectiveIsPlaying ? "#eba763" : undefined,
+                    }}
+                  >
+                    {effectiveIsPlaying ? (
+                      <>
+                        <Pause size={11} className="text-[#d28a49]" />
+                        <span>PAUSE</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play size={11} className="text-[#56b347]" fill="#56b347" />
+                        <span>PLAY</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Next Track */}
+                  <button
+                    type="button"
+                    onClick={() => setAudioCurrentTime(0)}
+                    className="ascend-cd-deck__transport-btn px-2.5 py-1"
+                    title="Next track"
+                    aria-label="Next track"
+                  >
+                    <SkipForward size={12} />
+                  </button>
+                </div>
               </div>
+            </div>
+
+            {/* Sector 3: Customize & Volume with Major/Minor Dividers */}
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 justify-self-end">
+              {/* Major Divider: Before Customize */}
+              <div
+                className="w-[1px] h-8 shrink-0 hidden sm:block"
+                style={{ backgroundColor: "rgba(153, 92, 48, 0.22)" }}
+              />
 
               {/* Customize Button */}
-              <div
-                className="flex items-center pl-2.5 sm:pl-3 border-l shrink-0"
-                style={{ borderLeftColor: "rgba(177, 119, 76, 0.14)" }}
+              <button
+                type="button"
+                onClick={() => setCustomizerOpen(prev => !prev)}
+                className="ascend-cd-deck__transport-btn px-2.5 py-1 gap-1.5"
+                aria-label="Open album customizer"
+                title="Customize cover photo & audio"
+                style={{
+                  borderColor: customizerOpen ? "rgba(180, 115, 60, 0.55)" : undefined,
+                  color: customizerOpen ? "#eba763" : undefined,
+                }}
               >
-                <button
-                  type="button"
-                  onClick={() => setCustomizerOpen(prev => !prev)}
-                  className="ascend-cd-deck__btn px-2.5 py-1"
-                  aria-label="Open album customizer"
-                  title="Customize cover photo & audio"
-                  style={{
-                    borderColor: customizerOpen ? "rgba(215, 147, 81, 0.6)" : undefined,
-                    color: customizerOpen ? "#eba763" : undefined,
-                  }}
-                >
-                  <Sliders size={12} className={customizerOpen ? "text-[#eba763]" : "text-[#8f8174]"} />
-                  <span className="hidden sm:inline">CUSTOMIZE</span>
-                </button>
-              </div>
+                <Sliders size={11} className={customizerOpen ? "text-[#eba763]" : "text-[#86796d]"} />
+                <span className="hidden sm:inline text-[#d0b79f]">CUSTOMIZE</span>
+              </button>
+
+              {/* Minor Divider: Before Volume */}
+              <div
+                className="w-[1px] h-6 shrink-0 hidden sm:block"
+                style={{ backgroundColor: "rgba(144, 91, 52, 0.13)" }}
+              />
 
               {/* Volume Button */}
-              <div
-                className="flex items-center pl-2.5 sm:pl-3 border-l shrink-0"
-                style={{ borderLeftColor: "rgba(177, 119, 76, 0.14)" }}
+              <button
+                type="button"
+                onClick={() => setIsMuted(prev => !prev)}
+                className="ascend-cd-deck__transport-btn p-1.5 w-7 h-7"
+                aria-label={isMuted ? "Unmute" : "Mute"}
+                title={isMuted ? "Unmute audio" : "Mute audio"}
               >
-                <button
-                  type="button"
-                  onClick={() => setIsMuted(prev => !prev)}
-                  className="ascend-cd-deck__btn p-1.5"
-                  aria-label={isMuted ? "Unmute" : "Mute"}
-                  title={isMuted ? "Unmute audio" : "Mute audio"}
-                >
-                  {isMuted ? <VolumeX size={13} className="text-[#e27439]" /> : <Volume2 size={13} />}
-                </button>
-              </div>
+                {isMuted ? <VolumeX size={12} className="text-[#e27439]" /> : <Volume2 size={12} />}
+              </button>
             </div>
           </div>
         </div>
@@ -970,22 +1107,200 @@ export function RetroCdPlayerExperience({
               </div>
 
               {spotifyState?.connected ? (
-                <div className="text-[10px] space-y-1 text-[#8f8174]">
-                  <div className="truncate">
-                    <span className="text-[#eba763] font-medium">{spotifyState.title}</span>
-                    {spotifyState.artist && <span> · {spotifyState.artist}</span>}
+                <div className="text-[10px] space-y-2 text-[#8f8174]">
+                  <div className="flex items-center gap-2.5 p-2 rounded bg-black/50 border border-zinc-800">
+                    {spotifyState.albumImageUrl ? (
+                      <img
+                        src={spotifyState.albumImageUrl}
+                        alt="Current cover"
+                        className="size-9 rounded-[2px] object-cover shrink-0 border border-zinc-700/60"
+                      />
+                    ) : (
+                      <div className="size-9 rounded-[2px] bg-zinc-900 flex items-center justify-center text-zinc-600 shrink-0">
+                        <Disc3 size={16} />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[#eba763] font-medium truncate">{spotifyState.title}</div>
+                      <div className="text-[#8f8174] text-[9px] truncate">{spotifyState.artist}</div>
+                    </div>
                   </div>
                   <p className="text-[9px] text-[#8f8174]/80">
                     {spotifySyncEnabled
-                      ? "Automatically synchronizing active album cover art, background blur, and track titles."
+                      ? "✓ Active: Album cover art, blurred song photo background, and track titles are synced live."
                       : "Sync disabled. Using custom uploaded cover and audio archive."}
                   </p>
+                  <div className="flex gap-1.5 pt-1">
+                    {spotifyState.demoMode ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await fetch("/api/spotify/setup", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ demoMode: false }),
+                          });
+                          const res = await fetch("/api/spotify/currently-playing");
+                          if (res.ok) {
+                            const data = (await res.json()) as SpotifyPlaybackState | null;
+                            setSpotifyState(data);
+                            onSpotifyDataChange?.(data);
+                          }
+                        }}
+                        className="flex-1 px-2 py-1 rounded-[3px] border border-[rgba(153,92,48,0.35)] bg-[#18110b] hover:bg-[#21160f] text-[9px] font-mono text-[#d6c8b9] transition-colors"
+                      >
+                        Turn Off Demo
+                      </button>
+                    ) : (
+                      <a
+                        href="/api/spotify/login"
+                        className="flex-1 text-center px-2 py-1 rounded-[3px] border border-[rgba(153,92,48,0.35)] bg-[#18110b] hover:bg-[#21160f] text-[9px] font-mono text-[#d6c8b9] transition-colors"
+                      >
+                        Re-Authorize
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await fetch("/api/spotify/setup", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "disconnect" }),
+                        });
+                        const res = await fetch("/api/spotify/currently-playing");
+                        if (res.ok) {
+                          const data = (await res.json()) as SpotifyPlaybackState | null;
+                          setSpotifyState(data);
+                          onSpotifyDataChange?.(data);
+                        }
+                      }}
+                      className="px-2 py-1 rounded-[3px] border border-red-900/40 bg-red-950/30 hover:bg-red-950/60 text-[9px] font-mono text-red-300 transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <p className="text-[9px] text-[#8f8174]">
-                  Spotify is not connected. Use the top navigation SPOTIFY setup to link your account.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-[9px] text-[#8f8174]">
+                    Spotify is not connected. Enable Instant Preview or connect your Spotify account to sync live artwork.
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await fetch("/api/spotify/setup", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ demoMode: true }),
+                        });
+                        const res = await fetch("/api/spotify/currently-playing");
+                        if (res.ok) {
+                          const data = (await res.json()) as SpotifyPlaybackState | null;
+                          setSpotifyState(data);
+                          onSpotifyDataChange?.(data);
+                        }
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[3px] border border-emerald-500/40 bg-emerald-950/40 hover:bg-emerald-900/50 text-[10px] font-mono font-medium text-emerald-300 transition-colors shadow"
+                    >
+                      <Sparkles size={11} />
+                      <span>⚡ 1-Click Instant Preview (ZZZ OST)</span>
+                    </button>
+                    {onOpenSpotifySetup ? (
+                      <button
+                        type="button"
+                        onClick={onOpenSpotifySetup}
+                        className="w-full text-center px-2 py-1 rounded-[3px] border border-[rgba(153,92,48,0.35)] bg-[#18110b] hover:bg-[#21160f] text-[9px] font-mono text-[#d6c8b9] transition-colors"
+                      >
+                        Connect Real Spotify Account →
+                      </button>
+                    ) : (
+                      <a
+                        href="/api/spotify/login"
+                        className="w-full text-center px-2 py-1 rounded-[3px] border border-[rgba(153,92,48,0.35)] bg-[#18110b] hover:bg-[#21160f] text-[9px] font-mono text-[#d6c8b9] transition-colors"
+                      >
+                        Connect Real Spotify Account →
+                      </a>
+                    )}
+                  </div>
+                </div>
               )}
+            </div>
+
+            {/* 0.5 Printed Paper & Distress Texture Controls (Texturelabs Style) */}
+            <div className="space-y-2.5 rounded-[4px] border border-[rgba(153,92,48,0.25)] bg-[#120d09]/80 p-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[#d6c8b9]">
+                  <FileText size={12} className="text-[#d79351]" />
+                  <span className="font-mono text-[9px] font-bold tracking-wider uppercase">
+                    PRINTED PAPER & DISTRESS
+                  </span>
+                </div>
+                <span className="rounded-[2px] bg-[#1f150e] border border-[rgba(153,92,48,0.3)] px-1.5 py-0.5 font-mono text-[7px] text-[#eba763] uppercase">
+                  {backdropVariant.replace("paper-", "")} · {backdropIntensity}
+                </span>
+              </div>
+
+              {/* Material & Structural Variant Selector */}
+              <div className="space-y-1">
+                <span className="font-mono text-[8px] uppercase tracking-wider text-[#8f8174]">
+                  Paper & Print Variant
+                </span>
+                <div className="grid grid-cols-4 gap-1">
+                  {[
+                    { id: "paper", label: "Paper", icon: FileText },
+                    { id: "paper-grid", label: "Grid", icon: Grid },
+                    { id: "paper-radial", label: "Radial", icon: Compass },
+                    { id: "paper-hybrid", label: "Hybrid", icon: Layers },
+                  ].map(({ id, label, icon: Icon }) => {
+                    const isSelected =
+                      backdropVariant === id ||
+                      (id === "paper-grid" && backdropVariant === "grid") ||
+                      (id === "paper-radial" && backdropVariant === "radial") ||
+                      (id === "paper-hybrid" && backdropVariant === "hybrid");
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => handleVariantChange(id as BackdropVariant)}
+                        className={`px-1.5 py-1.5 rounded-[3px] font-mono text-[8px] font-semibold uppercase transition-all flex items-center justify-center gap-1 border ${
+                          isSelected
+                            ? "bg-[#281b13] border-[#d79351] text-[#eba763] shadow-inner"
+                            : "bg-[#18110b] border-[rgba(153,92,48,0.25)] text-[#8f8174] hover:text-[#d6c8b9]"
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        <Icon size={9} />
+                        <span>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Texture Intensity Selector */}
+              <div className="space-y-1">
+                <span className="font-mono text-[8px] uppercase tracking-wider text-[#8f8174]">
+                  Texture Intensity
+                </span>
+                <div className="grid grid-cols-3 gap-1">
+                  {(["subtle", "medium", "strong"] as const).map((lvl) => (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => handleIntensityChange(lvl)}
+                      className={`px-2 py-1 rounded-[3px] font-mono text-[8.5px] uppercase transition-all border ${
+                        backdropIntensity === lvl
+                          ? "bg-[#281b13] border-[#d79351] text-[#eba763]"
+                          : "bg-[#18110b] border-[rgba(153,92,48,0.25)] text-[#8f8174] hover:text-[#d6c8b9]"
+                      }`}
+                      aria-pressed={backdropIntensity === lvl}
+                    >
+                      {lvl}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* 1. Cover Photo Section */}

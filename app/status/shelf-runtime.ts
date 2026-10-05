@@ -1,6 +1,63 @@
 import { isStatusShelfResponse, type StatusShelfResponse } from "./shelf-contract";
 
 const UPSTREAM_TIMEOUT_MS = 5_000;
+export const STATUS_SHELF_CLIENT_TIMEOUT_MS = 8_000;
+
+export interface StatusShelfRequestOptions {
+  fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
+/** Bound both the fetch and body read, even when a fetch implementation ignores abort. */
+export async function requestStatusShelf({
+  fetchImpl = fetch,
+  signal,
+  timeoutMs = STATUS_SHELF_CLIENT_TIMEOUT_MS,
+}: StatusShelfRequestOptions = {}): Promise<StatusShelfResponse> {
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  let cancel = () => {};
+  const interruption = new Promise<never>((_resolve, reject) => {
+    cancel = () => {
+      controller.abort();
+      reject(new DOMException("Status request cancelled.", "AbortError"));
+    };
+    if (signal?.aborted) {
+      cancel();
+      return;
+    }
+    signal?.addEventListener("abort", cancel, { once: true });
+    timeout = setTimeout(() => {
+      controller.abort();
+      reject(new Error("Status request timed out."));
+    }, Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : STATUS_SHELF_CLIENT_TIMEOUT_MS);
+  });
+
+  const request = async () => {
+    if (controller.signal.aborted) throw new DOMException("Status request cancelled.", "AbortError");
+    const response = await fetchImpl("/api/status/shelf", {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(response.status === 503
+        ? "Status Shelf is not configured on this Hub."
+        : "Status authority is temporarily unavailable.");
+    }
+    const payload: unknown = await response.json();
+    if (!isStatusShelfResponse(payload)) throw new Error("Status authority returned an unsupported snapshot.");
+    return payload;
+  };
+
+  try {
+    return await Promise.race([interruption, request()]);
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener("abort", cancel);
+  }
+}
 
 export interface StatusShelfProxyOptions {
   coreShelfUrl?: string;
@@ -54,6 +111,7 @@ export interface StatusShelfClientState {
   current: StatusShelfResponse | null;
   lastSuccessful: StatusShelfResponse | null;
   loading?: boolean;
+  refreshing?: boolean;
   error: string | null;
   lastSuccessfulAt: number | null;
   stale?: boolean;
@@ -63,6 +121,7 @@ export const INITIAL_STATUS_SHELF_STATE: StatusShelfClientState = {
   current: null,
   lastSuccessful: null,
   loading: true,
+  refreshing: false,
   error: null,
   lastSuccessfulAt: null,
   stale: false,
@@ -79,12 +138,13 @@ export function statusShelfReducer(
 ): StatusShelfClientState {
   switch (action.type) {
     case "loading":
-      return { ...state, loading: state.current === null, error: null };
+      return { ...state, loading: state.current === null, refreshing: true };
     case "success":
       return {
         current: action.snapshot,
         lastSuccessful: action.snapshot,
         loading: false,
+        refreshing: false,
         error: null,
         lastSuccessfulAt: action.receivedAt,
         stale: false,
@@ -94,6 +154,7 @@ export function statusShelfReducer(
         ...state,
         current: state.lastSuccessful,
         loading: false,
+        refreshing: false,
         error: action.error,
         stale: state.lastSuccessful !== null,
       };

@@ -1,0 +1,59 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Ascend Hub" Width="760" Height="520" MinWidth="640" MinHeight="450" Background="{DynamicResource Base}" Foreground="{DynamicResource Ink}" FontFamily="Segoe UI" FontSize="14" WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <ResourceDictionary>
+      <SolidColorBrush x:Key="Base" Color="#141513"/>
+      <SolidColorBrush x:Key="Surface" Color="#222321"/>
+      <SolidColorBrush x:Key="Ink" Color="#F5E8CF"/>
+      <SolidColorBrush x:Key="Secondary" Color="#AAA596"/>
+      <SolidColorBrush x:Key="Accent" Color="#F0A23B"/>
+      <SolidColorBrush x:Key="Edge" Color="#56534A"/>
+      <SolidColorBrush x:Key="ActionInk" Color="#141513"/>
+    </ResourceDictionary>
+  </Window.Resources>
+  <ScrollViewer Background="{DynamicResource Base}" x:Name="Scroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel x:Name="Composition" Margin="24">
+      <DockPanel Margin="0,0,0,16">
+        <StackPanel>
+          <TextBlock Text="ASCEND HUB" FontSize="21" FontWeight="Bold"/>
+          <TextBlock Text="LOCAL OPERATIONS CONSOLE" Foreground="{DynamicResource Secondary}" FontFamily="Consolas" FontSize="10" Margin="0,3,0,0"/>
+        </StackPanel>
+      </DockPanel>
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="1.12*"/><ColumnDefinition Width=".88*"/></Grid.ColumnDefinitions>
+        <Border x:Name="Monitor" Grid.Column="0" Height="316" VerticalAlignment="Top" Margin="0,0,14,0" BorderBrush="{DynamicResource Edge}" BorderThickness="0" Background="Transparent">
+          <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="280"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Viewbox Grid.Row="0" Width="280" Height="280" HorizontalAlignment="Center" Stretch="Uniform">
+              <Grid Width="500" Height="500">
+                <Image Source="{DynamicResource HubArtwork}" Stretch="Fill"/>
+                <Border Margin="85,82,85,170" Background="#88080A0D" Padding="12">
+                  <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="LOCAL RUNTIME" Foreground="{DynamicResource Accent}" FontFamily="Consolas" FontSize="20"/>
+                    <TextBlock x:Name="State" Text="Ready to start" Foreground="{DynamicResource Ink}" FontSize="38" FontWeight="SemiBold" Margin="0,10,0,5" TextWrapping="Wrap"/>
+                    <TextBlock x:Name="Stage" Foreground="{DynamicResource Secondary}" FontSize="20" TextWrapping="Wrap"/>
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </Viewbox>
+            <TextBlock Grid.Row="1" Text="CH 01  ·  ASCEND HUB" HorizontalAlignment="Center" Foreground="{DynamicResource Secondary}" FontFamily="Consolas" FontSize="10" Margin="0,4,0,0"/>
+          </Grid>
+        </Border>
+        <StackPanel Grid.Column="1" Margin="0,2,0,0">
+          <TextBlock Text="CONNECTION STATUS" Foreground="{DynamicResource Accent}" FontFamily="Consolas" FontSize="11" Margin="0,0,0,7"/>
+          <Grid Margin="0,5,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Hub interface" Foreground="{DynamicResource Secondary}"/><TextBlock x:Name="UiStatus" Grid.Column="1" Text="Not checked"/></Grid>
+          <Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Core / status feed" Foreground="{DynamicResource Secondary}"/><TextBlock x:Name="CoreStatus" Grid.Column="1" Text="Not checked"/></Grid>
+          <TextBlock x:Name="Timing" Margin="0,12,0,12" Foreground="{DynamicResource Secondary}" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/>
+          <Button x:Name="Primary" Style="{DynamicResource PrimaryAction}" Content="_Start Hub" AutomationProperties.Name="Start Hub"/>
+          <WrapPanel Margin="0,6,0,0"><Button x:Name="Cancel" Content="_Cancel startup" Visibility="Collapsed"/><Button x:Name="Stop" Content="S_top Hub" Visibility="Collapsed"/><Button x:Name="Force" Content="_Force stop" Visibility="Collapsed"/></WrapPanel>
+          <TextBlock x:Name="ProfileStatus" Margin="0,10,0,0" FontSize="11" Foreground="{DynamicResource Secondary}" TextWrapping="Wrap"/>
+          <Expander x:Name="Details" Header="_Diagnostics" Margin="0,8,0,0" Foreground="{DynamicResource Ink}">
+            <StackPanel Margin="0,6,0,0"><TextBlock x:Name="Failure" Text="No startup attempt yet." Foreground="{DynamicResource Secondary}" TextWrapping="Wrap"/><Button x:Name="Diagnostics" Content="Open _diagnostics folder" HorizontalAlignment="Left" Margin="0,8,0,0"/></StackPanel>
+          </Expander>
+        </StackPanel>
+      </Grid>
+      <Border x:Name="CloseActions" Visibility="Collapsed" BorderBrush="{DynamicResource Accent}" BorderThickness="1" Padding="10" Margin="0,12,0,0" Background="{DynamicResource Surface}">
+        <StackPanel><TextBlock Text="Stop this app before closing?"/><WrapPanel Margin="0,8,0,0"><Button x:Name="CloseCancel" Content="Cancel c_losing"/><Button x:Name="CloseStop" Content="Stop this app and c_lose"/></WrapPanel></StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</Window>
