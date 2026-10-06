@@ -1,270 +1,100 @@
-/**
- * CRT YouTube On-Screen Tuner & Search HUD
- * Enables real-time YouTube search, direct frequency tuning,
- * preset streaming channels, and automatic dead-video error recovery.
- *
- * Clickable directly on the CRT TV screen when channel is YouTube!
- */
-
-export function initYouTubeTuner(tvContentManager, updateDial) {
-  const panel = document.getElementById("crt-yt-tuner-panel");
-  const tvOverlay = document.getElementById("tv-container-overlay");
-  const closeBtn = document.getElementById("tuner-close-btn");
-  const errorBanner = document.getElementById("tuner-error-banner");
-  const searchForm = document.getElementById("tuner-search-form");
-  const searchInput = document.getElementById("tuner-search-input");
-  const resultsList = document.getElementById("tuner-results-list");
-  const pills = document.querySelectorAll(".tuner-pill");
-
-  if (!panel || !tvOverlay) {
-    console.warn("CRT YouTube Tuner elements not found");
-    return;
+export function initYouTubeTuner(manager, updateDial) {
+  const overlay = document.getElementById('tv-container-overlay');
+  const panel = document.getElementById('crt-yt-tuner-panel');
+  const trigger = document.getElementById('crt-yt-tuner-trigger');
+  const slate = document.getElementById('yt-channel-slate');
+  const reason = document.getElementById('yt-channel-reason');
+  const input = document.getElementById('tuner-search-input');
+  const results = document.getElementById('tuner-results-list');
+  const notice = document.getElementById('tuner-error-banner');
+  if (!overlay || !panel || !trigger) return;
+  let failure = null, requestId = 0;
+  const active = () => manager.getCurrentInputType() === 'youtube';
+  const sync = () => {
+    overlay.classList.toggle('channel-youtube', active());
+    slate.hidden = !active() || failure === null;
+    document.getElementById("tv-container").classList.toggle("youtube-owned-screen", active() && (failure !== null || !panel.hidden));
+    trigger.hidden = !active();
+    if (!active()) close(false);
+  };
+  function close(focus = true) {
+    panel.hidden = true;
+    document.getElementById("tv-container").classList.toggle("youtube-owned-screen", active() && failure !== null);
+    if (focus && active()) trigger.focus();
   }
-
-  let isOpen = false;
-  let isLoading = false;
-  let currentResults = [];
-
-  function openTuner(errorMessage = null) {
-    isOpen = true;
-    panel.style.display = "flex";
-    panel.setAttribute("aria-hidden", "false");
-    tvOverlay.classList.add("tuner-open");
-
-    if (errorMessage) {
-      if (errorBanner) {
-        errorBanner.textContent = `⚠️ ${errorMessage}`;
-        errorBanner.style.display = "flex";
-      }
-    } else if (errorBanner) {
-      errorBanner.style.display = "none";
-    }
-
-    if (searchInput) {
-      setTimeout(() => searchInput.focus(), 120);
-    }
-
-    // If no results yet, load featured default streams
-    if (!currentResults.length) {
-      executeSearch("");
-    }
+  function open() {
+    if (!active()) return;
+    panel.hidden = false;
+    document.getElementById("tv-container").classList.add("youtube-owned-screen");
+    input.focus();
+    if (!results.children.length) search('');
   }
-
-  function closeTuner() {
-    isOpen = false;
-    panel.style.display = "none";
-    panel.setAttribute("aria-hidden", "true");
-    tvOverlay.classList.remove("tuner-open");
-    if (errorBanner) {
-      errorBanner.style.display = "none";
-    }
+  function status(message) {
+    results.replaceChildren();
+    const text = document.createElement('p');
+    text.className = 'tv-broadcast-empty';
+    text.textContent = message;
+    results.append(text);
   }
-
-  function toggleTuner() {
-    if (isOpen) {
-      closeTuner();
-    } else {
-      openTuner();
-    }
-  }
-
-  function updateOverlayChannelState(inputType) {
-    const isYt = inputType === "youtube";
-    if (isYt) {
-      tvOverlay.classList.add("is-youtube");
-      tvOverlay.setAttribute("title", "Click CRT screen to search & tune YouTube");
-    } else {
-      tvOverlay.classList.remove("is-youtube");
-      tvOverlay.removeAttribute("title");
-      if (isOpen) {
-        closeTuner();
-      }
-    }
-  }
-
-  async function executeSearch(query) {
-    if (isLoading) return;
-    isLoading = true;
-
-    if (resultsList) {
-      resultsList.innerHTML = `
-        <div class="tuner-status-msg">
-          <span class="tuner-spinner"></span>
-          <span>SCANNING FREQUENCIES...</span>
-        </div>
-      `;
-    }
-
+  async function search(query) {
+    const id = ++requestId;
+    status('Finding videos…'); notice.hidden = true;
     try {
-      const url = query
-        ? `/api/youtube/search?q=${encodeURIComponent(query)}`
-        : `/api/youtube/search`;
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (data && Array.isArray(data.results) && data.results.length > 0) {
-        currentResults = data.results;
-        renderResults(data.results);
-      } else {
-        renderEmptyState("NO BROADCASTS DETECTED. TRY ANOTHER FREQUENCY.");
+      const response = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
+      if (!response.ok) throw new Error('search');
+      const data = await response.json();
+      if (id !== requestId) return;
+      notice.hidden = false;
+      notice.textContent = data.source === 'preset' ? (query ? 'Search unavailable · Recommendations instead' : 'Recommendations · Availability may change') : 'Select a video to tune';
+      results.replaceChildren();
+      const items = (data.results || []).filter(item => /^[a-zA-Z0-9_-]{11}$/.test(item.id));
+      if (!items.length) return status('No videos found. Try another title or paste a link.');
+      for (const item of items) {
+        const row = document.createElement('button'); row.type = 'button'; row.className = 'tv-broadcast-row';
+        const image = document.createElement('img'); image.src = `https://i.ytimg.com/vi/${item.id}/mqdefault.jpg`; image.alt = ''; image.loading = 'lazy';
+        const details = document.createElement('span');
+        const title = document.createElement('strong'); title.textContent = item.title;
+        const author = document.createElement('small'); author.textContent = item.author || 'YouTube';
+        details.append(title, author);
+        const duration = document.createElement('small'); duration.textContent = data.source === 'preset' ? 'Tune' : item.duration || 'Tune';
+        row.append(image, details, duration);
+        row.onclick = async () => {
+          failure = null;
+          await manager.playYouTubeDirect(item.id, false, Boolean(item.isLive), item.title);
+          updateDial?.(); close(); sync();
+        };
+        results.append(row);
       }
-    } catch (err) {
-      console.error("CRT Tuner search error:", err);
-      renderEmptyState("FREQUENCY SCAN FAILED. CHECK NETWORK.");
-    } finally {
-      isLoading = false;
+    } catch {
+      if (id === requestId) status('Search could not connect. Try again or paste a video link.');
     }
   }
-
-  function renderResults(results) {
-    if (!resultsList) return;
-    resultsList.innerHTML = "";
-
-    results.forEach((item) => {
-      const card = document.createElement("div");
-      card.className = "tuner-card";
-      card.setAttribute("role", "button");
-      card.setAttribute("tabindex", "0");
-
-      const isLiveBadge = item.isLive || item.duration === "LIVE";
-
-      card.innerHTML = `
-        <div class="tuner-card-thumb">
-          <img src="${item.thumbnail || ""}" alt="${escapeHtml(item.title)}" loading="lazy" />
-          <span class="tuner-card-badge ${isLiveBadge ? "live" : ""}">${isLiveBadge ? "● LIVE" : escapeHtml(item.duration || "")}</span>
-        </div>
-        <div class="tuner-card-info">
-          <div class="tuner-card-title">${escapeHtml(item.title)}</div>
-          <div class="tuner-card-author">${escapeHtml(item.author || "YouTube Broadcast")}</div>
-        </div>
-        <div class="tuner-card-action">
-          <span>TUNE ▶</span>
-        </div>
-      `;
-
-      const playItem = () => {
-        if (tvContentManager && typeof tvContentManager.playYouTubeDirect === "function") {
-          tvContentManager.playYouTubeDirect(
-            item.id,
-            false,
-            Boolean(item.isLive),
-            item.title
-          );
-          if (typeof updateDial === "function") {
-            updateDial();
-          }
-        }
-        closeTuner();
-      };
-
-      card.addEventListener("click", (e) => {
-        e.stopPropagation();
-        playItem();
-      });
-
-      card.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          playItem();
-        }
-      });
-
-      resultsList.appendChild(card);
-    });
-  }
-
-  function renderEmptyState(msg) {
-    if (!resultsList) return;
-    resultsList.innerHTML = `
-      <div class="tuner-status-msg">
-        <span>⚠️ ${escapeHtml(msg)}</span>
-      </div>
-    `;
-  }
-
-  function escapeHtml(str) {
-    if (!str) return "";
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-  // --- Click on TV Screen Handler ---
-  tvOverlay.addEventListener("click", (e) => {
-    // Only handle if clicking directly on the overlay backdrop
-    if (e.target !== tvOverlay) return;
-
-    const currentInput = typeof tvContentManager.getCurrentInputType === "function"
-      ? tvContentManager.getCurrentInputType()
-      : (tvContentManager.currentInputType || "");
-
-    if (currentInput === "youtube") {
-      e.stopPropagation();
-      toggleTuner();
+  trigger.onclick = open;
+  document.getElementById('tuner-close-btn').onclick = () => close();
+  document.getElementById('yt-choose-video').onclick = open;
+  const videoId = () => manager.youtubePlayer?.currentSelection?.videoId || manager.youtubePlayer?.youtubePlayer?.getVideoData?.().video_id;
+  document.getElementById('yt-retry-video').onclick = () => {
+    if (manager.youtubePlayer?.apiFailed) {
+      failure = null; manager.youtubePlayer.retryConnection(); sync(); return;
     }
+    const id = videoId(); if (!id) return open();
+    failure = null;
+    if (manager.youtubePlayer.youtubePlayerReady) manager.youtubePlayer.youtubePlayer.loadVideoById(id);
+    else manager.youtubePlayer.updateYouTubePlayer(id);
+    sync();
+  };
+  document.getElementById('yt-open-external').onclick = () => {
+    const id = videoId();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(id || '')) window.open(`https://www.youtube.com/watch?v=${id}`, '_blank', 'noopener,noreferrer');
+  };
+  document.getElementById('tuner-search-form').onsubmit = event => { event.preventDefault(); search(input.value.trim()); };
+  window.addEventListener('keydown', event => { if (event.key === 'Escape' && !panel.hidden) close(); });
+  window.addEventListener('tv-input-changed', sync);
+  window.addEventListener('yt-error', event => {
+    failure = event.detail?.code ?? 'unknown';
+    reason.textContent = [101, 150].includes(failure) ? 'This creator does not allow playback on embedded TVs.' : failure === 100 ? 'This video is unavailable or has been removed.' : failure === 'api-unavailable' ? 'YouTube could not connect. Check your connection and try again.' : failure === 153 ? 'The player could not identify this TV connection.' : 'This video cannot play on this TV.';
+    sync();
   });
-
-  // Close Button
-  if (closeBtn) {
-    closeBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      closeTuner();
-    });
-  }
-
-  // Search Form Submit
-  if (searchForm) {
-    searchForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const query = searchInput ? searchInput.value.trim() : "";
-      executeSearch(query);
-    });
-  }
-
-  // Quick Preset Pills
-  pills.forEach((pill) => {
-    pill.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const q = pill.getAttribute("data-query");
-      if (q) {
-        if (searchInput) searchInput.value = q;
-        executeSearch(q);
-      }
-    });
-  });
-
-  // Hotkey support: ESC to close
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && isOpen) {
-      closeTuner();
-    }
-  });
-
-  // Listen for channel/input changes from TVContentManager
-  window.addEventListener("tv-input-changed", (e) => {
-    const inputType = e.detail?.inputType || "";
-    updateOverlayChannelState(inputType);
-  });
-
-  // Initial channel check
-  const initialInput = typeof tvContentManager.getCurrentInputType === "function"
-    ? tvContentManager.getCurrentInputType()
-    : (tvContentManager.currentInputType || "");
-  updateOverlayChannelState(initialInput);
-
-  // Listen for video unavailable / player errors to open tuner
-  window.addEventListener("yt-error", (e) => {
-    console.warn("CRT Tuner intercepted YouTube player error:", e.detail);
-    openTuner("BROADCAST OFFLINE (VIDEO UNAVAILABLE) — SELECT A WORKING STREAM BELOW:");
-  });
-
-  // Stop click bubbling on tuner panel
-  panel.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-
-  console.log("CRT YouTube Tuner (Screen Clickable Mode) initialized");
+  window.addEventListener('yt-playing', () => { failure = null; sync(); });
+  sync();
 }

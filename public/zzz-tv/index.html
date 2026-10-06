@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>zzz MultiMedia Wallpaper Engine</title>
     <link rel="stylesheet" href="style/styles.css">
-    <script src="https://www.youtube.com/iframe_api"></script>
+    <link rel="stylesheet" href="style/spotify-channel.css">
+    <link rel="stylesheet" href="style/weather-channel.css">
+    <link rel="stylesheet" href="style/channel-ui.css">
 </head>
 
 <body>
@@ -39,47 +41,19 @@
                 <button id="switch-play-state"></button>
             </div>
             <div class="tv-container-overlay" id="tv-container-overlay">
-                <!-- Retro CRT YouTube Tuner HUD (opens when clicking TV screen on YouTube) -->
-                <div class="crt-yt-tuner-panel" id="crt-yt-tuner-panel" style="display: none;" aria-hidden="true">
-                    <div class="tuner-header">
-                        <div class="tuner-title-block">
-                            <span class="tuner-radar-dot"></span>
-                            <span class="tuner-title-text">CRT BROADCAST TUNER</span>
-                            <span class="tuner-badge">CH-03 // YT</span>
-                        </div>
-                        <button type="button" class="tuner-close-btn" id="tuner-close-btn" title="Close Tuner">✕</button>
-                    </div>
-
-                    <div class="tuner-error-banner" id="tuner-error-banner" style="display: none;">
-                        ⚠️ BROADCAST OFFLINE // SELECT A WORKING STREAM:
-                    </div>
-
-                    <form class="tuner-search-form" id="tuner-search-form">
-                        <span class="tuner-prompt">&gt;</span>
-                        <input 
-                            type="text" 
-                            id="tuner-search-input" 
-                            placeholder="Search any song, artist, video or paste YT link..." 
-                            autocomplete="off"
-                            spellcheck="false"
-                        />
-                        <button type="submit" id="tuner-search-submit">TUNE</button>
-                    </form>
-
-                    <div class="tuner-pills-bar">
-                        <button type="button" class="tuner-pill" data-query="Lofi Girl radio">☕ Lofi 24/7</button>
-                        <button type="button" class="tuner-pill" data-query="Synthwave radio live">🌌 Synthwave</button>
-                        <button type="button" class="tuner-pill" data-query="Cyberpunk 2077 radio">⚡ Cyberpunk</button>
-                        <button type="button" class="tuner-pill" data-query="Zenless Zone Zero OST">🎮 ZZZ OST</button>
-                        <button type="button" class="tuner-pill" data-query="Chillhop cafe live">🌧️ Chillhop</button>
-                    </div>
-
-                    <div class="tuner-results-container" id="tuner-results-container">
-                        <div class="tuner-results-list" id="tuner-results-list">
-                            <!-- Populated dynamically with live results -->
-                        </div>
-                    </div>
-                </div>
+                <button id="crt-yt-tuner-trigger" class="tv-broadcast-trigger" type="button" hidden>Choose video</button>
+                <section id="yt-channel-slate" class="tv-broadcast-slate" hidden aria-live="polite">
+                    <span class="tv-broadcast-tag">YouTube</span><h2>Broadcast unavailable</h2>
+                    <p id="yt-channel-reason">This video cannot play on this TV.</p>
+                    <div class="tv-broadcast-actions"><button id="yt-choose-video" type="button">Choose video</button><button id="yt-retry-video" type="button">Try again</button></div>
+                    <button id="yt-open-external" class="tv-broadcast-link" type="button">Open on YouTube</button>
+                </section>
+                <section id="crt-yt-tuner-panel" class="tv-broadcast-picker" hidden aria-label="Choose YouTube video">
+                    <header><span class="tv-broadcast-tag">YouTube</span><button id="tuner-close-btn" type="button">Back</button></header>
+                    <form id="tuner-search-form"><label for="tuner-search-input" class="tv-broadcast-sr">Search title or paste a YouTube link</label><input id="tuner-search-input" type="search" placeholder="Search title or paste link" autocomplete="off"><button type="submit">Tune</button></form>
+                    <p id="tuner-error-banner" class="tv-broadcast-caption" hidden aria-live="polite"></p>
+                    <div id="tuner-results-list" class="tv-broadcast-results" aria-live="polite"></div>
+                </section>
             </div>
             <div class="tv_container" id="tv-container">
                 <img id="screen-highlight" src="resource/image/screen_hightlight.png" alt="screen-highlight">

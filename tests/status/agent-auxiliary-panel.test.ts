@@ -71,6 +71,16 @@ test("the status side uses compact item-style rows for status and actions", () =
   assert.match(markup, /class="agent-auxiliary-panel__list-row"[^>]*>[\s\S]*Copy status/);
 });
 
+test("focused TV and dialogue panel use a coordinated zoom-in with a fast pullback", async () => {
+  const markup = await readFile("app/page.tsx", "utf8");
+  const panel = await readFile("components/status/AgentAuxiliaryPanel.tsx", "utf8");
+  assert.match(markup, /initial=\{\{ opacity: 0, y: reduceMotion \? 0 : 20, scale: reduceMotion \? 1 : 0\.94 \}\}/);
+  assert.match(markup, /focusedStatusTv\.open \? 0\.42 : 0\.2/);
+  assert.match(panel, /className="agent-auxiliary-panel__monitor"[\s\S]*?scale: reduceMotion \? 1 : 0\.7/);
+  assert.match(panel, /filter: reduceMotion \? "blur\(0px\)" : "blur\(7px\)"/);
+  assert.match(panel, /duration: reduceMotion \? 0\.14 : open \? 0\.52 : 0\.18/);
+});
+
 test("diagnostics are optional disclosure content and absent activity has no filler", () => {
   const markup = render({ model: buildAgentAuxiliaryModel({ ...input, service: { ...input.service, activity: undefined } }) });
   assert.match(markup, /<details[^>]*><summary>[\s\S]*More details[\s\S]*<\/summary>/);
@@ -113,4 +123,18 @@ test("reported issues retain retry information and reduced-motion class", () => 
   assert.match(markup, />Needs attention</);
   assert.match(markup, />Waiting for input</);
   assert.match(markup, /Retry available/);
+});
+
+
+test("TV inspectors provide a retro desktop and channel-specific palette with one Close control", async () => {
+  const styles = await readFile("components/status/tv-inspector.css", "utf8");
+  for (const channel of ["CH 01", "CH 02", "CH 03", "CH 04"] as const) {
+    const markup = render({ model: { ...model, channel } });
+    assert.match(markup, new RegExp(`data-channel="${channel}"`));
+    assert.match(markup, /tv-inspector__chrome/);
+    assert.match(markup, /tv-inspector__menubar/);
+    assert.match(markup, /tv-inspector__desktop/);
+    assert.equal((markup.match(/> Close</g) ?? []).length, 1);
+  }
+  assert.match(styles, /data-channel="CH 04"[^}]*--desktop-a: #739fdc/);
 });

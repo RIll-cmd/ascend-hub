@@ -12,6 +12,15 @@ interface YouTubeVideoItem {
   isLive: boolean;
 }
 
+type YouTubeText = { simpleText?: string; runs?: { text: string }[] };
+type VideoRenderer = {
+  videoId: string; title: YouTubeText; lengthText?: YouTubeText; ownerText?: YouTubeText;
+  shortBylineText?: YouTubeText; viewCountText?: YouTubeText; shortViewCountText?: YouTubeText;
+  badges?: { metadataBadgeRenderer?: { label?: string; style?: string } }[];
+  thumbnail?: { thumbnails?: { url: string }[] };
+};
+type SearchData = { contents?: { twoColumnSearchResultsRenderer?: { primaryContents?: { sectionListRenderer?: { contents?: { itemSectionRenderer?: { contents?: { videoRenderer?: VideoRenderer }[] } }[] } } } } };
+
 const DEFAULT_FEATURED: YouTubeVideoItem[] = [
   {
     id: "jfKfPfyJRdk",
@@ -91,6 +100,7 @@ export async function GET(request: NextRequest) {
       success: true,
       query: "",
       results: DEFAULT_FEATURED,
+      source: "preset",
       isDirectMatch: false,
     });
   }
@@ -110,9 +120,10 @@ export async function GET(request: NextRequest) {
           duration: "Ready",
           isLive: false,
         },
-        ...DEFAULT_FEATURED.filter((v) => v.id !== directId),
+
       ],
       isDirectMatch: true,
+      source: "direct",
     });
   }
 
@@ -138,15 +149,16 @@ export async function GET(request: NextRequest) {
         success: true,
         query: q,
         results: DEFAULT_FEATURED,
+        source: "preset",
         isDirectMatch: false,
       });
     }
 
-    const data = JSON.parse(match[1]);
+    const data: SearchData = JSON.parse(match[1]);
     const contents =
       data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer
         ?.contents;
-    const itemSection = contents?.find((c: any) => c.itemSectionRenderer)?.itemSectionRenderer
+    const itemSection = contents?.find((c) => c.itemSectionRenderer)?.itemSectionRenderer
       ?.contents;
 
     const results: YouTubeVideoItem[] = [];
@@ -156,7 +168,7 @@ export async function GET(request: NextRequest) {
         if (v && v.videoId && v.title) {
           const isLive = Boolean(
             v.badges?.some(
-              (b: any) =>
+              (b) =>
                 b.metadataBadgeRenderer?.label === "LIVE" ||
                 b.metadataBadgeRenderer?.style === "BADGE_STYLE_TYPE_LIVE_NOW"
             )
@@ -168,12 +180,12 @@ export async function GET(request: NextRequest) {
                 v.lengthText?.runs?.[0]?.text ||
                 "Video";
           const title =
-            v.title?.runs?.map((r: any) => r.text).join("") ||
+            v.title?.runs?.map((r) => r.text).join("") ||
             v.title?.simpleText ||
             "Untitled";
           const author =
-            v.ownerText?.runs?.map((r: any) => r.text).join("") ||
-            v.shortBylineText?.runs?.map((r: any) => r.text).join("") ||
+            v.ownerText?.runs?.map((r) => r.text).join("") ||
+            v.shortBylineText?.runs?.map((r) => r.text).join("") ||
             "YouTube Creator";
           const thumbnail =
             v.thumbnail?.thumbnails?.[v.thumbnail.thumbnails.length - 1]?.url ||
@@ -202,14 +214,16 @@ export async function GET(request: NextRequest) {
       success: true,
       query: q,
       results: results.length > 0 ? results : DEFAULT_FEATURED,
+      source: results.length > 0 ? "search" : "preset",
       isDirectMatch: false,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("YouTube search error:", error);
     return NextResponse.json({
       success: false,
-      error: error?.message || "Failed to search YouTube",
+      error: "Failed to search YouTube",
       results: DEFAULT_FEATURED,
+      source: "preset",
       isDirectMatch: false,
     });
   }

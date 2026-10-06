@@ -353,6 +353,19 @@ export class TVContentManager {
     }
   }
 
+  selectInput(type) {
+    const index = this.tv_input_keys.indexOf(type);
+    if (index < 0) return false;
+    if (this.currentInputType === type) return true;
+    this.stopAllMedia();
+    this.currentInputIndex = index;
+    this.currentInputType = type;
+    this.showOverlayAnimation(`${type.toUpperCase()}-${this.tv_guide[type].currentChannel}`);
+    window.dispatchEvent(new CustomEvent("tv-input-changed", { detail: { inputType: type } }));
+    this.switchContentProcess();
+    return true;
+  }
+
   nextInput() {
     try {
       this.stopAllMedia();

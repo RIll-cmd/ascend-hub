@@ -1,23 +1,16 @@
+import { WeatherSetupPanel } from "./weather-setup.js";
 import {
   fetchSVGIcon,
   debounce,
-  getDayOfWeek,
-  aggregateDailyTemperatures,
   getFormattedDateAndDay,
   parseWeatherData,
 } from "./utils.js";
-
-import {
-  getSampleForecast,
-  getSampleCurrentWeather,
-} from "./sample_forecast.js";
 
 import { anchorConfigDict } from "./anchor_config.js";
 
 export class WeatherChannel {
   constructor(wallpaperSettings) {
     this.wallpaperSettings = wallpaperSettings || {};
-    this.apiKey = this.wallpaperSettings.weather_api || this.wallpaperSettings.weather_api_key || "FLTQSEWVR77875H6UM6P65DUF";
     this.city = this.wallpaperSettings.weather_city || "Manila,PH";
     this.lat = this.wallpaperSettings.weather_latitude || 14.5995;
     this.lon = this.wallpaperSettings.weather_longitude || 120.9842;
@@ -25,7 +18,7 @@ export class WeatherChannel {
 
     this.windUnit = "m/s"; // Change to "m/h" for MPH
 
-    this.degree = "°";
+    this.degree = "Â°";
     this.tempUnit = "C";
 
     this.weatherTodayData = null;
@@ -35,8 +28,6 @@ export class WeatherChannel {
 
     this.updateWeatherIntervalID = null;
 
-    this.errorMsgMissingAPI =
-      "Please provide a valid API key and Location's Latitude and Longitude in the wallpaper settings.";
 
     this.weatherConditions = {
       clear: "resource/svg/sun.svg",
@@ -69,7 +60,8 @@ export class WeatherChannel {
 
     this.container = this.initWeatherChannel(); // Initialize container
 
-    this.setAPIKey(this.wallpaperSettings?.weather_api || this.wallpaperSettings?.weather_api_key || "FLTQSEWVR77875H6UM6P65DUF");
+    this.setupPanel = new WeatherSetupPanel(this);
+    this.setupPanel.apply({ status: "loading" });
     this.setCity(this.wallpaperSettings?.weather_city || "Manila,PH");
     this.setLatitue(this.wallpaperSettings?.weather_latitude || 14.5995);
     this.setLongitude(this.wallpaperSettings?.weather_longitude || 120.9842);
@@ -133,7 +125,7 @@ export class WeatherChannel {
     const weatherTodayIcon = document.createElement("div");
     weatherTodayIcon.id = "weather-today-icon";
     fetchSVGIcon("resource/svg/calendar-day.svg", weatherTodayIcon);
-  
+
 
     const dayOfWeekToday = document.createElement("div");
     dayOfWeekToday.id = "day-of-week-today";
@@ -148,7 +140,7 @@ export class WeatherChannel {
     weatherTodayConditionText.textContent = "thunderstorm".toUpperCase();
 
     const weatherTodayConditionIcon = document.createElement("div");
-    weatherTodayConditionIcon.id = "weather-today-condition-icon"; 
+    weatherTodayConditionIcon.id = "weather-today-condition-icon";
     fetchSVGIcon(this.weatherConditions["clear"],weatherTodayConditionIcon);
 
 
@@ -458,7 +450,7 @@ export class WeatherChannel {
 
     const weatherBannerSubText = document.createElement("div");
     weatherBannerSubText.id = "weather-banner-sub-text";
-    weatherBannerSubText.textContent = "Powered by OpenWeather.org";
+    weatherBannerSubText.textContent = "Forecast by Visual Crossing";
     weatherBannerSubText.classList.add("infinity-scroll-animation");
     // weatherBannerSubText.classList.add("marquee-content");
     // weatherBannerSubText.classList.add("marquee");
@@ -512,11 +504,11 @@ export class WeatherChannel {
       const fadeInElement = this.isOnTodayInfoPanel
         ? this.weatherForecastMasterContainer
         : this.weatherSubInfoContainer;
-      
+
       const CurrentBannerText = this.isOnTodayInfoPanel
         ? "Weather Forecast".toUpperCase()
         : "Weather Now".toUpperCase();
-      
+
       this.weatherBannerText.style.animation = 'none';
       this.weatherBannerText.style.borderRight = '0.15em solid black';
       void this.weatherBannerText.offsetWidth;
@@ -707,25 +699,7 @@ export class WeatherChannel {
 
   setWallpaperSettings(wallpaperSettings) {
     this.wallpaperSettings = wallpaperSettings;
-    if (this.wallpaperSettings.weather_api) {
-      this.setAPIKey(this.wallpaperSettings.weather_api);
-    }
-    // if (this.wallpaperSettings.weather_city) {
-    //   this.setCity(this.wallpaperSettings.weather_city);
-    // }
-    if (this.wallpaperSettings.weather_latitude) {
-      this.setLatitue(this.wallpaperSettings.weather_latitude);
-    }
-    if (this.wallpaperSettings.weather_longitude) {
-      this.setLongitude(this.wallpaperSettings.weather_longitude);
-    }
-    if (this.wallpaperSettings.weather_unit) {
-      this.setUnit();
-    }
-    console.log(this.wallpaperSettings)
-    setTimeout(() => {
-      this.updateWeather();
-    }, 1000);
+    // Provider configuration belongs to Hub's server settings, not wallpaper messages.
   }
 
   setUnit() {
@@ -758,19 +732,6 @@ export class WeatherChannel {
     return this.container;
   }
 
-  setAPIKey(apiKey) {
-    // if (!apiKey || apiKey.trim().length != 32) {
-    //   console.log("API key should be 32 characters long");
-    //   return;
-    // }
-    // apiKey = apiKey.trim();
-    // if (this.apiKey === apiKey) {
-    //   console.log("API key is the same, no need to update");
-    //   return;
-    // }
-    this.apiKey = apiKey;
-    // this.updateWeather();
-  }
 
   setCity(city) {
     // if (!city || city.trim().length < 2) {
@@ -820,96 +781,22 @@ export class WeatherChannel {
     return "Clear";
   }
 
-  async fetchVisualCrossingWeather() {
-    const unitGroup = this.units === "imperial" ? "us" : "metric";
-    let locationQuery = "";
-    if (this.city && this.city.trim().length > 0) {
-      locationQuery = encodeURIComponent(this.city.trim());
-    } else if (this.lat && this.lon) {
-      locationQuery = `${this.lat},${this.lon}`;
-    } else {
-      locationQuery = "Manila,PH";
-    }
-
-    const key = this.apiKey || "FLTQSEWVR77875H6UM6P65DUF";
-    const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${locationQuery}?unitGroup=${unitGroup}&key=${key}&contentType=json`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      const err = await response.text().catch(() => "");
-      throw new Error(`Weather API Error (${response.status}): ${err || response.statusText}`);
-    }
-    const vcData = await response.json();
-
-    const cityName = vcData.resolvedAddress ? vcData.resolvedAddress.split(",")[0].trim() : (this.city || "Local");
-    const location = [{ name: cityName }];
-
-    const cc = vcData.currentConditions || (vcData.days && vcData.days[0]) || {};
-    const mainCondition = this.mapCondition(cc.icon, cc.conditions);
-
-    const data = {
-      main: {
-        temp: cc.temp ?? 25,
-        feels_like: cc.feelslike ?? cc.temp ?? 25,
-        humidity: cc.humidity ?? 50,
-      },
-      weather: [{
-        main: mainCondition,
-        description: cc.conditions || mainCondition,
-      }],
-      wind: {
-        speed: cc.windspeed ?? 0,
-      },
-    };
-
-    const forecastData = { list: [] };
-    if (Array.isArray(vcData.days)) {
-      for (const d of vcData.days.slice(0, 6)) {
-        forecastData.list.push({
-          dt_txt: `${d.datetime} 12:00:00`,
-          main: {
-            temp: d.temp,
-            temp_min: d.tempmin,
-            temp_max: d.tempmax,
-          },
-          weather: [{
-            main: this.mapCondition(d.icon, d.conditions),
-          }],
-          pop: (d.precipprob || 0) / 100,
-        });
-      }
-    }
-
-    return { data, forecastData, location };
-  }
-
   async updateWeather() {
     this.weatherWarningMsg.style.display = "none";
-    const key = this.apiKey || "FLTQSEWVR77875H6UM6P65DUF";
-    if (!key) {
-      this.weatherWarningMsg.textContent = this.errorMsgMissingAPI;
-      this.weatherWarningMsg.style.display = "block";
-      return;
-    }
-
     try {
-      if (typeof navigator !== "undefined" && navigator.geolocation && (!this.city || this.city === "Manila,PH")) {
-        try {
-          const pos = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000 });
-          });
-          this.lat = pos.coords.latitude;
-          this.lon = pos.coords.longitude;
-          this.city = ""; // Use exact lat/lon
-        } catch (_) {}
+      const response = await fetch("/api/weather/current");
+      if (!response.ok) throw new Error("unavailable");
+      const state = await response.json();
+      if (state.data) {
+        this.units = state.setup.units;
+        this.tempUnit = this.units === "us" ? "F" : "C";
+        this.windUnit = this.units === "us" ? "mph" : "m/s";
+        this.displayWeather(state.data, state.forecastData, state.location);
       }
-
-      const { data, forecastData, location } = await this.fetchVisualCrossingWeather();
-      this.displayWeather(data, forecastData, location);
-    } catch (error) {
-      console.error("Error fetching weather data:", error);
-      this.weatherWarningMsg.textContent = error.message || String(error);
-      this.weatherWarningMsg.style.display = "block";
+      this.setupPanel.apply(state);
+    } catch {
+      const previous = this.setupPanel.lastState;
+      this.setupPanel.apply({ ...previous, status: "unavailable", stale: Boolean(previous?.data), message: "Hub could not load the forecast. Try again." });
     }
   }
 
@@ -933,10 +820,10 @@ export class WeatherChannel {
     today = dates[0];
     this.dayOfWeekToday.textContent = today.dayOfWeek.toUpperCase();
     // this.dayOfWeekToday.textContent = "Wednesday".toUpperCase(); //
-    let currentTempNum = Math.round(Number(main.temp));
-    let currentTemp = currentTempNum.toString();
+    let currentTempNum = main.temp == null ? null : Math.round(Number(main.temp));
+    let currentTemp = currentTempNum == null ? "—" : currentTempNum.toString();
     // If the length is already 3 or more, return the number as it is (with the sign)
-    if (currentTemp.length < 3) {
+    if (currentTempNum != null && currentTemp.length < 3) {
       currentTemp = Math.abs(currentTemp).toString().padStart(2, "0");
       if (currentTempNum < 0) {
         currentTemp = "-" + currentTemp;
@@ -944,24 +831,24 @@ export class WeatherChannel {
         currentTemp = "0" + currentTemp;
       }
     }
-    this.weatherTodayTemperatureText.textContent = `${currentTemp}°${this.tempUnit}`;
+    this.weatherTodayTemperatureText.textContent = `${currentTemp}Â°${this.tempUnit}`;
     this.feelsLikeTemperatureText.textContent = `${Math.round(
       main.feels_like
-    )}°${this.tempUnit}`;
-    this.humidityText.textContent = `${Math.round(main.humidity)}%`;
+    )}Â°${this.tempUnit}`;
+    this.humidityText.textContent = main.humidity == null ? "N/A" : `${Math.round(main.humidity)}%`;
 
     this.popText.textContent = `N/A`;
     // wind.speed = 100
-    this.windText.textContent = `${wind.speed.toFixed(1)}`; 
+    this.windText.textContent = wind.speed == null ? "N/A" : `${wind.speed.toFixed(1)}`;
     const mainWeather = weather[0].main ?? "clear";
     this.weatherLocationText.textContent = location[0].name ?? "N/A";
     this.weatherTodayConditionText.textContent = mainWeather.toUpperCase();
-    fetchSVGIcon(this.weatherConditions[mainWeather.toLowerCase()], this.weatherTodayConditionIcon);
+    fetchSVGIcon(this.weatherConditions[mainWeather.toLowerCase()] || "resource/svg/interrobang.svg", this.weatherTodayConditionIcon);
 
 
     if (forecastData && this.weatherForecastList && dates.length > 1) {
-      const parsedForecastData = parseWeatherData(forecastData);
-      if (dates[0].date in parsedForecastData) {
+      const parsedForecastData = parseWeatherData({ list: forecastData.list.filter(item => item.main.temp != null && item.main.temp_min != null && item.main.temp_max != null) });
+      if (dates[0].date in parsedForecastData && parsedForecastData[dates[0].date].maxPop != null) {
         this.popText.textContent = `${Math.round(
           parsedForecastData[dates[0].date].maxPop * 100
         )}%`;
@@ -1010,7 +897,7 @@ export class WeatherChannel {
           ].weatherForecastConditionText.textContent =
             parsedForecastData[dates[i].date].weatherCondition.toUpperCase();
 
-          let popRound = Math.round(
+          let popRound = parsedForecastData[dates[i].date].maxPop == null ? null : Math.round(
             parsedForecastData[dates[i].date].maxPop * 100
           );
           if (popRound >= 100) {
@@ -1018,10 +905,10 @@ export class WeatherChannel {
           }
           this.weatherForecastList[
             forecastIndex
-          ].weatherForecastPopText.textContent = `${popRound}%`;
+          ].weatherForecastPopText.textContent = popRound == null ? "N/A" : `${popRound}%`;
           this.weatherForecastList[
             forecastIndex
-          ].weatherForecastPopTextBg.textContent = `${popRound}%`;
+          ].weatherForecastPopTextBg.textContent = popRound == null ? "N/A" : `${popRound}%`;
           const popRoundFill = popRound * 0.85;
           this.weatherForecastList[
             forecastIndex

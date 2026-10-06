@@ -3,22 +3,43 @@ import { getStoredSpotifyTokens, saveSpotifyTokens } from "@/lib/spotify";
 
 export const dynamic = "force-dynamic";
 
+interface SpotifyAuthorizationResponse {
+  refresh_token?: string;
+  error_description?: string;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+  const returnedState = searchParams.get("state");
+  const expectedState = request.cookies.get("ascend_spotify_oauth_state")?.value;
+  const clearState = (response: NextResponse) => {
+    response.cookies.set("ascend_spotify_oauth_state", "", {
+      httpOnly: true,
+      secure: request.nextUrl.protocol === "https:",
+      sameSite: "lax",
+      path: "/api/spotify/callback",
+      maxAge: 0,
+    });
+    return response;
+  };
+
+  if (!returnedState || !expectedState || returnedState !== expectedState) {
+    return clearState(NextResponse.redirect(new URL("/?spotify=error", request.url)));
+  }
 
   if (error || !code) {
-    return NextResponse.redirect(
+    return clearState(NextResponse.redirect(
       new URL(`/?spotify=error&message=${encodeURIComponent(error || "No code provided")}`, request.url)
-    );
+    ));
   }
 
   const creds = getStoredSpotifyTokens();
   if (!creds.clientId || !creds.clientSecret) {
-    return NextResponse.redirect(
+    return clearState(NextResponse.redirect(
       new URL("/?spotify=error&message=Missing+SPOTIFY_CLIENT_ID+or+SPOTIFY_CLIENT_SECRET", request.url)
-    );
+    ));
   }
 
   const origin = request.nextUrl.origin.replace("localhost", "127.0.0.1");
@@ -39,12 +60,12 @@ export async function GET(request: NextRequest) {
       }),
     });
 
-    const data = await res.json();
-    if (!res.ok || !data.refresh_token) {
+    const data = (await res.json()) as SpotifyAuthorizationResponse;
+    if (!res.ok || typeof data.refresh_token !== "string") {
       console.error("Spotify token error:", data);
-      return NextResponse.redirect(
+      return clearState(NextResponse.redirect(
         new URL(`/?spotify=error&message=${encodeURIComponent(data.error_description || "Token exchange failed")}`, request.url)
-      );
+      ));
     }
 
     saveSpotifyTokens({
@@ -53,11 +74,9 @@ export async function GET(request: NextRequest) {
       refreshToken: data.refresh_token,
     });
 
-    return NextResponse.redirect(new URL("/?spotify=connected", request.url));
-  } catch (err: any) {
-    console.error("Spotify OAuth callback error:", err);
-    return NextResponse.redirect(
-      new URL(`/?spotify=error&message=${encodeURIComponent(err.message || "Unknown error")}`, request.url)
-    );
+    return clearState(NextResponse.redirect(new URL("/?spotify=connected", request.url)));
+  } catch {
+    console.error("Spotify OAuth callback failed.");
+    return clearState(NextResponse.redirect(new URL("/?spotify=error", request.url)));
   }
 }

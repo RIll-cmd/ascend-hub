@@ -53,6 +53,13 @@ function Set-LauncherSnapshot($window, $snapshot, [string]$product) {
     foreach ($spec in @(@('Cancel', $starting), @('Stop', ($state -in @('ready','degraded'))), @('Force', ($state -in @('stopping','stop_failed'))))) {
         $button=$window.FindName($spec[0]);$button.Visibility=if($spec[1]){'Visible'}else{'Collapsed'};$button.IsEnabled=[bool]$spec[1]
     }
+    $replacement=$window.FindName('ReplaceSession')
+    if($null -ne $replacement) {
+        $showReplacement=$state -eq 'failed' -and $snapshot.FailureCode -eq 'port-in-use'
+        $replacement.Visibility=if($showReplacement){'Visible'}else{'Collapsed'}
+        $replacement.IsEnabled=$showReplacement -and [bool]$snapshot.CanReplaceSession
+        $replacement.ToolTip=if($snapshot.CanReplaceSession){"Stop verified Hub session (PID $($snapshot.ConflictPid)) and start again"}else{'The app using this port could not be verified as your Hub session. Close it manually.'}
+    }
     $recovery=$window.FindName('ChatRecovery')
     if ($null -ne $recovery) { $recovery.IsEnabled=$canStart }
     foreach ($spec in @(@('UiStatus','Ui'),@('ChatStatus','Chat'),@('CameraStatus','Camera'),@('MicrophoneStatus','Microphone'),@('CoreStatus','Core'))) {

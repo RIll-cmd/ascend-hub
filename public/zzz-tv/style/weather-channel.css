@@ -1,0 +1,23 @@
+.weather-channel { container-type: inline-size; }
+.weather-settings-action { position:absolute; top:3%; right:7%; z-index:20; background:#202324e8; color:#c4ee41; border:0; padding:.4em .8em; font:2.6cqw Impact,sans-serif; cursor:pointer; }
+.weather-update-status { position:absolute; top:5%; left:8%; z-index:20; color:#f6cb3e; background:#202324ed; font:2.4cqw Impact,sans-serif; }
+.weather-update-status:empty { display:none; }
+.weather-setup-panel { position:absolute; inset:7% 8% 24%; overflow:auto; z-index:30; background:linear-gradient(120deg,#292c2df5,#181b1ef5); color:#ecebe1; padding:4%; box-sizing:border-box; border-left:.65cqw solid #b1e632; font:3cqw Arial,sans-serif; scrollbar-width:thin; }
+.weather-setup-panel[hidden], .weather-settings-action[hidden] { display:none; }
+.weather-setup-panel h2 { margin:.2em 0 .3em; font:6cqw Impact,sans-serif; font-weight:normal; }
+.weather-setup-panel p { margin:.4em 0 .8em; line-height:1.25; }
+.weather-setup-panel .weather-setup-kicker { color:#b6e73e; font:3cqw Impact,sans-serif; letter-spacing:.04em; }
+.weather-setup-panel label { display:block; margin:.65em 0; color:#dcded4; font:2.9cqw Impact,sans-serif; }
+.weather-setup-panel label a { float:right; color:#b6e73e; font:2.5cqw Arial,sans-serif; }
+.weather-setup-panel input:not([type=radio]) { display:block; width:100%; margin-top:.3em; box-sizing:border-box; background:#111518; border:1px solid #5c625a; color:#fff; padding:.65em .7em; font:3.3cqw Arial,sans-serif; border-radius:0; }
+.weather-setup-panel fieldset { padding:0; margin:.7em 0; border:0; display:flex; gap:1em; }
+.weather-setup-panel legend { color:#dcded4; font:2.9cqw Impact,sans-serif; }
+.weather-setup-panel fieldset label { display:inline-flex; align-items:center; gap:.25em; }
+.weather-setup-panel input[type=radio] { accent-color:#b6e73e; width:3cqw; height:3cqw; margin:0; }
+.weather-setup-panel button { border:0; background:#b6e73e; color:#141719; padding:.65em .9em; font:3.3cqw Impact,sans-serif; cursor:pointer; }
+.weather-setup-panel .weather-back-action { background:#34393b; color:#e7e5da; }
+.weather-form-actions { display:flex; gap:.7em; }
+.weather-setup-panel .weather-form-message { color:#f6cb3e; font:2.8cqw Arial,sans-serif; }
+.weather-setup-panel button:disabled { opacity:.6; cursor:wait; }
+.weather-setup-panel :focus-visible, .weather-settings-action:focus-visible { outline:2px solid #f5d858; outline-offset:2px; }
+.weather-unconfigured #weather-today-container,.weather-unconfigured #weather-sub-info-container,.weather-unconfigured #weather-forecast-master-container,.weather-unconfigured #weather-anchor-container { visibility:hidden; }

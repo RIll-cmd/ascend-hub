@@ -1,0 +1,56 @@
+/* Broadcast controls share the glass and condensed typography of music/weather. */
+.tv-container-overlay { container-type: inline-size; pointer-events: none; }
+#background-image, #screen-highlight, #noise-canvas, #tv-info-overlay { pointer-events: none; }
+html, body { width: 100vw; max-width: 100vw; overflow: clip; }
+.tv-container-overlay.channel-youtube { pointer-events: none; cursor: default; }
+.tv-container-overlay.channel-youtube::after { display: none; }
+.tv-container-overlay [hidden] { display: none !important; }
+.tv-broadcast-trigger, .tv-broadcast-picker, .tv-broadcast-slate { pointer-events: auto; font-family: Impact, sans-serif; color: #eeeade; }
+.tv-broadcast-trigger { position: absolute; right: 9%; bottom: 9%; background: #181a16e8; border: 0; border-bottom: .6cqw solid #a6ff00; padding: 1.5cqw 3cqw; font-size: 4cqw; }
+.tv-broadcast-picker, .tv-broadcast-slate { position: absolute; inset: 5% 6%; z-index: 470; padding: 5cqw; background: #171915f5; border-radius: 6% / 8%; box-sizing: border-box; overflow: auto; }
+.tv-broadcast-picker { display: flex; flex-direction: column; gap: 2cqw; }
+.tv-broadcast-picker header { display: flex; justify-content: space-between; align-items: center; }
+.tv-broadcast-tag { color: #151710; background: #a6ff00; padding: .7cqw 2cqw; font-size: 5cqw; }
+.tv-broadcast-picker button, .tv-broadcast-slate button { font: inherit; cursor: pointer; }
+.tv-broadcast-picker header button, .tv-broadcast-actions button { background: #e7e3d6; color: #181a16; border: 0; padding: 1cqw 2cqw; font-size: 4cqw; }
+.tv-broadcast-picker form { display: flex; gap: 1cqw; }
+.tv-broadcast-picker input { width: 0; flex: 1; min-width: 0; background: #090b09; border: 1px solid #5c6251; color: #eeeade; font: 3.6cqw sans-serif; padding: 1.4cqw; }
+.tv-broadcast-picker form button { border: 0; background: #a6ff00; color: #141710; font-size: 4cqw; padding: 1cqw 2cqw; }
+.tv-broadcast-caption, .tv-broadcast-empty { margin: 0; font: 3cqw/1.4 sans-serif; color: #b5baa9; }
+.tv-broadcast-results { min-height: 0; overflow: auto; flex: 1; }
+.tv-broadcast-row { display: grid; grid-template-columns: 22% 1fr auto; gap: 2cqw; align-items: center; width: 100%; text-align: left; border: 0; border-top: 1px solid #515747; background: #282c23; color: #eeeade; padding: 1.6cqw; }
+.tv-broadcast-row:hover { background: #3b4430; }
+.tv-broadcast-row img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+.tv-broadcast-row > span { min-width: 0; }
+.tv-broadcast-row strong { display: block; font-size: 4cqw; font-weight: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-broadcast-row small { display: block; font: 2.8cqw/1.5 sans-serif; color: #b7bdac; }
+.tv-broadcast-slate { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
+.tv-broadcast-slate h2 { font-size: 8cqw; font-weight: normal; line-height: 1.05; margin: 4cqw 0 2cqw; }
+.tv-broadcast-slate p { font: 4cqw/1.4 sans-serif; margin: 0 0 4cqw; }
+.tv-broadcast-actions { display: flex; gap: 2cqw; }
+.tv-broadcast-actions button:first-child { background: #a6ff00; }
+.tv-broadcast-link { border: 0; background: none; color: #b9bfae; padding: 3cqw 0; font-size: 3.4cqw; text-decoration: underline; }
+.tv-broadcast-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.youtube-owned-screen .no-signal { visibility: hidden; }
+.tv-broadcast-picker, .tv-broadcast-slate { background: #171915; }
+.tv-container-overlay.channel-youtube button:focus-visible, .tv-container-overlay.channel-youtube input:focus-visible { outline: 2px solid #eeeade; outline-offset: -2px; }
+
+/* Fit the existing room/TV to the phone only while its channel controls are open. */
+@media (max-width: 700px) {
+  body:has(.music-player.tv-channel-account-open) #wallpaper,
+  body:has(.weather-channel[style*="display: block"] .weather-setup-panel:not([hidden])) #wallpaper,
+  body:has(.channel-youtube .tv-broadcast-picker:not([hidden])) #wallpaper,
+  body:has(.channel-youtube .tv-broadcast-slate:not([hidden])) #wallpaper {
+    height: min(100dvh, 145vw);
+  }
+  .tv-channel-setup--music, .weather-setup-panel { font-size: 13px; }
+  .tv-channel-setup--music input, .weather-setup-panel input:not([type=radio]) { font-size: 16px; min-height: 36px; }
+  .tv-channel-setup--music button, .weather-setup-panel button { font-size: 14px; min-height: 36px; }
+  .tv-channel-setup--music .tv-channel-field, .weather-setup-panel label { font-size: 13px; }
+}
+
+/* The tuner is the broadcast itself, bounded by the physical TV glass. */
+.tv-container-overlay.channel-youtube { overflow: hidden; border-radius: 9% / 12%; }
+.tv-broadcast-picker, .tv-broadcast-slate { inset: 0; border-radius: 0; padding: 5cqw 6cqw; scrollbar-width: thin; scrollbar-color: #a6ff00 #171915; }
+.tv-broadcast-results { scrollbar-width: thin; scrollbar-color: #a6ff00 #171915; }
+.youtube-owned-screen #youtube-container { visibility: hidden; }

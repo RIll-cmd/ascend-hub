@@ -1175,7 +1175,7 @@ export class MediaListeners {
   initSpotifyBridge() {
     if (typeof window !== "undefined") {
       window.addEventListener("message", (event) => {
-        if (!event.data || typeof event.data !== "object") return;
+        if (event.origin !== location.origin || event.source !== window.parent || !event.data || typeof event.data !== "object") return;
         if (event.data.type === "SPOTIFY_UPDATE") {
           this.handleSpotifyData(event.data.data);
         }
@@ -1191,14 +1191,18 @@ export class MediaListeners {
   async pollSpotify() {
     try {
       const res = await fetch("/api/spotify/currently-playing");
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("spotify-unavailable");
       const data = await res.json();
       this.handleSpotifyData(data);
-    } catch (_) {}
+    } catch (_) {
+      this.container.classList.add("tv-channel-spotify-stale");
+    }
   }
 
   handleSpotifyData(data) {
     if (!data) return;
+    this.container.classList.remove("tv-channel-spotify-stale");
+    this.container.dispatchEvent(new CustomEvent("spotify-playback", { detail: data }));
     if (this.warningMessageContainer) {
       this.warningMessageContainer.style.display = "none";
     }
@@ -1252,20 +1256,24 @@ export class MediaListeners {
         this.clearVisualizer();
       }
 
-      if (data.title && data.title !== "Nothing Playing" && (this.trackName !== data.title || this.artistName !== data.artist)) {
-        this.trackName = data.title;
-        this.artistName = data.artist;
-        this.transitionInfoHub(data.artist, data.title);
-        if (data.albumImageUrl) {
-          this.albumCoverArtImage = data.albumImageUrl;
-          this.albumCoverArt.style.backgroundImage = `url("${data.albumImageUrl}")`;
-          this.albumCoverArt.style.display = "block";
-        }
+      if (this.trackName !== "Nothing playing") {
+        this.trackName = "Nothing playing";
+        this.artistName = "Spotify connected";
+        this.transitionInfoHub("Spotify connected", "Nothing playing");
       }
     } else if (!data.connected) {
-      if (this.trackName !== "Spotify Sync Ready") {
-        this.trackName = "Spotify Sync Ready";
-        this.transitionInfoHub("Connect in Hub Header", "Spotify Sync Ready");
+      this.isPlaying = false;
+      this.stopUpdateLoop();
+      this.vinylRecordImg.classList.remove("spin-360");
+      this.vinylPlayIcon.style.display = "none";
+      this.vinylPauseIcon.style.display = "none";
+      this.vinylStopIcon.style.display = "block";
+      const title = data.title === "Spotify Auth Error" ? "Reconnect Spotify" : "Connect Spotify";
+      if (this.trackName !== title) {
+        this.trackName = title;
+        this.artistName = "SPOTIFY";
+        this.transitionInfoHub("SPOTIFY", title);
+        this.albumCoverArt.style.display = "none";
         this.clearVisualizer();
       }
     }

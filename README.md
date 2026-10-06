@@ -1,6 +1,6 @@
 # Ascend Hub
 
-A customizable retro dashboard for the Ascend ecosystem, with CRT-style televisions that display live AI service status. Currently supports Codex CLI, Antigravity CLI, and my Personal Projects (Core and Vision).
+A customizable retro dashboard for the Ascend ecosystem, with CRT-style televisions for live AI status, music, weather, and video. The status shelf supports Codex CLI, Antigravity CLI, and Ascend Core and Vision.
 
 Future Ideas: Agent Orchestration.
 
@@ -16,7 +16,10 @@ Hub is the presentation layer—not the status authority. Ascend Core stores nor
 - Generic TV cards for unknown services, without frontend changes.
 - Reduced-motion support and non-color-only status cues.
 - Separate, instance-bound local-agent adapters with durable operation tracking.
-- Cassete player that has dynamic background
+- Cassette player with dynamic background.
+- A media shelf with a Spotify account setup screen, configurable Visual Crossing weather, and a YouTube tuner with curated recommendations and search.
+
+Media integrations are configured from their TV screens. Spotify needs a Spotify developer app ID and secret; playback uses the account authorization flow. Weather needs a Visual Crossing API key and location. YouTube search and playback availability depend on YouTube and the selected stream. Secrets are stored by the local Hub runtime under the ignored `.sites-runtime/` directory and are not returned by the setup APIs. Keep that directory private and do not commit it.
 
 ## Connected services
 
@@ -205,7 +208,23 @@ npm start                                        # Local preview of the built Wo
 git diff --check                                 # Whitespace checks
 ```
 
-`npm start` requires a successful build and previews the generated Worker locally; it does not deploy. Repository-wide lint has known existing UI/vendor findings; a successful build or focused test run does not mean full lint is clean.
+`npm start` requires a successful build and previews the generated Worker locally; it does not deploy. The full lint command currently exits with existing React Hooks and TypeScript findings in legacy UI files. It ignores local tooling, worktrees, build output, and vendored code so the result covers repository source only. A successful build or test run does not mean full lint is clean.
+
+The media integrations also have focused checks:
+
+```sh
+tsx --test tests/tv/*.test.ts
+python tests/tv/channel-ui.browser.py
+```
+
+On Windows, run the launcher checks from Windows PowerShell 5.1:
+
+```powershell
+desktop/tests/Test-LauncherLayout.ps1
+desktop/tests/Test-Installer.ps1
+desktop/tests/Test-Supervisor.ps1
+desktop/tests/Test-SessionReplacement.ps1
+```
 
 ## Repository structure
 

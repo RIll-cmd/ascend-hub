@@ -35,6 +35,7 @@ try {
         $ui[$name]=$window.FindName($name)
         if($null -eq $ui[$name]){throw "Launcher control missing: $name"}
     }
+    if($product -eq 'Hub'){$window.FindName('ReplaceSession').Add_Click({[void]$supervisor.StopOtherSessionAndRetry()})}
     if($product -eq 'Vision'){$ui['ChatRecovery']=$window.FindName('ChatRecovery')}
     $supervisor=[Ascend.Desktop.Supervisor]::new($ProfilePath,$diagnosticsDirectory,[bool]$FixtureMode,$component)
     $script:closeRequested=$false

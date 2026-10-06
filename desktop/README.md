@@ -69,3 +69,18 @@ Layout checks render both actual XAML compositions with synthetic states, long m
 The installer fixture writes only temporary shortcut/profile files. Existing installations can retain all shortcut arguments, profile paths and working directories when updating only `IconLocation` to `desktop/assets/vision.ico,0` or `hub.ico,0`; do not force reinstall merely to update icons. Icon source is the shared static WPF geometry; `tests/Build-LauncherAssets.ps1` renders PNG/ICO assets at 32/48/64/128/256 pixels. No generated replacement eye artwork is used.
 
 `tests/Test-LiveRecovery.ps1` is an optional separate live-runtime check requiring an explicitly selected profile. It is outside the fixture verification above.
+
+
+## Replace an existing Hub session
+
+When Hub startup reports its configured port is in use, **Stop other session and retry** appears beside Retry. The action is enabled only when the listener is the current Windows user's Node process, its executable matches the profile, and its actual working directory and startup arguments identify this Hub checkout (or the parent checkout of an installed worktree). Other applications, builds, inaccessible processes, and ambiguous port owners are not eligible.
+
+Clicking the action rechecks the port owner and process start time, stops that verified session and its captured child workers, waits up to 15 seconds for exit and port release, and starts a new supervised Hub instance. It does not stop Vision or other Node applications. If ownership changes or shutdown fails, the launcher reports failure and keeps ordinary Retry available. Duplicate clicks cannot launch duplicate instances. No session is stopped automatically when opening the launcher.
+
+Check without touching existing sessions:
+
+```powershell
+powershell.exe -NoProfile -STA -File desktop/tests/Test-SessionReplacement.ps1 -NodeExe D:/node.exe
+```
+
+The check uses isolated fixture processes and ports; it covers replacement/restart, descendant cleanup, an unrelated listener, a changed port owner, and native action visibility/availability.

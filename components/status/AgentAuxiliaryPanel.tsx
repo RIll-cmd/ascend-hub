@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode, type Ref } from "react";
+import { motion } from "framer-motion";
 import { Activity, AlertTriangle, ChevronRight, Copy, RefreshCw, X } from "lucide-react";
 import type { AgentAuxiliaryModel } from "./agent-auxiliary-model";
 import type { StatusMediaIssue } from "./ShelfStatusTv";
@@ -43,15 +44,27 @@ export function AgentAuxiliaryPanel({ model, open, reduceMotion, onClose, closeR
   const pending = refreshing || refreshRequested;
   const StatusIcon = /unavailable|attention|error/i.test(model.presentation.heading) ? AlertTriangle : Activity;
 
-  return <aside className={`agent-auxiliary-panel ${open ? "is-open" : ""} ${reduceMotion ? "reduce-motion" : ""}`}
-    aria-labelledby={model.headingId}>
-    {compactTv ? <div className="agent-auxiliary-panel__monitor"><div className="agent-auxiliary-panel__compact-tv">{compactTv}</div></div> : null}
-    <div className="agent-auxiliary-panel__console">
-    <header className="agent-auxiliary-panel__header">
-      <h2 id={model.headingId}>{model.serviceLabel}</h2>
+  return <aside className={`agent-auxiliary-panel tv-inspector ${open ? "is-open" : ""} ${reduceMotion ? "reduce-motion" : ""}`}
+    aria-labelledby={model.headingId} data-channel={model.channel}>
+    <header className="tv-inspector__chrome">
+      <span className="tv-inspector__lights" aria-hidden="true"><i /><i /><i /></span>
+      <span className="tv-inspector__address">{model.channel} / {model.serviceLabel}</span>
       <button ref={closeRef} type="button" className="shelf-camera-exit" onClick={onClose}>
         <X size={16} aria-hidden="true" /> Close
       </button>
+    </header>
+    <div className="tv-inspector__menubar"><span><Activity size={16} aria-hidden="true" /> Status monitor</span><span>Ascend OS</span></div>
+    <div className="tv-inspector__desktop">
+    {compactTv ? <motion.div className="agent-auxiliary-panel__monitor"
+      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.7, filter: reduceMotion ? "blur(0px)" : "blur(7px)" }}
+      animate={{ opacity: open ? 1 : 0, scale: reduceMotion || open ? 1 : 0.94, filter: "blur(0px)" }}
+      transition={{ duration: reduceMotion ? 0.14 : open ? 0.52 : 0.18, ease: [0.16, 1, 0.3, 1] }}>
+      <div className="agent-auxiliary-panel__compact-tv">{compactTv}</div>
+    </motion.div> : null}
+    <div className="agent-auxiliary-panel__console">
+    <header className="agent-auxiliary-panel__header">
+      <h2 id={model.headingId}>{model.serviceLabel}</h2>
+
     </header>
     <div className="agent-auxiliary-panel__status-row">
       <span className="agent-auxiliary-panel__row-icon"><StatusIcon size={18} aria-hidden="true" /></span>
@@ -95,6 +108,7 @@ export function AgentAuxiliaryPanel({ model, open, reduceMotion, onClose, closeR
         <dt>{signal.label}</dt><dd>{signal.value}</dd>
       </div>)}</dl>
     </details> : null}
+    </div>
     </div>
   </aside>;
 }

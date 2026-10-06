@@ -40,7 +40,7 @@ namespace Ascend.Desktop {
     }
     public sealed class Snapshot {
         public string Component, InstanceId, BuildId, State, Stage, FailureCode, Url, Capabilities, FailureStage;
-        public int Pid, RetryCount; public bool Owned, Recovery, ReachedReady; public DateTime StartedAt, LastHealthAt;
+        public int Pid, RetryCount, ConflictPid; public bool Owned, Recovery, ReachedReady, CanReplaceSession; public DateTime StartedAt, LastHealthAt;
         public double ElapsedSeconds, StageElapsedSeconds, StartupSeconds, UptimeSeconds, ShutdownSeconds;
         public string Ui, Chat, Camera, Microphone, Core, Ai;
     }
@@ -49,7 +49,7 @@ namespace Ascend.Desktop {
         public Snapshot View; public int Generation; public ProcessHost Child; public CancellationTokenSource Cancel; public string LaunchToken;
         public Stopwatch StartupClock=new Stopwatch(), UptimeClock=new Stopwatch(), ShutdownClock=new Stopwatch(), StageClock=new Stopwatch();
         public string LifecycleKind="";public double FailedShutdownSeconds;
-        public bool LaunchPending;public int LaunchGeneration;
+        public bool LaunchPending;public int LaunchGeneration;public HubSessionConflict Conflict;
         public Slot(string name) { View = new Snapshot { Component = name, State = "stopped", Stage = "Not started", FailureCode = "", Capabilities = "" }; }
     }
     public sealed class Supervisor : IDisposable {
@@ -64,7 +64,7 @@ namespace Ascend.Desktop {
         public Snapshot Get(string component) {
             var slot = slots[component]; lock (slot.Gate) {
                 var v = slot.View;
-                return new Snapshot { Component=v.Component, InstanceId=v.InstanceId, BuildId=v.BuildId, State=v.State, Stage=v.Stage, FailureCode=v.FailureCode,FailureStage=v.FailureStage, Url=v.Url, Capabilities=v.Capabilities, Pid=v.Pid, Owned=v.Owned, Recovery=v.Recovery, RetryCount=v.RetryCount, StartedAt=v.StartedAt, LastHealthAt=v.LastHealthAt, ElapsedSeconds=ActiveElapsed(slot), StageElapsedSeconds=slot.StageClock.Elapsed.TotalSeconds, StartupSeconds=slot.StartupClock.Elapsed.TotalSeconds, UptimeSeconds=slot.UptimeClock.Elapsed.TotalSeconds, ShutdownSeconds=v.State=="stop_failed"?slot.FailedShutdownSeconds:slot.ShutdownClock.Elapsed.TotalSeconds,ReachedReady=v.ReachedReady, Ui=v.Ui,Chat=v.Chat,Camera=v.Camera,Microphone=v.Microphone,Core=v.Core,Ai=v.Ai };
+                return new Snapshot { Component=v.Component, InstanceId=v.InstanceId, BuildId=v.BuildId, State=v.State, Stage=v.Stage, FailureCode=v.FailureCode,FailureStage=v.FailureStage, Url=v.Url, Capabilities=v.Capabilities, Pid=v.Pid, Owned=v.Owned, Recovery=v.Recovery, RetryCount=v.RetryCount, StartedAt=v.StartedAt, LastHealthAt=v.LastHealthAt, ElapsedSeconds=ActiveElapsed(slot), StageElapsedSeconds=slot.StageClock.Elapsed.TotalSeconds, StartupSeconds=slot.StartupClock.Elapsed.TotalSeconds, UptimeSeconds=slot.UptimeClock.Elapsed.TotalSeconds, ShutdownSeconds=v.State=="stop_failed"?slot.FailedShutdownSeconds:slot.ShutdownClock.Elapsed.TotalSeconds,ReachedReady=v.ReachedReady, ConflictPid=v.ConflictPid,CanReplaceSession=v.CanReplaceSession && !slot.LaunchPending, Ui=v.Ui,Chat=v.Chat,Camera=v.Camera,Microphone=v.Microphone,Core=v.Core,Ai=v.Ai };
             }
         }
         static double ActiveElapsed(Slot slot) {return slot.LifecycleKind=="startup"?slot.StartupClock.Elapsed.TotalSeconds:slot.LifecycleKind=="uptime"?slot.UptimeClock.Elapsed.TotalSeconds:slot.View.State=="stop_failed"?slot.FailedShutdownSeconds:slot.ShutdownClock.Elapsed.TotalSeconds;}
@@ -73,7 +73,8 @@ namespace Ascend.Desktop {
             RequireOwner(component); var slot = slots[component]; int generation; CancellationToken token;
             lock (slot.Gate) {
                 if (slot.View.State != "stopped" && slot.View.State != "failed") return false;
-                if (slot.Child != null) return false;
+                if (slot.Child != null || slot.LaunchPending) return false;
+                slot.Conflict=null;
                 slot.LaunchPending=true;slot.StartupClock.Restart();slot.UptimeClock.Reset();slot.ShutdownClock.Reset();slot.StageClock.Restart();slot.LifecycleKind="startup";
                 generation = ++slot.Generation;slot.LaunchGeneration=generation; slot.Cancel = new CancellationTokenSource(); token = slot.Cancel.Token;
                 slot.View = new Snapshot { Component=component, State="checking", Stage="Checking installation", InstanceId=Guid.NewGuid().ToString("N"), StartedAt=DateTime.UtcNow, Recovery=recovery, RetryCount=slot.View.RetryCount+1, FailureCode="", Capabilities="" };
@@ -81,6 +82,26 @@ namespace Ascend.Desktop {
             Task.Run(() => Run(slot, generation, token)); return true;
         }
         public void Cancel(string component) { ForceStop(component); }
+        public bool StopOtherSessionAndRetry() {
+            RequireOwner("hub");var slot=slots["hub"];HubSessionConflict conflict;int generation;CancellationToken cancel;
+            lock(slot.Gate) {
+                if(disposed || slot.View.State!="failed" || !slot.View.CanReplaceSession || slot.Conflict==null || slot.LaunchPending)return false;
+                conflict=slot.Conflict;generation=++slot.Generation;slot.Cancel=new CancellationTokenSource();cancel=slot.Cancel.Token;
+                slot.LaunchPending=true;slot.LaunchGeneration=generation;slot.View.State="checking";slot.View.Stage="Stopping previous Hub session";slot.View.FailureCode="";slot.View.CanReplaceSession=false;
+                slot.StartupClock.Restart();slot.StageClock.Restart();slot.LifecycleKind="startup";
+            }
+            Task.Run(()=>{
+                bool retry=false;
+                try {
+                    var selected=Profile.Read(profilePath).hub;
+                    conflict.Stop(selected.executable,selected.root,Port(selected),cancel);
+                    lock(slot.Gate){if(slot.Generation==generation && !cancel.IsCancellationRequested){slot.View.State="stopped";retry=true;}}
+                }catch(OperationCanceledException){}
+                catch(Exception error){lock(slot.Gate){if(slot.Generation==generation){slot.View.FailureStage=slot.View.Stage;slot.View.State="failed";slot.View.FailureCode=SafeCode(error);slot.View.Stage="Previous session could not be stopped safely. Retry Hub to recheck the port.";slot.View.CanReplaceSession=false;slot.StartupClock.Stop();slot.StageClock.Stop();}}}
+                finally {lock(slot.Gate){if(slot.LaunchGeneration==generation)slot.LaunchPending=false;}}
+                if(retry){lock(slot.Gate){if(slot.Generation==generation && !disposed)Start("hub",false);}}
+            });return true;
+        }
         public void Stop(string component) {
             RequireOwner(component); var slot=slots[component]; int generation; string url, launchToken;bool cancelStartup;
             lock(slot.Gate) {
@@ -138,7 +159,11 @@ namespace Ascend.Desktop {
                 if(!fixtures) {
                     Update(slot,generation,"checking","Checking runtime and imports (20 second limit)","");
                     Probe(selected,name,cancel);
-                    if(name=="hub") foreach(var endpoint in IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners()) if(endpoint.Port==Port(selected)) throw new InvalidOperationException("port-in-use");
+                }
+                if(name=="hub" && HubSessionConflict.PortBusy(Port(selected))) {
+                    var conflict=HubSessionConflict.Find(selected.executable,selected.root,Port(selected));
+                    lock(slot.Gate){if(slot.Generation!=generation)return;slot.Conflict=conflict;slot.View.CanReplaceSession=conflict!=null;slot.View.ConflictPid=conflict==null?0:conflict.Pid;}
+                    throw new InvalidOperationException("port-in-use");
                 }
                 cancel.ThrowIfCancellationRequested();
                 string url=name=="hub" ? "http://127.0.0.1:"+Port(selected)+"/" : null;
@@ -252,7 +277,7 @@ namespace Ascend.Desktop {
         static string NewToken() { var bytes=new byte[32];using(var random=RandomNumberGenerator.Create())random.GetBytes(bytes);return Convert.ToBase64String(bytes); }
         static string SafeCode(Exception error) { string code=error is InvalidOperationException?error.Message:"supervisor-error";return System.Text.RegularExpressions.Regex.IsMatch(code,"^[a-z][a-z0-9-]{0,70}$")?code:"supervisor-error"; }
         static string Repair(string code) {
-            switch(code) { case "profile-missing":return "Launcher profile missing. Reinstall the desktop shortcuts, then Retry.";case "profile-inaccessible":return "Windows could not read the launcher profile. Check file access or reinstall to an unencrypted folder.";case "startup-timeout":return "Startup deadline reached. Check prerequisites, then Retry.";case "port-in-use":return "Hub port is already in use. Stop that app yourself or change the profile port.";case "prerequisite-timeout":return "Runtime/import probe stalled after 20 seconds. Repair the selected environment.";case "prerequisite-failed":return "Runtime/import/config check failed. Repair the selected environment; no packages were installed.";case "release-unverified":return "Portable release has not been verified. Use the documented release check.";default:return "Installation/startup failed ("+code+"). Check the profile and desktop README, then Retry."; }
+            switch(code) { case "profile-missing":return "Launcher profile missing. Reinstall the desktop shortcuts, then Retry.";case "profile-inaccessible":return "Windows could not read the launcher profile. Check file access or reinstall to an unencrypted folder.";case "startup-timeout":return "Startup deadline reached. Check prerequisites, then Retry.";case "port-in-use":return "Hub port is already in use. Stop the verified Hub session and retry, or close the app using this port yourself.";case "prerequisite-timeout":return "Runtime/import probe stalled after 20 seconds. Repair the selected environment.";case "prerequisite-failed":return "Runtime/import/config check failed. Repair the selected environment; no packages were installed.";case "release-unverified":return "Portable release has not been verified. Use the documented release check.";default:return "Installation/startup failed ("+code+"). Check the profile and desktop README, then Retry."; }
         }
         void Log(string component,string code,long duration) {
             try { Directory.CreateDirectory(logDirectory);foreach(string file in Directory.GetFiles(logDirectory,"session-*.jsonl"))if(File.GetLastWriteTimeUtc(file)<DateTime.UtcNow.AddDays(-14))File.Delete(file);
