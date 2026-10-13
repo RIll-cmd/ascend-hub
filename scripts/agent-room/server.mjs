@@ -9,6 +9,7 @@ import { AGENT_IDS } from './parse.mjs';
 import { roomDataDir, roomError } from './paths.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
 import { readJson, writeJsonAtomic } from './store.mjs';
+import { ensureRoomToken } from './token.mjs';
 
 const PROBE_TTL_MS = 10 * 60_000;
 const MAX_BODY = 64 * 1024;
@@ -58,9 +59,8 @@ function restoreSession(dataDir, settings, runTurn) {
 
 const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409 };
 
-export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, port = 5181, idleMs = 30 * 60_000 }) {
+export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, port = 5181, idleMs = 30 * 60_000, token = randomBytes(32).toString('hex') }) {
   const probeOne = probe ?? (id => probeAgent(id, settings, runTurn));
-  const token = randomBytes(32).toString('hex');
   const expected = Buffer.from(`Bearer ${token}`);
   const agents = Object.fromEntries(AGENT_IDS.map(id => [id, { state: 'checking' }]));
   let probedAt = 0;
@@ -140,7 +140,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const hubRoot = fileURLToPath(new URL('../../', import.meta.url));
   const dataDir = roomDataDir(hubRoot);
   const settings = mergeSettings(defaultSettings(), readJson(join(dataDir, 'settings.json'), {}));
-  const room = await startRoomServer({ dataDir, settings, port: Number(process.env.ASCEND_ROOM_PORT ?? 5181) });
+  const token = ensureRoomToken(join(hubRoot, '.env.local'));
+  const room = await startRoomServer({ dataDir, settings, token, port: Number(process.env.ASCEND_ROOM_PORT ?? 5181) });
   const shutdown = () => room.close().then(() => process.exit(0));
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);

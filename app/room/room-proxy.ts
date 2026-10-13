@@ -1,31 +1,20 @@
-import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
-type ServerInfo = { port: number; token: string; pid: number };
+type RoomConnection = { port: number; token: string };
 
 const NO_STORE = { "content-type": "application/json", "cache-control": "no-store" };
 
-export function roomDataDir(cwd = process.cwd()) {
-  return join(cwd, ".sites-runtime", "agent-room");
+// Route handlers run in workerd: no child_process and no real disk, only .env.local via process.env.
+export function roomConnection(env: Record<string, string | undefined> = process.env): RoomConnection | null {
+  const token = env.ASCEND_ROOM_TOKEN;
+  if (!token) return null;
+  return { port: Number(env.ASCEND_ROOM_PORT ?? 5181), token };
 }
 
-export function readServerInfo(dir = roomDataDir()): ServerInfo | null {
+export async function forwardToRoom(path: string, init: { method?: string; body?: unknown } = {}, conn = roomConnection()): Promise<Response> {
+  if (!conn) return Response.json({ online: false, reason: "ASCEND_ROOM_TOKEN is not set in .env.local" }, { status: 503, headers: NO_STORE });
   try {
-    const info = JSON.parse(readFileSync(join(dir, "server.json"), "utf8"));
-    return Number.isInteger(info.port) && typeof info.token === "string" ? info : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function forwardToRoom(path: string, init: { method?: string; body?: unknown } = {}, dir?: string): Promise<Response> {
-  const info = readServerInfo(dir);
-  if (!info) return Response.json({ online: false }, { status: 503, headers: NO_STORE });
-  try {
-    const res = await fetch(`http://127.0.0.1:${info.port}${path}`, {
+    const res = await fetch(`http://127.0.0.1:${conn.port}${path}`, {
       method: init.method ?? "GET",
-      headers: { authorization: `Bearer ${info.token}`, "content-type": "application/json" },
+      headers: { authorization: `Bearer ${conn.token}`, "content-type": "application/json" },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       signal: AbortSignal.timeout(5000),
       cache: "no-store",
@@ -47,14 +36,4 @@ export async function readCommand(request: Request): Promise<{ body: Record<stri
     if (body && typeof body === "object" && !Array.isArray(body)) return { body };
   } catch {}
   return { error: Response.json({ error: "BODY_INVALID" }, { status: 400 }) };
-}
-
-export async function startRoomServer(cwd = process.cwd()): Promise<Response> {
-  const status = await forwardToRoom("/status", {}, roomDataDir(cwd));
-  if (status.ok) return Response.json({ started: false });
-  const child = spawn(process.execPath, [join(cwd, "scripts", "agent-room", "server.mjs")], {
-    cwd, detached: true, stdio: "ignore", windowsHide: true,
-  });
-  child.unref();
-  return Response.json({ started: true }, { status: 202 });
 }

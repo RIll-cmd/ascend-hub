@@ -7,7 +7,7 @@ import { AGENT_IDS, BOARD_STAGES, TERMINAL_STAGES, type RoomStatus, type Session
 function useRoom() {
   const [status, setStatus] = useState<RoomStatus | null>(null);
   const [session, setSession] = useState<SessionView | null>(null);
-  const [offline, setOffline] = useState(false);
+  const [offline, setOffline] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -15,12 +15,16 @@ function useRoom() {
         fetch("/api/room", { cache: "no-store" }),
         fetch("/api/room/sessions/current", { cache: "no-store" }),
       ]);
-      if (!statusRes.ok) { setOffline(true); return; }
-      setOffline(false);
+      if (!statusRes.ok) {
+        const data = await statusRes.json().catch(() => ({})) as { reason?: string };
+        setOffline(data.reason ?? "The room process is not running.");
+        return;
+      }
+      setOffline(null);
       setStatus(await statusRes.json() as RoomStatus);
       if (sessionRes.ok) setSession((await sessionRes.json() as { session?: SessionView | null }).session ?? null);
     } catch {
-      setOffline(true);
+      setOffline("Hub could not be reached.");
     }
   }, []);
 
@@ -60,9 +64,9 @@ export default function RoomPage() {
         {running && <button className="agent-room-stop" onClick={() => act("/api/room/sessions/current/stop")}>Stop</button>}
       </header>
       {offline ? (
-        <div className="agent-room-offline">
-          <p>Room offline.</p>
-          <button onClick={() => act("/api/room/start-server")}>Start room</button>
+        <div className="agent-room-offline" role="status">
+          <p>Room offline: {offline}</p>
+          <p>It starts with <code>npm run dev</code>. To start it alone, run <code>node scripts/agent-room/server.mjs</code> in the Hub folder.</p>
         </div>
       ) : (
         <>

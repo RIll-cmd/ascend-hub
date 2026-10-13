@@ -36,7 +36,7 @@
 .agent-room-board li.is-done { opacity: .75; } .agent-room-board li.is-skipped { text-decoration: line-through; opacity: .6; }
 .agent-room-gate, .agent-room-brief, .agent-room-offline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: var(--room-card);
   border: 2px solid var(--room-ink); border-radius: 4px; padding: 10px; }
-.agent-room-gate > p, .agent-room-brief > label, .agent-room-brief > small, .agent-room-plan-edit { flex-basis: 100%; margin: 0; }
+.agent-room-gate > p, .agent-room-offline > p, .agent-room-brief > label, .agent-room-brief > small, .agent-room-plan-edit { flex-basis: 100%; margin: 0; }
 .agent-room-brief label { display: flex; flex-direction: column; gap: 4px; }
 .agent-room-brief input, .agent-room-brief textarea, .agent-room select, .agent-room-plan-edit input { font: inherit; border: 1px solid var(--room-ink); border-radius: 3px; padding: 4px; background: #fff; }
 .agent-room-roles { display: flex; flex-wrap: wrap; gap: 12px; border: 1px dashed var(--room-ink); flex-basis: 100%; }

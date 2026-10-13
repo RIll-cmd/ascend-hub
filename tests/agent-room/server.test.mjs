@@ -28,6 +28,15 @@ test('writes server.json, requires the token, removes server.json on close', asy
   assert.equal(existsSync(join(dataDir, 'server.json')), false);
 });
 
+test('uses a supplied token so Hub can share it through .env.local', async () => {
+  const { dataDir, buildsRoot } = tempRoom();
+  const room = await startRoomServer({ dataDir, settings: testSettings(buildsRoot), probe: async () => ({ state: 'ready' }), port: 0, token: 'shared-secret' });
+  assert.equal(room.token, 'shared-secret');
+  const res = await fetch(`http://127.0.0.1:${room.port}/status`, { headers: { authorization: 'Bearer shared-secret' } });
+  assert.equal(res.status, 200);
+  await room.close();
+});
+
 test('status reports agent availability and refuses to start until all are ready', async () => {
   const { room, call } = await boot({ probe: async id => (id === 'agy' ? { state: 'offline', detail: 'not signed in' } : { state: 'ready' }) });
   await new Promise(resolve => setTimeout(resolve, 20));

@@ -1,24 +1,21 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import test from "node:test";
-import { forwardToRoom, readCommand, readServerInfo } from "../../app/room/room-proxy";
+import { forwardToRoom, readCommand, roomConnection } from "../../app/room/room-proxy";
 
-function dataDirWith(info: unknown) {
-  const dir = join(mkdtempSync(join(tmpdir(), "ascend-room-proxy-")), "agent-room");
-  mkdirSync(dir, { recursive: true });
-  if (info !== undefined) writeFileSync(join(dir, "server.json"), JSON.stringify(info));
-  return dir;
-}
+test("connection comes from the .env.local values workerd exposes", () => {
+  assert.equal(roomConnection({}), null);
+  assert.deepEqual(roomConnection({ ASCEND_ROOM_TOKEN: "t" }), { port: 5181, token: "t" });
+  assert.deepEqual(roomConnection({ ASCEND_ROOM_TOKEN: "t", ASCEND_ROOM_PORT: "6000" }), { port: 6000, token: "t" });
+});
 
-test("offline when server.json is missing, malformed, or the port is dead", async () => {
-  assert.equal(readServerInfo(dataDirWith(undefined)), null);
-  assert.equal(readServerInfo(dataDirWith({ port: "x", token: 1 })), null);
-  const res = await forwardToRoom("/status", {}, dataDirWith({ port: 1, token: "t", pid: 1 }));
-  assert.equal(res.status, 503);
-  assert.deepEqual(await res.json(), { online: false });
+test("offline when there is no token or the port is dead", async () => {
+  const missing = await forwardToRoom("/status", {}, null);
+  assert.equal(missing.status, 503);
+  assert.deepEqual(await missing.json(), { online: false, reason: "ASCEND_ROOM_TOKEN is not set in .env.local" });
+  const dead = await forwardToRoom("/status", {}, { port: 1, token: "t" });
+  assert.equal(dead.status, 503);
+  assert.deepEqual(await dead.json(), { online: false });
 });
 
 test("forwards method, body and bearer token, and passes status through", async () => {
@@ -34,7 +31,7 @@ test("forwards method, body and bearer token, and passes status through", async 
   });
   await new Promise<void>(r => server.listen(0, "127.0.0.1", r));
   const port = (server.address() as { port: number }).port;
-  const res = await forwardToRoom("/sessions", { method: "POST", body: { project: "p" } }, dataDirWith({ port, token: "secret", pid: 1 }));
+  const res = await forwardToRoom("/sessions", { method: "POST", body: { project: "p" } }, { port, token: "secret" });
   assert.equal(res.status, 409);
   assert.deepEqual(await res.json(), { error: "SESSION_ACTIVE" });
   assert.deepEqual(seen, { auth: "Bearer secret", method: "POST", body: '{"project":"p"}', url: "/sessions" });
