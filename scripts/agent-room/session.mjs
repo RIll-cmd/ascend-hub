@@ -194,10 +194,88 @@ export class RoomSession {
     if (hash) this.say('room', `Committed ${hash} "${message}".`);
   }
 
-  // Task 7 replaces these three stubs.
-  async buildStep() { throw roomError('NOT_IMPLEMENTED', 'build'); }
-  async taskFailed() { throw roomError('NOT_IMPLEMENTED', 'taskFailed'); }
-  async finishStep() { throw roomError('NOT_IMPLEMENTED', 'finish'); }
+  async buildStep() {
+    const state = this.state;
+    const task = state.plan.tasks.find(t => t.status !== 'done' && t.status !== 'skipped');
+    if (!task) {
+      state.stage = 'finish';
+      this.save();
+      return;
+    }
+    if (task.status !== 'review') {
+      rollback(state.projectDir);
+      task.status = 'running';
+      this.save();
+      const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task }), 'editing');
+      if (text === null) return;
+      const message = `task-${task.id}: ${task.title}`;
+      const hash = commitAll(state.projectDir, message);
+      if (!hash) return this.taskFailed(task, 'no changes were made');
+      task.commit = hash;
+      this.say('room', `Committed ${hash} "${message}".`);
+      if (!state.roles.reviewer) {
+        task.status = 'done';
+        this.save();
+        return;
+      }
+      task.status = 'review';
+      this.save();
+    }
+    const reviewer = state.roles.reviewer;
+    const verdict = await this.jsonTurn(reviewer, this.prompt('review', reviewer, { task, diff: lastCommitDiff(state.projectDir) }), 'reviewing', validateVerdict);
+    if (!verdict) return;
+    if (verdict.verdict === 'ok') {
+      task.status = 'done';
+      this.save();
+      return;
+    }
+    return this.taskFailed(task, verdict.notes || 'the reviewer requested changes');
+  }
+
+  async taskFailed(task, reason) {
+    task.attempts += 1;
+    task.notes = reason;
+    this.say('room', `Task ${task.id} attempt ${task.attempts} not accepted: ${reason}`);
+    if (task.attempts < 2) {
+      task.status = 'pending';
+      this.save();
+      return;
+    }
+    if (task.reassigned) {
+      task.status = 'skipped';
+      this.say('room', `Task ${task.id} skipped: it also failed after reassignment.`);
+      this.save();
+      return;
+    }
+    const { roles } = this.state;
+    const decision = await this.jsonTurn(roles.orchestrator, this.prompt('reassign', roles.orchestrator, { task, reason }), 'deciding',
+      v => validateReassign(v, roles.coders, task.assignee));
+    if (!decision) return;
+    if (decision.action === 'skip') {
+      task.status = 'skipped';
+      this.say('room', `Task ${task.id} skipped by the orchestrator.`);
+    } else {
+      this.say('room', `Task ${task.id} reassigned from ${AGENT_NAMES[task.assignee]} to ${AGENT_NAMES[decision.to]}.`);
+      task.assignee = decision.to;
+      task.attempts = 0;
+      task.notes = '';
+      task.reassigned = true;
+      task.status = 'pending';
+    }
+    this.save();
+  }
+
+  async finishStep() {
+    const orchestrator = this.state.roles.orchestrator;
+    const text = await this.turn(orchestrator, 'read', this.prompt('finish', orchestrator), 'summarizing');
+    if (text === null) return;
+    writeFileSync(join(this.state.projectDir, 'SUMMARY.md'), `${text}\n`, 'utf8');
+    const hash = commitAll(this.state.projectDir, 'docs: summary');
+    if (hash) this.say('room', `Committed ${hash} "docs: summary".`);
+    this.state.stage = 'gate-result';
+    this.save();
+    this.say('room', 'Work finished. Waiting for the owner to accept or reject.');
+  }
 
   gate({ gate, decision, roles, plan } = {}) {
     const state = this.state;
@@ -256,5 +334,8 @@ export class RoomSession {
     this.controller?.abort();
     this.say('room', 'Owner stopped the session.');
     this.save();
+    await this.loop;
+    // Committed work stays; anything half-written by the killed turn goes.
+    rollback(this.state.projectDir);
   }
 }
