@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
+import { subagentEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { resolveDebateFolder, resolveProjectDir, roomError } from './paths.mjs';
 import { commitAll, createProject, headCommit, lastCommitDiff, renderPlan, rollback } from './project.mjs';
@@ -9,6 +10,13 @@ import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
 export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
+
+// Only Claude has a working sub-agent switch; it defaults to on.
+function subagentChoice(choice) {
+  if (choice === undefined || choice === null) return { claude: true };
+  if (typeof choice !== 'object' || typeof (choice.claude ?? true) !== 'boolean') throw roomError('SUBAGENTS_INVALID');
+  return { claude: choice.claude ?? true };
+}
 export const GATES = { 'gate-roles': 'roles', 'gate-plan': 'plan', 'gate-result': 'result' };
 
 export class RoomSession {
@@ -20,11 +28,14 @@ export class RoomSession {
     this.transcript = transcript;
     this.controller = null;
     this.loop = null;
+    this.lastSave = 0;
+    this.startLabels = new Map();
   }
 
   static create({ dataDir, settings, runTurn }, body = {}) {
     if (body.mode === 'debate') return RoomSession.createDebate({ dataDir, settings, runTurn }, body);
     const { project, task, roles } = body;
+    const subagents = subagentChoice(body.subagents);
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
     let presetRoles = null;
     if (roles !== undefined && roles !== null) {
@@ -37,7 +48,7 @@ export class RoomSession {
     createProject(projectDir);
     const id = `${Date.now()}-${randomBytes(3).toString('hex')}`;
     const state = {
-      id, mode: 'build', project, projectDir, task: task.trim(), stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
+      id, mode: 'build', subagents, project, projectDir, task: task.trim(), stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
@@ -47,13 +58,14 @@ export class RoomSession {
   }
 
   // A debate only reads projectDir (an allowlisted repo); it never creates, commits or rolls back anything there.
-  static createDebate({ dataDir, settings, runTurn }, { question, folder, judge = 'codex' }) {
+  static createDebate({ dataDir, settings, runTurn }, { question, folder, judge = 'codex', subagents: choice }) {
+    const subagents = subagentChoice(choice);
     if (typeof question !== 'string' || !question.trim() || question.length > 4000) throw roomError('QUESTION_INVALID');
     if (!AGENT_IDS.includes(judge)) throw roomError('JUDGE_INVALID');
     const projectDir = resolveDebateFolder(folder, settings);
     const id = `${Date.now()}-${randomBytes(3).toString('hex')}`;
     const state = {
-      id, mode: 'debate', project: basename(projectDir), projectDir, task: question.trim(), stage: 'opening', roles: null, judge,
+      id, mode: 'debate', subagents, project: basename(projectDir), projectDir, task: question.trim(), stage: 'opening', roles: null, judge,
       plan: null, debateTurns: 0, answer: null, pause: null, active: null, createdAt: new Date().toISOString(),
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
@@ -84,6 +96,41 @@ export class RoomSession {
   }
 
   view() { return { ...this.state, transcript: this.transcript.slice(-200) }; }
+
+  // Sub-agent progress only updates the CRT (saved at most once a second); start and finish also go to the transcript.
+  onAgentEvent(agent, event) {
+    const active = this.state.active;
+    const sub = subagentEvent(agent, event);
+    if (!sub || active?.agent !== agent) return;
+    const list = active.subagents ?? (active.subagents = []);
+    const item = list.find(s => s.id === sub.id);
+    if (sub.kind === 'started') {
+      list.push({ id: sub.id, label: sub.label, tool: null, status: 'running' });
+      this.startLabels.set(sub.id, sub.label);
+      this.say('room', `${AGENT_NAMES[agent]} started a sub-agent: ${sub.label}.`);
+      this.saveNow();
+    } else if (sub.kind === 'progress' && item) {
+      item.label = sub.label;
+      item.tool = sub.tool ?? item.tool;
+      this.saveSoon();
+    } else if (sub.kind === 'finished' && item) {
+      item.status = sub.status;
+      this.say('room', `${AGENT_NAMES[agent]}'s sub-agent finished (${sub.status}): ${this.startLabels.get(sub.id) ?? item.label}.`);
+      this.saveNow();
+    } else if (sub.kind === 'waiting' || sub.kind === 'waited') {
+      active.waiting = sub.kind === 'waiting';
+      this.saveNow();
+    }
+  }
+
+  saveNow() {
+    this.lastSave = Date.now();
+    this.save();
+  }
+
+  saveSoon() {
+    if (Date.now() - this.lastSave >= 1000) this.saveNow();
+  }
 
   setActive(agent, activity) {
     this.state.active = agent ? { agent, activity, since: new Date().toISOString() } : null;
@@ -141,10 +188,13 @@ export class RoomSession {
       if (this.state.stage === 'stopped') return null;
       this.setActive(agent, activity);
       this.controller = new AbortController();
-      const invocation = buildInvocation(agent, mode, prompt, { cwd: this.state.projectDir, settings: this.settings, outFile: join(this.dir, 'codex-last.txt') });
+      const invocation = buildInvocation(agent, mode, prompt, {
+        cwd: this.state.projectDir, settings: this.settings, outFile: join(this.dir, 'codex-last.txt'), subagents: this.state.subagents?.claude !== false,
+      });
       const { timeouts } = this.settings;
       const timeoutMs = mode === 'edit' ? timeouts.build : this.state.mode === 'debate' ? timeouts.debate : timeouts.chat;
-      const result = await this.runTurn(invocation, { cwd: this.state.projectDir, timeoutMs, signal: this.controller.signal });
+      const onEvent = event => this.onAgentEvent(agent, event);
+      const result = await this.runTurn(invocation, { cwd: this.state.projectDir, timeoutMs, signal: this.controller.signal, onEvent });
       this.controller = null;
       if (this.state.stage === 'stopped' || result.aborted) return null;
       this.setActive(null);
