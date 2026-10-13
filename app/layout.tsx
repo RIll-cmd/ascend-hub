@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "@/components/status/tv-inspector.css";
+import "./room/room.css";
 
 export const metadata: Metadata = {
   title: "Ascend OS — Continuous Progression Hub",
