@@ -1,10 +1,12 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { DebateView } from "./debate-view";
 import { DeckCanvas } from "./deck/DeckCanvas";
-import { deckView, freshPulses, latestSeq, type DeckPulse } from "./deck/deck-view";
+import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, Ticker, TopBar, TranscriptDrawer } from "./room-frame";
 import { BriefForm, GateBar, TaskBoard, Transcript, VerdictPanel } from "./room-parts";
+import { roomSound, soundPref } from "./room-sound";
+import { soundCues } from "./room-sound-cues";
 import { BOARD_STAGES, TERMINAL_STAGES, type AgentId, type RoomStatus, type SessionView } from "./room-types";
 
 function useRoom() {
@@ -63,6 +65,30 @@ function useRoom() {
   return { status, session, offline, pulses, send };
 }
 
+// Plays one cue per kind of event for each new poll result; the ambience ducks while the room waits for the owner.
+function useRoomSound(view: DeckView, pulses: DeckPulse[]) {
+  const soundOn = useSyncExternalStore(soundPref.subscribe, soundPref.get, () => false);
+  const prevView = useRef<DeckView | null>(null);
+  const lastPulses = useRef(pulses);
+  useEffect(() => {
+    roomSound.enable(soundOn);
+    return () => roomSound.enable(false);
+  }, [soundOn]);
+  useEffect(() => {
+    const fresh = pulses !== lastPulses.current ? pulses : [];
+    lastPulses.current = pulses;
+    const cues = soundCues(prevView.current, view, fresh);
+    prevView.current = view;
+    if (soundOn) cues.forEach(cue => roomSound.play(cue));
+    roomSound.duck(view.status === "Waiting for you" || view.status === "Paused");
+  }, [view, pulses, soundOn]);
+  const toggle = useCallback(() => {
+    if (!soundOn) roomSound.enable(true); // created inside the click so browsers allow audio
+    soundPref.set(!soundOn);
+  }, [soundOn]);
+  return { soundOn, toggle };
+}
+
 export default function RoomPage() {
   const { status, session, offline, pulses, send } = useRoom();
   const [error, setError] = useState<string | null>(null);
@@ -72,6 +98,7 @@ export default function RoomPage() {
   const act = useCallback(async (path: string, body?: unknown) => setError(await send(path, body)), [send]);
   const closeDrawer = useCallback(() => setDrawer(false), []);
   const view = useMemo(() => deckView(session, status), [session, status]);
+  const { soundOn, toggle: toggleSound } = useRoomSound(view, pulses);
   const running = Boolean(session && !TERMINAL_STAGES.includes(session.stage));
   const debate = session?.mode === "debate";
   const focus = view.agents.find(a => a.id === (selected ?? session?.active?.agent)) ?? null;
@@ -80,7 +107,7 @@ export default function RoomPage() {
 
   return (
     <main className="agent-room">
-      <TopBar session={session} view={view} running={running} act={act} />
+      <TopBar session={session} view={view} running={running} act={act} soundOn={soundOn} onToggleSound={toggleSound} />
       {offline ? (
         <div className="agent-room-offline" role="status">
           <p>Room offline: {offline}</p>

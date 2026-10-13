@@ -138,3 +138,6 @@
 /* Form: checkbox labels on one line */
 .agent-room-brief label.agent-room-check { flex-direction: row; align-items: center; gap: 6px; }
 .agent-room-subagents legend { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #6b5a48; }
+
+.agent-room .agent-room-sound { display: inline-flex; align-items: center; padding: 3px 8px; background: transparent; color: var(--room-paper); border-color: #6b5a48; }
+.agent-room .agent-room-sound[aria-pressed="true"] { background: var(--room-accent); color: var(--room-ink); }

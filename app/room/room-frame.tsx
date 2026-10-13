@@ -1,4 +1,5 @@
 "use client";
+import { Volume2, VolumeX } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { messageLine, plateText, type DeckAgent, type DeckView } from "./deck/deck-view";
@@ -7,13 +8,18 @@ import { AGENT_IDS, AGENT_NAMES, type AgentId, type Message, type SessionView } 
 
 const clock = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "");
 
-export function TopBar({ session, view, running, act }: { session: SessionView | null; view: DeckView; running: boolean; act: Act }) {
+export function TopBar({ session, view, running, act, soundOn, onToggleSound }: {
+  session: SessionView | null; view: DeckView; running: boolean; act: Act; soundOn: boolean; onToggleSound: () => void;
+}) {
   return (
     <header className="agent-room-bar">
       <Link href="/" className="agent-room-back">◂ Shelf</Link>
       <span className="agent-room-title">AGENT ROOM{session ? ` · ${session.project}` : ""}</span>
       {session && <StageSteps stage={session.stage} paused={Boolean(session.pause)} mode={session.mode} />}
       <span className="agent-room-status"><i aria-hidden="true" />{view.status}</span>
+      <button type="button" className="agent-room-sound" onClick={onToggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Mute room sound" : "Turn on room sound"}>
+        {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+      </button>
       {running && <button className="agent-room-stop" onClick={() => act("/api/room/sessions/current/stop")}>Stop</button>}
     </header>
   );
