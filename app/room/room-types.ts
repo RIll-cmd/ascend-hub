@@ -13,7 +13,10 @@ export const BOARD_STAGES: Stage[] = ["build", "finish", "gate-result", "done", 
 
 export type TaskStatus = "pending" | "running" | "review" | "done" | "skipped";
 export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string };
-export type Message = { at: string; from: AgentId | "room"; text: string };
+export type Message = {
+  at: string; from: AgentId | "room"; text: string;
+  seq?: number; to?: AgentId[]; kind?: "assign" | "subagent"; by?: AgentId; sub?: string;
+};
 export type Availability = { state: "checking" | "ready" | "offline"; detail?: string };
 export type RoomStatus = { online: true; agents: Record<AgentId, Availability>; folders?: string[] };
 
