@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { AGENT_IDS, type AgentId } from "../room-types";
 import { buildCrt, SCREEN_Y, type Crt } from "./crt";
-import { AGENT_COLORS, MAX_MINIS, type DeckPulse, type DeckView } from "./deck-view";
+import { AGENT_COLORS, miniSlots, type DeckPulse, type DeckView } from "./deck-view";
 import { arcPoints, easeInOut, pulseProgress, type Vec3 } from "./pulses";
 
 export type PlatePosition = { id: AgentId; x: number; y: number; visible: boolean };
@@ -83,6 +83,8 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   let sessionId: string | null | undefined; // undefined = no update yet
   let spawnedSeq = 0;
   const minis = new Map<string, { crt: Crt; agent: AgentId; leftAt: number | null }>();
+  // Minis that finished fading; the room keeps finished sub-agents until the turn ends, so they must not be rebuilt.
+  const retired = new Set<string>();
   const pulses: { mesh: THREE.Mesh; points: Vec3[]; start: number; owner: boolean }[] = [];
   const pulseGeometry = keep(new THREE.SphereGeometry(0.07, 12, 12));
   let delegationLine: THREE.Line | null = null;
@@ -110,25 +112,19 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
 
   function syncMinis(next: DeckView) {
     const wanted = new Set<string>();
-    for (const agent of next.agents) {
-      const running = agent.subagents.filter(s => s.status === "running").slice(0, MAX_MINIS);
-      const shown = [...running, ...agent.subagents.filter(s => s.status !== "running")].slice(0, MAX_MINIS);
-      shown.forEach((sub, index) => {
-        const key = `${agent.id}:${sub.id}`;
-        wanted.add(key);
-        let mini = minis.get(key);
-        if (!mini) {
-          const crt = buildCrt(agent.color, { scale: 0.38, withDesk: false });
-          crt.group.lookAt(0, 0, 6);
-          scene.add(crt.group);
-          mini = { crt, agent: agent.id, leftAt: null };
-          minis.set(key, mini);
-        }
-        mini.crt.group.position.set(...miniSpot(agent.id, index));
-        const done = sub.status !== "running";
-        mini.crt.setScreen({ name: agent.name, color: agent.color, state: "busy", activity: null, roles: [], mini: true, label: sub.label, done });
-        if (done && mini.leftAt === null) mini.leftAt = performance.now();
-      });
+    for (const slot of miniSlots(next, retired)) {
+      wanted.add(slot.key);
+      let mini = minis.get(slot.key);
+      if (!mini) {
+        const crt = buildCrt(slot.color, { scale: 0.38, withDesk: false });
+        crt.group.lookAt(0, 0, 6);
+        scene.add(crt.group);
+        mini = { crt, agent: slot.agent, leftAt: null };
+        minis.set(slot.key, mini);
+      }
+      mini.crt.group.position.set(...miniSpot(slot.agent, slot.index));
+      mini.crt.setScreen({ name: slot.name, color: slot.color, state: "busy", activity: null, roles: [], mini: true, label: slot.sub.label, done: slot.done });
+      if (slot.done && mini.leftAt === null) mini.leftAt = performance.now();
     }
     for (const [key, mini] of minis) if (!wanted.has(key) && mini.leftAt === null) mini.leftAt = performance.now();
   }
@@ -189,8 +185,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   let raf = 0;
   let lastRender = 0;
   const projected = new THREE.Vector3();
-  const loop = (now: number) => {
-    raf = requestAnimationFrame(loop);
+  const frame = (now: number) => {
     const busy = view?.agents.some(a => a.state === "busy") ?? false;
     const moving = pulses.length > 0 || [...minis.values()].some(m => m.leftAt !== null) || busy
       || Math.abs(yaw - targetYaw) > 1e-4 || Math.abs(pitch - targetPitch) > 1e-4;
@@ -226,6 +221,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
         scene.remove(mini.crt.group);
         mini.crt.dispose();
         minis.delete(key);
+        retired.add(key);
       }
     }
     renderer.render(scene, camera);
@@ -236,6 +232,18 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
         return { id, x: ((projected.x + 1) / 2) * w, y: ((1 - projected.y) / 2) * h, visible: projected.z < 1 };
       }));
     }
+  };
+  let failed = false;
+  const fail = (error: unknown) => {
+    if (failed) return;
+    failed = true;
+    cancelAnimationFrame(raf);
+    console.error("Agent room deck failed; switching to the flat view.", error);
+    onLost?.();
+  };
+  const loop = (now: number) => {
+    raf = requestAnimationFrame(loop);
+    try { frame(now); } catch (error) { fail(error); }
   };
   raf = requestAnimationFrame(loop);
 
@@ -267,34 +275,39 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
 
   return {
     update(next, fresh) {
-      // A fresh deck (remount) or a different session seeds the cursor: pulses already handed over never replay.
-      if (next.sessionId !== sessionId) {
-        sessionId = next.sessionId;
-        spawnedSeq = Math.max(0, ...fresh.map(p => p.seq));
-      }
-      view = next;
-      for (const agent of next.agents) {
-        crts[agent.id].setScreen({ name: agent.name, color: agent.color, state: agent.state, activity: agent.activity, roles: agent.roles });
-      }
-      syncMinis(next);
-      syncDelegation(next);
-      for (const pulse of fresh) {
-        if (pulse.seq <= spawnedSeq) continue;
-        spawnedSeq = pulse.seq;
-        const from = screenPoint(pulse.from);
-        const color = AGENT_COLORS[pulse.from];
-        if (pulse.kind === "subagent") {
-          spawnPulse(from, add3(miniSpot(pulse.from, 0), [0, 0.3, 0]), color, false);
-        } else if (pulse.to === "owner") {
-          spawnPulse(from, add3(from, [0.6, 2.4, 1.2]), color, true);
-        } else {
-          for (const to of pulse.to) if (to !== pulse.from) spawnPulse(from, screenPoint(to), color, false);
+      try {
+        // A fresh deck (remount) or a different session seeds the cursor: pulses already handed over never replay.
+        if (next.sessionId !== sessionId) {
+          sessionId = next.sessionId;
+          spawnedSeq = Math.max(0, ...fresh.map(p => p.seq));
+          retired.clear();
         }
+        view = next;
+        for (const agent of next.agents) {
+          crts[agent.id].setScreen({ name: agent.name, color: agent.color, state: agent.state, activity: agent.activity, roles: agent.roles });
+        }
+        syncMinis(next);
+        syncDelegation(next);
+        for (const pulse of fresh) {
+          if (pulse.seq <= spawnedSeq) continue;
+          spawnedSeq = pulse.seq;
+          const from = screenPoint(pulse.from);
+          const color = AGENT_COLORS[pulse.from];
+          if (pulse.kind === "subagent") {
+            spawnPulse(from, add3(miniSpot(pulse.from, 0), [0, 0.3, 0]), color, false);
+          } else if (pulse.to === "owner") {
+            spawnPulse(from, add3(from, [0.6, 2.4, 1.2]), color, true);
+          } else {
+            for (const to of pulse.to) if (to !== pulse.from) spawnPulse(from, screenPoint(to), color, false);
+          }
+        }
+      } catch (error) {
+        fail(error);
       }
     },
     select(id) {
-      selection.visible = id !== null;
-      if (id) selection.position.set(SEATS[id][0], 0.015, SEATS[id][2]);
+      selection.visible = id !== null && id in SEATS;
+      if (id && id in SEATS) selection.position.set(SEATS[id][0], 0.015, SEATS[id][2]);
     },
     onSelect(cb) { selectCb = cb; },
     onFrame(cb) { frameCb = cb; },

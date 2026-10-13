@@ -64,18 +64,44 @@ export function latestSeq(messages: Message[]): number {
   return messages.reduce((max, m) => Math.max(max, m.seq ?? 0), 0);
 }
 
+const isAgent = (value: unknown): value is AgentId => AGENT_IDS.includes(value as AgentId);
+
 // lastSeq === null means "first look at this session": nothing replays.
+// Agent ids come from the room process; unknown ones are dropped so the scene never looks up a missing seat.
 export function freshPulses(lastSeq: number | null, messages: Message[], max = 8): DeckPulse[] {
   if (lastSeq === null) return [];
   const pulses: DeckPulse[] = [];
   for (const m of messages) {
     if (!m.seq || m.seq <= lastSeq || m.to === undefined) continue;
     const from = m.from === "room" ? m.by : m.from;
-    if (!from) continue;
+    if (!isAgent(from)) continue;
+    const to = m.to.filter(isAgent);
+    if (m.to.length && !to.length) continue;
     const kind = m.kind === "assign" ? "assign" : m.kind === "subagent" ? "subagent" : "message";
-    pulses.push({ seq: m.seq, from, to: m.to.length ? m.to : "owner", kind, ...(m.sub ? { sub: m.sub } : {}) });
+    pulses.push({ seq: m.seq, from, to: m.to.length ? to : "owner", kind, ...(m.sub ? { sub: m.sub } : {}) });
   }
   return pulses.slice(-max);
+}
+
+export type MiniSlot = { key: string; agent: AgentId; name: string; color: string; sub: DeckSubagent; index: number; done: boolean };
+
+// Which sub-agent minis to show: running first, at most MAX_MINIS per agent, never one that already faded out.
+export function miniSlots(view: DeckView, retired: Set<string>): MiniSlot[] {
+  const slots: MiniSlot[] = [];
+  for (const agent of view.agents) {
+    const ordered = [...agent.subagents.filter(s => s.status === "running"), ...agent.subagents.filter(s => s.status !== "running")]
+      .filter(s => !retired.has(`${agent.id}:${s.id}`))
+      .slice(0, MAX_MINIS);
+    ordered.forEach((sub, index) => slots.push({
+      key: `${agent.id}:${sub.id}`, agent: agent.id, name: agent.name, color: agent.color, sub, index, done: sub.status !== "running",
+    }));
+  }
+  return slots;
+}
+
+// A transcript reader scrolled up to read history must not be pulled down by new messages.
+export function nearBottom({ scrollTop, scrollHeight, clientHeight }: { scrollTop: number; scrollHeight: number; clientHeight: number }, slack = 40): boolean {
+  return scrollHeight - scrollTop - clientHeight <= slack;
 }
 
 export type DebateRound = "opening" | "critique" | "verdict";

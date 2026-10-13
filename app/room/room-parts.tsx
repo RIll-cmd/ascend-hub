@@ -4,7 +4,7 @@ import {
   AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES,
   type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
 } from "./room-types";
-import { messageLine } from "./deck/deck-view";
+import { messageLine, nearBottom } from "./deck/deck-view";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
 
@@ -45,11 +45,13 @@ export function StageSteps({ stage, paused, mode = "build" }: { stage: Stage; pa
 
 export function Transcript({ messages }: { messages: Message[] }) {
   const ref = useRef<HTMLDivElement>(null);
+  const stick = useRef(true);
   useEffect(() => {
-    ref.current?.scrollTo({ top: ref.current.scrollHeight });
+    if (stick.current) ref.current?.scrollTo({ top: ref.current.scrollHeight });
   }, [messages.length]);
   return (
-    <div ref={ref} className="agent-room-log" role="log" aria-label="Transcript">
+    <div ref={ref} className="agent-room-log" role="log" aria-label="Transcript"
+      onScroll={event => { stick.current = nearBottom(event.currentTarget); }}>
       {messages.map((m, i) => {
         const line = messageLine(m);
         return (

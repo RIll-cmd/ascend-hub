@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { debateRounds, deckView, freshPulses, latestSeq, messageLine, plateText } from "../../app/room/deck/deck-view";
+import { debateRounds, deckView, freshPulses, latestSeq, messageLine, miniSlots, nearBottom, plateText } from "../../app/room/deck/deck-view";
 import type { Message, RoomStatus, SessionView } from "../../app/room/room-types";
 
 const ready: RoomStatus = { online: true, agents: { codex: { state: "ready" }, claude: { state: "ready" }, agy: { state: "offline", detail: "x" } } };
@@ -97,4 +97,24 @@ test("debateRounds: openings, critiques, verdict and who is speaking", () => {
   const done = debateRounds({ ...debate, stage: "done", active: null, answer: "## Where they agree\nall" });
   assert.equal(done.live, "done");
   assert.equal(done.verdict, "## Where they agree\nall");
+});
+
+test("miniSlots: finished minis that already faded are not rebuilt; unknown ids are ignored", () => {
+  const view = deckView(session({
+    active: { agent: "claude", activity: "editing", since: "x", subagents: [
+      { id: "a", label: "A", tool: null, status: "completed" }, { id: "b", label: "B", tool: null, status: "running" },
+    ] },
+  }), ready);
+  assert.deepEqual(miniSlots(view, new Set()).map(s => `${s.key}:${s.index}:${s.done}`), ["claude:b:0:false", "claude:a:1:true"]);
+  assert.deepEqual(miniSlots(view, new Set(["claude:a"])).map(s => s.key), ["claude:b"]);
+});
+
+test("freshPulses drops messages naming agents the deck does not know", () => {
+  const msgs = [m(2, "codex", "x", { to: ["gpt" as never] }), m(3, "room", "y", { kind: "assign", by: "gpt" as never, to: ["claude"] }), m(4, "claude", "ok", { to: ["codex", "gpt" as never] })];
+  assert.deepEqual(freshPulses(1, msgs), [{ seq: 4, from: "claude", to: ["codex"], kind: "message" }]);
+});
+
+test("nearBottom: only a reader already at the bottom gets auto-scrolled", () => {
+  assert.equal(nearBottom({ scrollTop: 560, scrollHeight: 1000, clientHeight: 400 }), true);
+  assert.equal(nearBottom({ scrollTop: 100, scrollHeight: 1000, clientHeight: 400 }), false);
 });

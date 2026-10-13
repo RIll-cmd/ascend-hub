@@ -25,7 +25,7 @@
 
 /* 3D deck and name plates */
 .agent-room-deck { position: relative; height: clamp(360px, 62vh, 640px); border: 2px solid var(--room-ink); border-radius: 6px; overflow: hidden; background: #1a120c; }
-.agent-room-deck-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.agent-room-deck-canvas { display: block; width: 100%; height: 100%; }
 .agent-room .agent-room-plate { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 8px;
   border: 2px solid var(--plate); border-radius: 4px; background: #141414e6; color: #f3e6cf; font: 11px ui-monospace, Consolas, monospace; white-space: nowrap; }
 .agent-room .agent-room-plate b { color: var(--plate); }
