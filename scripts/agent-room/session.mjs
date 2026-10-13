@@ -12,6 +12,8 @@ import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './stor
 export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
 
 // Only Claude has a working sub-agent switch; it defaults to on.
+const others = agent => AGENT_IDS.filter(id => id !== agent);
+
 function subagentChoice(choice) {
   if (choice === undefined || choice === null) return { claude: true };
   if (typeof choice !== 'object' || typeof (choice.claude ?? true) !== 'boolean') throw roomError('SUBAGENTS_INVALID');
@@ -84,8 +86,14 @@ export class RoomSession {
 
   save() { writeJsonAtomic(join(this.dir, 'state.json'), this.state); }
 
-  say(from, text) {
-    const message = { at: new Date().toISOString(), from, text };
+  // Every message gets a seq (for "what is new"); routing fields tell the deck where to draw it.
+  say(from, text, { to, kind, by, sub } = {}) {
+    const last = this.transcript.at(-1)?.seq ?? this.transcript.length;
+    const message = { at: new Date().toISOString(), seq: last + 1, from, text };
+    if (to !== undefined) message.to = to;
+    if (kind) message.kind = kind;
+    if (by) message.by = by;
+    if (sub) message.sub = sub;
     this.transcript.push(message);
     appendJsonLine(join(this.dir, 'transcript.jsonl'), message);
   }
@@ -107,7 +115,7 @@ export class RoomSession {
     if (sub.kind === 'started') {
       list.push({ id: sub.id, label: sub.label, tool: null, status: 'running' });
       this.startLabels.set(sub.id, sub.label);
-      this.say('room', `${AGENT_NAMES[agent]} started a sub-agent: ${sub.label}.`);
+      this.say('room', `${AGENT_NAMES[agent]} started a sub-agent: ${sub.label}.`, { kind: 'subagent', by: agent, sub: sub.id, to: [] });
       this.saveNow();
     } else if (sub.kind === 'progress' && item) {
       item.label = sub.label;
@@ -115,7 +123,8 @@ export class RoomSession {
       this.saveSoon();
     } else if (sub.kind === 'finished' && item) {
       item.status = sub.status;
-      this.say('room', `${AGENT_NAMES[agent]}'s sub-agent finished (${sub.status}): ${this.startLabels.get(sub.id) ?? item.label}.`);
+      this.say('room', `${AGENT_NAMES[agent]}'s sub-agent finished (${sub.status}): ${this.startLabels.get(sub.id) ?? item.label}.`,
+        { kind: 'subagent', by: agent, sub: sub.id, to: [] });
       this.saveNow();
     } else if (sub.kind === 'waiting' || sub.kind === 'waited') {
       active.waiting = sub.kind === 'waiting';
@@ -183,7 +192,7 @@ export class RoomSession {
     });
   }
 
-  async turn(agent, mode, prompt, activity) {
+  async turn(agent, mode, prompt, activity, to = []) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       if (this.state.stage === 'stopped') return null;
       this.setActive(agent, activity);
@@ -199,7 +208,7 @@ export class RoomSession {
       if (this.state.stage === 'stopped' || result.aborted) return null;
       this.setActive(null);
       if (result.ok) {
-        this.say(agent, result.text);
+        this.say(agent, result.text, { to: typeof to === 'function' ? to(result.text) : to });
         return result.text;
       }
       const why = result.timedOut ? 'timed out' : result.error ?? (result.code === 0 ? 'returned no text' : `exited with code ${result.code}`);
@@ -215,13 +224,13 @@ export class RoomSession {
     return block.ok ? validate(block.value) : block;
   }
 
-  async jsonTurn(agent, prompt, activity, validate) {
-    let text = await this.turn(agent, 'read', prompt, activity);
+  async jsonTurn(agent, prompt, activity, validate, to = []) {
+    let text = await this.turn(agent, 'read', prompt, activity, to);
     if (text === null) return null;
     let parsed = this.parseWith(text, validate);
     if (parsed.ok) return parsed.value;
     this.say('room', `Invalid answer: ${parsed.error} Asking once more.`);
-    text = await this.turn(agent, 'read', `${prompt}\n\nYour previous answer was rejected: ${parsed.error}\nReply again with only the corrected json block.`, activity);
+    text = await this.turn(agent, 'read', `${prompt}\n\nYour previous answer was rejected: ${parsed.error}\nReply again with only the corrected json block.`, activity, to);
     if (text === null) return null;
     parsed = this.parseWith(text, validate);
     if (parsed.ok) return parsed.value;
@@ -232,7 +241,7 @@ export class RoomSession {
   async discussStep() {
     const state = this.state;
     const agent = AGENT_IDS[state.discussTurns % AGENT_IDS.length];
-    const text = await this.turn(agent, 'read', this.prompt('discuss', agent), 'thinking');
+    const text = await this.turn(agent, 'read', this.prompt('discuss', agent), 'thinking', others(agent));
     if (text === null) return;
     state.discussTurns += 1;
     const latest = AGENT_IDS.map(id => this.transcript.findLast(m => m.from === id));
@@ -241,7 +250,7 @@ export class RoomSession {
   }
 
   async rolesStep() {
-    const roles = await this.jsonTurn('codex', this.prompt('roles', 'codex'), 'proposing roles', validateRoles);
+    const roles = await this.jsonTurn('codex', this.prompt('roles', 'codex'), 'proposing roles', validateRoles, []);
     if (!roles) return;
     this.state.roles = roles;
     this.state.stage = 'gate-roles';
@@ -251,7 +260,7 @@ export class RoomSession {
 
   async planStep() {
     const { roles } = this.state;
-    const plan = await this.jsonTurn(roles.orchestrator, this.prompt('plan', roles.orchestrator), 'planning', v => validatePlan(v, roles.coders));
+    const plan = await this.jsonTurn(roles.orchestrator, this.prompt('plan', roles.orchestrator), 'planning', v => validatePlan(v, roles.coders), []);
     if (!plan) return;
     this.setPlan(plan.tasks, 'plan: initial plan');
     this.state.stage = 'gate-plan';
@@ -279,7 +288,9 @@ export class RoomSession {
       task.status = 'running';
       this.save();
       const before = headCommit(state.projectDir);
-      const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task }), 'editing');
+      this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
+      const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task }), 'editing',
+        state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator]);
       if (text === null) return;
       const message = `task-${task.id}: ${task.title}`;
       // Codex and agy can run git commit themselves; their commits count as the task's changes.
@@ -296,7 +307,7 @@ export class RoomSession {
       this.save();
     }
     const reviewer = state.roles.reviewer;
-    const verdict = await this.jsonTurn(reviewer, this.prompt('review', reviewer, { task, diff: lastCommitDiff(state.projectDir) }), 'reviewing', validateVerdict);
+    const verdict = await this.jsonTurn(reviewer, this.prompt('review', reviewer, { task, diff: lastCommitDiff(state.projectDir) }), 'reviewing', validateVerdict, [task.assignee]);
     if (!verdict) return;
     if (verdict.verdict === 'ok') {
       task.status = 'done';
@@ -323,7 +334,11 @@ export class RoomSession {
     }
     const { roles } = this.state;
     const decision = await this.jsonTurn(roles.orchestrator, this.prompt('reassign', roles.orchestrator, { task, reason }), 'deciding',
-      v => validateReassign(v, roles.coders, task.assignee));
+      v => validateReassign(v, roles.coders, task.assignee),
+      text => {
+        const block = extractJsonBlock(text);
+        return block.ok && block.value?.action === 'reassign' && roles.coders.includes(block.value.to) ? [block.value.to] : [];
+      });
     if (!decision) return;
     if (decision.action === 'skip') {
       task.status = 'skipped';
@@ -341,7 +356,7 @@ export class RoomSession {
 
   async finishStep() {
     const orchestrator = this.state.roles.orchestrator;
-    const text = await this.turn(orchestrator, 'read', this.prompt('finish', orchestrator), 'summarizing');
+    const text = await this.turn(orchestrator, 'read', this.prompt('finish', orchestrator), 'summarizing', []);
     if (text === null) return;
     writeFileSync(join(this.state.projectDir, 'SUMMARY.md'), `${text}\n`, 'utf8');
     const hash = commitAll(this.state.projectDir, 'docs: summary');
@@ -357,7 +372,7 @@ export class RoomSession {
     // Openings must be independent, so they never see the conversation.
     const transcript = state.stage === 'opening' ? [] : this.transcript.filter(m => m.from !== 'room');
     const prompt = buildPrompt({ stage: state.stage, agent, roles: null, task: state.task, transcript });
-    const text = await this.turn(agent, 'read', prompt, state.stage === 'opening' ? 'answering' : 'critiquing');
+    const text = await this.turn(agent, 'read', prompt, state.stage === 'opening' ? 'answering' : 'critiquing', state.stage === 'opening' ? [] : others(agent));
     if (text === null) return;
     state.debateTurns += 1;
     if (state.debateTurns === AGENT_IDS.length) state.stage = 'critique';
@@ -368,7 +383,7 @@ export class RoomSession {
   async verdictStep() {
     const state = this.state;
     const transcript = this.transcript.filter(m => m.from !== 'room');
-    const text = await this.turn(state.judge, 'read', buildPrompt({ stage: 'verdict', agent: state.judge, roles: null, task: state.task, transcript }), 'judging');
+    const text = await this.turn(state.judge, 'read', buildPrompt({ stage: 'verdict', agent: state.judge, roles: null, task: state.task, transcript }), 'judging', [...AGENT_IDS]);
     if (text === null) return;
     writeFileSync(join(this.dir, 'answer.md'), `${text}\n`, 'utf8');
     state.answer = text;
