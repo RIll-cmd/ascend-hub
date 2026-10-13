@@ -40,7 +40,19 @@ export function Crt({ id, availability, session }: { id: AgentId; availability?:
         {badges.map(role => <span key={role} className="agent-room-badge">{role}</span>)}
       </span>
       <span className="agent-room-crt-status" aria-live="polite" title={availability?.detail}>{status}</span>
+      {busy && active && <SubagentLine active={active} />}
     </div>
+  );
+}
+
+function SubagentLine({ active }: { active: NonNullable<SessionView["active"]> }) {
+  const running = (active.subagents ?? []).filter(s => s.status === "running");
+  if (running.length === 0) return active.waiting ? <span className="agent-room-crt-sub">waiting on sub-agents…</span> : null;
+  const current = running[running.length - 1];
+  return (
+    <span className="agent-room-crt-sub">
+      +{running.length} sub-agent{running.length > 1 ? "s" : ""}: {current.label}{current.tool ? ` · ${current.tool}` : ""}
+    </span>
   );
 }
 
@@ -129,11 +141,12 @@ export function BriefForm({ agents, folders = [], act }: { agents?: Record<Agent
   const [question, setQuestion] = useState("");
   const [folder, setFolder] = useState("");
   const [judge, setJudge] = useState<AgentId>("codex");
+  const [claudeSubagents, setClaudeSubagents] = useState(true);
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
   const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
   const body = kind === "debate"
-    ? { mode: "debate", question, folder: chosenFolder, judge }
-    : { project, task, ...(ownRoles ? { roles } : {}) };
+    ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
+    : { project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents } };
   return (
     <form className="agent-room-brief" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", body); }}>
       <div className="agent-room-kind" role="radiogroup" aria-label="Session type">
@@ -166,6 +179,11 @@ export function BriefForm({ agents, folders = [], act }: { agents?: Record<Agent
           <small>Each agent answers alone, then critiques the others; the judge writes the combined answer. Read-only: nothing in the folder changes.</small>
         </>
       )}
+      <fieldset className="agent-room-subagents">
+        <legend>Sub-agents</legend>
+        <label><input type="checkbox" checked={claudeSubagents} onChange={e => setClaudeSubagents(e.target.checked)} /> Claude may use sub-agents</label>
+        <small>Codex: always on (it cannot be switched off). Antigravity: not supported yet.</small>
+      </fieldset>
       <button type="submit" disabled={missing.length > 0 || (kind === "debate" && !chosenFolder)}>Start</button>
       {missing.length > 0 && <p className="agent-room-hint">Waiting for: {missing.map(id => AGENT_NAMES[id]).join(", ")}</p>}
     </form>

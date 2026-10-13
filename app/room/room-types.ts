@@ -29,7 +29,11 @@ export type SessionView = {
   roles: Roles | null;
   plan: { tasks: PlanTask[] } | null;
   pause: { reason: string; at: string } | null;
-  active: { agent: AgentId; activity: string; since: string } | null;
+  active: {
+    agent: AgentId; activity: string; since: string;
+    subagents?: { id: string; label: string; tool: string | null; status: string }[];
+    waiting?: boolean;
+  } | null;
   transcript: Message[];
 };
 

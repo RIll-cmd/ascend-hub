@@ -44,6 +44,9 @@
 .agent-room-plan-edit p { margin: 4px 0 0; font-size: 12px; }
 .agent-room-hint { margin: 0; font-size: 12px; } .agent-room-error { margin: 0; color: #b00020; }
 .agent-room-offline { margin-top: 12px; }
+.agent-room-crt-sub { font-size: 11px; color: #ffd27a; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-room-subagents { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; border: 1px dashed var(--room-ink); flex-basis: 100%; }
+.agent-room-brief .agent-room-subagents label { flex-direction: row; align-items: center; }
 .agent-room-kind { display: flex; flex-wrap: wrap; gap: 16px; flex-basis: 100%; }
 .agent-room-brief .agent-room-kind label { flex-direction: row; align-items: center; }
 .agent-room-verdict { background: var(--room-card); border: 2px solid var(--room-ink); border-radius: 4px; padding: 10px; }
