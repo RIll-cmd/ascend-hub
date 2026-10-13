@@ -41,6 +41,22 @@ test('each stage prompt names the stage, the agent and its rules', () => {
   assert.throws(() => buildPrompt({ stage: 'nope', agent: 'codex', task: 't' }), /Unknown stage/);
 });
 
+test('debate prompts: independent opening, critique of the others, judge verdict, all read-only', () => {
+  const opening = buildPrompt({ stage: 'opening', agent: 'claude', task: 'Should Vision use SQLite FTS?' });
+  assert.ok(opening.startsWith('Room stage: opening\nYou are Claude (claude)'));
+  assert.match(opening, /QUESTION:\nShould Vision use SQLite FTS\?/);
+  assert.match(opening, /without seeing the other agents/);
+  assert.match(opening, /read-only/);
+  assert.doesNotMatch(opening, /OWNER TASK/);
+  const critique = buildPrompt({ stage: 'critique', agent: 'agy', task: 'q', transcript: [{ from: 'codex', text: 'use FTS5' }] });
+  assert.match(critique, /Critique the other two/);
+  assert.match(critique, /CODEX: use FTS5/);
+  const verdict = buildPrompt({ stage: 'verdict', agent: 'codex', task: 'q' });
+  assert.match(verdict, /You are the judge/);
+  for (const heading of ['## Where they agree', '## Where they disagree', '## Recommendation']) assert.ok(verdict.includes(heading), heading);
+  for (const p of [opening, critique, verdict]) assert.match(p, /Do not edit files/);
+});
+
 test('prompts never exceed the Windows-safe limit even with huge inputs', () => {
   const huge = 'y'.repeat(50_000);
   const transcript = Array.from({ length: 50 }, () => ({ from: 'codex', text: huge }));

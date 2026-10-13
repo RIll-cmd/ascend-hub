@@ -2,6 +2,7 @@ import { AGENT_IDS } from './parse.mjs';
 
 export const AGENT_NAMES = { codex: 'Codex', claude: 'Claude', agy: 'Antigravity' };
 export const MAX_PROMPT_CHARS = 28_000;
+export const DEBATE_STAGES = new Set(['opening', 'critique', 'verdict']);
 
 const CAPABILITIES = {
   codex: 'can edit files and run any command inside the project folder',
@@ -67,6 +68,26 @@ function stageRules(stage, agent, roles, extra) {
       return `You are the orchestrator. Task ${extra.task.id} (${extra.task.title}) failed twice with ${AGENT_NAMES[extra.task.assignee]}. Last reason: ${cap(extra.reason, 2000)}\nThe coders are:\n${team}\nReply with one fenced json block, either {"action": "reassign", "to": "<coder id>"} with a different coder, or {"action": "skip"}.`;
     case 'finish':
       return 'You are the orchestrator. All tasks are finished or skipped. Write the project summary in Markdown: what was built, how to run it, and what was skipped. Reply with the Markdown only. Do not edit files.';
+    case 'opening':
+      return [
+        "This is a debate between three AI agents: Codex (codex), Claude (claude) and Antigravity (agy). Answer the owner's question on your own, without seeing the other agents' answers.",
+        'You may read files in the current folder to ground your answer in the real code. You are read-only: Do not edit files or run commands that change anything.',
+        'Give a clear position, your main reasons and the risks. Keep it under 400 words.',
+      ].join('\n');
+    case 'critique':
+      return [
+        'This is the critique round of a debate. The opening answers (and any earlier critiques) are in the conversation below.',
+        'Critique the other two answers: what is wrong, missing or risky, and what is better than yours. Then state whether you keep or revise your own position, and why.',
+        'You are read-only: Do not edit files or run commands that change anything. Keep it under 400 words.',
+      ].join('\n');
+    case 'verdict':
+      return [
+        'You are the judge of this debate. Read the whole conversation below and write the combined answer for the owner in Markdown, with exactly these sections:',
+        '## Where they agree',
+        '## Where they disagree',
+        '## Recommendation',
+        'Be fair to every agent, including yourself, and say who argued what. Reply with the Markdown only. Do not edit files.',
+      ].join('\n');
     default:
       throw new Error(`Unknown stage ${stage}`);
   }
@@ -80,7 +101,7 @@ export function buildPrompt({ stage, agent, roles, task, planText = '', transcri
     '',
     stageRules(stage, agent, roles, extra),
     '',
-    'OWNER TASK:',
+    DEBATE_STAGES.has(stage) ? 'QUESTION:' : 'OWNER TASK:',
     cap(task, 4000),
     planText ? `\nPLAN.md:\n${cap(planText, 6000)}` : '',
   ].join('\n');
