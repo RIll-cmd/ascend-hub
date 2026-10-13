@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import {
-  AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES, rolesOf,
+  AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES,
   type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
 } from "./room-types";
+import { messageLine } from "./deck/deck-view";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
 
@@ -25,36 +26,6 @@ const DEBATE_STEPS: { label: string; stages: Stage[] }[] = [
   { label: "Verdict", stages: ["verdict"] },
   { label: "Done", stages: ["done", "stopped"] },
 ];
-
-export function Crt({ id, availability, session }: { id: AgentId; availability?: Availability; session: SessionView | null }) {
-  const active = session?.active ?? null;
-  const busy = active?.agent === id;
-  const status = availability?.state === "offline" ? "offline · not signed in"
-    : availability?.state !== "ready" ? "checking…"
-      : busy && active ? `${active.activity}…` : "idle";
-  const badges = session?.mode === "debate" ? (session.judge === id ? ["judge"] : []) : rolesOf(id, session?.roles ?? null);
-  return (
-    <div className={`agent-room-crt agent-room-${id}${busy ? " is-busy" : ""}`}>
-      <b>{AGENT_NAMES[id]}</b>
-      <span className="agent-room-badges">
-        {badges.map(role => <span key={role} className="agent-room-badge">{role}</span>)}
-      </span>
-      <span className="agent-room-crt-status" aria-live="polite" title={availability?.detail}>{status}</span>
-      {busy && active && <SubagentLine active={active} />}
-    </div>
-  );
-}
-
-function SubagentLine({ active }: { active: NonNullable<SessionView["active"]> }) {
-  const running = (active.subagents ?? []).filter(s => s.status === "running");
-  if (running.length === 0) return active.waiting ? <span className="agent-room-crt-sub">waiting on sub-agents…</span> : null;
-  const current = running[running.length - 1];
-  return (
-    <span className="agent-room-crt-sub">
-      +{running.length} sub-agent{running.length > 1 ? "s" : ""}: {current.label}{current.tool ? ` · ${current.tool}` : ""}
-    </span>
-  );
-}
 
 export function StageSteps({ stage, paused, mode = "build" }: { stage: Stage; paused: boolean; mode?: SessionMode }) {
   return (
@@ -79,11 +50,15 @@ export function Transcript({ messages }: { messages: Message[] }) {
   }, [messages.length]);
   return (
     <div ref={ref} className="agent-room-log" role="log" aria-label="Transcript">
-      {messages.map((m, i) => (
-        <p key={`${m.at}-${i}`} className={m.from === "room" ? "is-room" : undefined}>
-          <b className={m.from === "room" ? undefined : `agent-room-name-${m.from}`}>{m.from === "room" ? "ROOM" : AGENT_NAMES[m.from]}:</b> {m.text}
-        </p>
-      ))}
+      {messages.map((m, i) => {
+        const line = messageLine(m);
+        return (
+          <p key={`${m.seq ?? m.at}-${i}`} className={m.from === "room" ? "is-room" : undefined}>
+            <b className={m.from === "room" ? undefined : `agent-room-name-${m.from}`}>{line.from}</b>
+            {line.to && <span className="agent-room-to"> → {line.to}</span>}: {m.text}
+          </p>
+        );
+      })}
     </div>
   );
 }

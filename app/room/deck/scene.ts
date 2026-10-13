@@ -199,6 +199,8 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     yaw += (targetYaw - yaw) * 0.08;
     pitch += (targetPitch - pitch) * 0.08;
     const spherical = baseSpherical.clone();
+    // Narrow (portrait) decks pull the camera back so all three desks stay in frame.
+    spherical.radius *= Math.sqrt(Math.max(1, 1.6 / camera.aspect));
     spherical.theta += yaw;
     spherical.phi = Math.min(Math.PI / 2.2, Math.max(0.3, spherical.phi + pitch));
     camera.position.setFromSpherical(spherical).add(target);

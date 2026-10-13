@@ -1,6 +1,6 @@
 .agent-room { --room-ink: #2b2118; --room-paper: #f3e6cf; --room-card: #fffaf0; --room-accent: #ffd27a;
   min-height: 100vh; background: #1a120c; color: var(--room-ink); font-family: ui-monospace, Consolas, monospace; padding: 16px; box-sizing: border-box; }
-.agent-room-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--room-ink); color: var(--room-paper);
+.agent-room-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: var(--room-ink); color: var(--room-paper);
   border: 2px solid #000; border-radius: 6px 6px 0 0; padding: 8px 12px; }
 .agent-room-back { color: var(--room-paper); text-decoration: none; }
 .agent-room-back:focus-visible, .agent-room button:focus-visible, .agent-room input:focus-visible,
@@ -8,26 +8,65 @@
 .agent-room button { font: inherit; padding: 4px 12px; border: 2px solid var(--room-ink); border-radius: 4px; background: var(--room-accent); color: var(--room-ink); cursor: pointer; }
 .agent-room button:disabled { opacity: .5; cursor: not-allowed; }
 .agent-room-stop { background: #ff6b6b; }
-.agent-room-crts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; background: var(--room-paper); padding: 12px;
-  border-inline: 2px solid #000; }
-.agent-room-crt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; border-radius: 14px; background: #141414;
-  color: #e9e9e9; border: 3px solid var(--room-ink); box-shadow: inset 0 0 0 3px var(--crt-color), inset 0 0 24px #0008; text-align: center; }
-.agent-room-codex { --crt-color: #e28a2b; } .agent-room-claude { --crt-color: #d97757; } .agent-room-agy { --crt-color: #3d7bff; }
-.agent-room-crt.is-busy { box-shadow: inset 0 0 0 3px var(--crt-color), 0 0 18px var(--crt-color); animation: agent-room-glow 1.4s ease-in-out infinite alternate; }
-@keyframes agent-room-glow { to { box-shadow: inset 0 0 0 3px var(--crt-color), 0 0 4px var(--crt-color); } }
-.agent-room-badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; min-height: 18px; }
+.agent-room-title { font-weight: bold; }
+.agent-room-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.agent-room-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--room-accent); }
+.agent-room-badges { display: flex; gap: 4px; flex-wrap: wrap; min-height: 18px; margin: 0; }
 .agent-room-badge { background: var(--room-paper); color: var(--room-ink); border-radius: 3px; padding: 1px 6px; font-size: 11px; text-transform: uppercase; }
-.agent-room-crt-status { font-size: 12px; color: #9fe8b0; }
-.agent-room-body { display: grid; grid-template-columns: 1fr; gap: 12px; background: var(--room-paper); padding: 12px; border: 2px solid #000; border-top: 0; border-radius: 0 0 6px 6px; }
-.agent-room-body.has-board { grid-template-columns: minmax(0, 1fr) 280px; }
-.agent-room-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .agent-room-steps { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0; padding: 0; }
-.agent-room-steps li { border: 1px solid var(--room-ink); border-radius: 3px; padding: 2px 8px; }
-.agent-room-steps li.is-current { background: var(--room-ink); color: var(--room-paper); }
+.agent-room-steps li { border: 1px solid var(--room-paper); border-radius: 3px; padding: 2px 8px; font-size: 12px; }
+.agent-room-steps li.is-current { background: var(--room-paper); color: var(--room-ink); }
+
+/* Layout: stage (deck or debate + ticker) on the left, inspector column on the right */
+.agent-room-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; background: var(--room-paper); padding: 12px;
+  border: 2px solid #000; border-top: 0; border-radius: 0 0 6px 6px; }
+.agent-room-stage { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.agent-room-side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+/* 3D deck and name plates */
+.agent-room-deck { position: relative; height: clamp(360px, 62vh, 640px); border: 2px solid var(--room-ink); border-radius: 6px; overflow: hidden; background: #1a120c; }
+.agent-room-deck-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.agent-room .agent-room-plate { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 8px;
+  border: 2px solid var(--plate); border-radius: 4px; background: #141414e6; color: #f3e6cf; font: 11px ui-monospace, Consolas, monospace; white-space: nowrap; }
+.agent-room .agent-room-plate b { color: var(--plate); }
+.agent-room .agent-room-plate.is-selected { background: var(--plate); color: #141414; }
+.agent-room .agent-room-plate.is-selected b { color: #141414; }
+
+/* Flat fallback */
+.agent-room-flatdeck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.agent-room .agent-room-flatcrt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; border-radius: 14px; background: #141414; color: #e9e9e9;
+  border: 3px solid var(--room-ink); box-shadow: inset 0 0 0 3px var(--crt-color); }
+.agent-room .agent-room-flatcrt.is-busy, .agent-room .agent-room-flatcrt.is-selected { box-shadow: inset 0 0 0 3px var(--crt-color), 0 0 14px var(--crt-color); }
+.agent-room-flatcrt small { color: #c9b79a; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-room-crt-status { font-size: 12px; color: #9fe8b0; }
+
+/* Ticker, inspector, drawer */
+.agent-room-ticker { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--room-ink); color: #ffd27a; padding: 6px 10px; border-radius: 4px; }
+.agent-room-ticker span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-room-inspector { background: var(--room-card); border: 2px solid var(--room-ink); border-left-width: 6px; border-radius: 4px; padding: 10px; }
+.agent-room-inspector h2 { display: flex; align-items: center; gap: 8px; font-size: 16px; margin: 0 0 4px; }
+.agent-room-inspector h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #6b5a48; margin: 10px 0 4px; }
+.agent-room-inspector p, .agent-room-inspector ul { margin: 0; }
+.agent-room-inspector ul { padding-left: 0; list-style: none; }
+.agent-room-inspector blockquote { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow-y: auto; }
+.agent-room-swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; flex: none; }
+.agent-room-sent { color: #b4532f; font-size: 12px; margin-top: 4px !important; }
+.agent-room-to { color: #6b5a48; }
+.agent-room-tabs { display: flex; gap: 6px; }
+.agent-room-tabs [aria-selected="true"] { background: var(--room-ink); color: var(--room-paper); }
+.agent-room-drawer { position: fixed; left: 16px; right: 16px; bottom: 0; max-height: 70vh; display: flex; flex-direction: column; gap: 8px; z-index: 50;
+  background: var(--room-paper); border: 2px solid var(--room-ink); border-bottom: 0; border-radius: 8px 8px 0 0; padding: 10px; box-shadow: 0 -10px 30px #0008; }
+.agent-room-drawer-bar { display: flex; align-items: center; gap: 8px; }
+.agent-room-drawer-bar b { flex: 1; }
+.agent-room-drawer .agent-room-log { max-height: none; flex: 1; }
+
+/* Transcript */
 .agent-room-log { background: var(--room-card); border: 1px solid var(--room-ink); border-radius: 4px; padding: 8px; max-height: 50vh; overflow-y: auto; }
 .agent-room-log p { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .agent-room-log p.is-room { color: #6b5a48; font-style: italic; }
 .agent-room-name-codex { color: #b0611a; } .agent-room-name-claude { color: #b4532f; } .agent-room-name-agy { color: #2a5bd0; }
+
+/* Task board, gates, brief form, verdict */
 .agent-room-board { background: var(--room-card); border: 1px solid var(--room-ink); border-radius: 4px; padding: 8px; }
 .agent-room-board h2 { font-size: 14px; margin: 0 0 6px; }
 .agent-room-board ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -44,7 +83,6 @@
 .agent-room-plan-edit p { margin: 4px 0 0; font-size: 12px; }
 .agent-room-hint { margin: 0; font-size: 12px; } .agent-room-error { margin: 0; color: #b00020; }
 .agent-room-offline { margin-top: 12px; }
-.agent-room-crt-sub { font-size: 11px; color: #ffd27a; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .agent-room-subagents { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; border: 1px dashed var(--room-ink); flex-basis: 100%; }
 .agent-room-brief .agent-room-subagents label { flex-direction: row; align-items: center; }
 .agent-room-kind { display: flex; flex-wrap: wrap; gap: 16px; flex-basis: 100%; }
@@ -52,10 +90,10 @@
 .agent-room-verdict { background: var(--room-card); border: 2px solid var(--room-ink); border-radius: 4px; padding: 10px; }
 .agent-room-verdict h2 { font-size: 14px; margin: 0 0 6px; }
 .agent-room-verdict-text { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 50vh; overflow-y: auto; margin-bottom: 8px; }
-@media (max-width: 720px) {
-  .agent-room-crts { grid-template-columns: 1fr; }
-  .agent-room-body.has-board { grid-template-columns: 1fr; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .agent-room-crt.is-busy { animation: none; }
+
+@media (max-width: 900px) {
+  .agent-room-layout { grid-template-columns: 1fr; }
+  .agent-room-deck { height: 45vh; }
+  .agent-room .agent-room-plate { font-size: 10px; padding: 2px 6px; }
+  .agent-room-flatdeck { grid-template-columns: 1fr; }
 }

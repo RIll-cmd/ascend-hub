@@ -1,13 +1,18 @@
 "use client";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { BriefForm, Crt, GateBar, StageSteps, TaskBoard, Transcript, VerdictPanel } from "./room-parts";
-import { AGENT_IDS, BOARD_STAGES, TERMINAL_STAGES, type RoomStatus, type SessionView } from "./room-types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DebateView } from "./debate-view";
+import { DeckCanvas } from "./deck/DeckCanvas";
+import { deckView, freshPulses, latestSeq, type DeckPulse } from "./deck/deck-view";
+import { Inspector, Ticker, TopBar, TranscriptDrawer } from "./room-frame";
+import { BriefForm, GateBar, TaskBoard, VerdictPanel } from "./room-parts";
+import { BOARD_STAGES, TERMINAL_STAGES, type AgentId, type RoomStatus, type SessionView } from "./room-types";
 
 function useRoom() {
   const [status, setStatus] = useState<RoomStatus | null>(null);
   const [session, setSession] = useState<SessionView | null>(null);
   const [offline, setOffline] = useState<string | null>(null);
+  const [pulses, setPulses] = useState<DeckPulse[]>([]);
+  const seen = useRef<{ id: string | null; seq: number | null }>({ id: null, seq: null });
 
   const refresh = useCallback(async () => {
     try {
@@ -22,7 +27,16 @@ function useRoom() {
       }
       setOffline(null);
       setStatus(await statusRes.json() as RoomStatus);
-      if (sessionRes.ok) setSession((await sessionRes.json() as { session?: SessionView | null }).session ?? null);
+      if (!sessionRes.ok) return;
+      const next = (await sessionRes.json() as { session?: SessionView | null }).session ?? null;
+      const messages = next?.transcript ?? [];
+      // First sight of a session seeds the cursor, so a reload never replays old pulses.
+      const lastSeq = next && seen.current.id === next.id ? seen.current.seq : null;
+      const fresh = freshPulses(lastSeq, messages);
+      seen.current = { id: next?.id ?? null, seq: latestSeq(messages) };
+      // A new session clears the previous session's batch; otherwise only a non-empty batch replaces it.
+      setPulses(prev => (fresh.length || (lastSeq === null && prev.length) ? fresh : prev));
+      setSession(next);
     } catch {
       setOffline("Hub could not be reached.");
     }
@@ -46,46 +60,57 @@ function useRoom() {
     return res.ok ? null : String(data.message ?? data.error ?? `Request failed (${res.status})`);
   }, [refresh]);
 
-  return { status, session, offline, send };
+  return { status, session, offline, pulses, send };
 }
 
 export default function RoomPage() {
-  const { status, session, offline, send } = useRoom();
+  const { status, session, offline, pulses, send } = useRoom();
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<AgentId | null>(null);
+  const [drawer, setDrawer] = useState(false);
+  const [tab, setTab] = useState<"debate" | "deck">("debate");
   const act = useCallback(async (path: string, body?: unknown) => setError(await send(path, body)), [send]);
+  const closeDrawer = useCallback(() => setDrawer(false), []);
+  const view = useMemo(() => deckView(session, status), [session, status]);
   const running = Boolean(session && !TERMINAL_STAGES.includes(session.stage));
+  const debate = session?.mode === "debate";
+  const focus = view.agents.find(a => a.id === (selected ?? session?.active?.agent)) ?? null;
   const showBoard = Boolean(session?.plan && BOARD_STAGES.includes(session.stage));
+  const messages = session?.transcript ?? [];
 
   return (
     <main className="agent-room">
-      <header className="agent-room-bar">
-        <Link href="/" className="agent-room-back">◂ Shelf</Link>
-        <span>AGENT ROOM{session ? ` · ${session.project}` : ""}</span>
-        {running && <button className="agent-room-stop" onClick={() => act("/api/room/sessions/current/stop")}>Stop</button>}
-      </header>
+      <TopBar session={session} view={view} running={running} act={act} />
       {offline ? (
         <div className="agent-room-offline" role="status">
           <p>Room offline: {offline}</p>
           <p>It starts with <code>npm run dev</code>. To start it alone, run <code>node scripts/agent-room/server.mjs</code> in the Hub folder.</p>
         </div>
       ) : (
-        <>
-          <section className="agent-room-crts" aria-label="Agents">
-            {AGENT_IDS.map(id => <Crt key={id} id={id} availability={status?.agents[id]} session={session} />)}
+        <div className="agent-room-layout">
+          <section className="agent-room-stage" aria-label="Room">
+            {debate && (
+              <div className="agent-room-tabs" role="tablist" aria-label="View">
+                <button role="tab" aria-selected={tab === "debate"} onClick={() => setTab("debate")}>Debate</button>
+                <button role="tab" aria-selected={tab === "deck"} onClick={() => setTab("deck")}>Deck</button>
+              </div>
+            )}
+            {debate && tab === "debate" && session
+              ? <DebateView session={session} />
+              : <DeckCanvas view={view} pulses={pulses} selected={selected} onSelect={setSelected} />}
+            <Ticker messages={messages} onOpen={() => setDrawer(true)} />
           </section>
-          <div className={`agent-room-body${showBoard ? " has-board" : ""}`}>
-            <div className="agent-room-main">
-              {session && <StageSteps stage={session.stage} paused={Boolean(session.pause)} mode={session.mode} />}
-              {session && <Transcript messages={session.transcript} />}
-              {session && <GateBar session={session} act={act} />}
-              {session && <VerdictPanel session={session} />}
-              {!running && <BriefForm agents={status?.agents} folders={status?.folders} act={act} />}
-              {error && <p role="alert" className="agent-room-error">{error}</p>}
-            </div>
+          <aside className="agent-room-side">
+            {session && <Inspector agent={focus} session={session} />}
+            {session && <GateBar session={session} act={act} />}
+            {session && <VerdictPanel session={session} />}
             {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
-          </div>
-        </>
+            {!running && <BriefForm agents={status?.agents} folders={status?.folders} act={act} />}
+            {error && <p role="alert" className="agent-room-error">{error}</p>}
+          </aside>
+        </div>
       )}
+      <TranscriptDrawer open={drawer} onClose={closeDrawer} messages={messages} />
     </main>
   );
 }
