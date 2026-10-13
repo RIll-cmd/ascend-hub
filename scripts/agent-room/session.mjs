@@ -79,8 +79,8 @@ export class RoomSession {
   }
 
   summary() {
-    const { id, project, stage, pause, active, roles } = this.state;
-    return { id, project, stage, pause, active, roles };
+    const { id, mode, project, stage, pause, active, roles } = this.state;
+    return { id, mode, project, stage, pause, active, roles };
   }
 
   view() { return { ...this.state, transcript: this.transcript.slice(-200) }; }

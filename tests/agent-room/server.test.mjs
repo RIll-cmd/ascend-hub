@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -111,4 +111,29 @@ test('restores an unfinished session from disk on start', async () => {
   const second = await startRoomServer({ dataDir, settings, runTurn, probe: async () => ({ state: 'ready' }), port: 0 });
   assert.equal(second.getSession().state.stage, 'gate-plan');
   await second.close();
+});
+
+test('status lists debate folders and a debate session starts through the API', async () => {
+  const { dataDir, buildsRoot } = tempRoom();
+  const folder = join(dataDir, '..', 'repo');
+  mkdirSync(folder, { recursive: true });
+  const settings = { ...testSettings(buildsRoot), debateFolders: [folder], timeouts: { chat: 1000, build: 1000, debate: 1000 } };
+  const runTurn = fakeRunTurn(({ agent, stage }) => ({ text: `${agent} ${stage}` }));
+  const room = await startRoomServer({ dataDir, settings, runTurn, probe: async () => ({ state: 'ready' }), port: 0 });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  const call = (method, path, body) => fetch(`http://127.0.0.1:${room.port}${path}`, {
+    method, headers: { authorization: `Bearer ${room.token}` }, body: body && JSON.stringify(body),
+  });
+  assert.deepEqual((await (await call('GET', '/status')).json()).folders, [folder]);
+  const created = await call('POST', '/sessions', { mode: 'debate', question: 'q', folder, judge: 'agy' });
+  assert.equal(created.status, 201);
+  assert.equal((await created.json()).session.mode, 'debate');
+  await room.getSession().loop;
+  const view = (await (await call('GET', '/sessions/current')).json()).session;
+  assert.equal(view.stage, 'done');
+  assert.equal(view.answer, 'agy verdict');
+  const bad = await call('POST', '/sessions', { mode: 'debate', question: 'q', folder: 'C:\Windows' });
+  assert.equal(bad.status, 400);
+  assert.equal((await bad.json()).error, 'FOLDER_NOT_ALLOWED');
+  await room.close();
 });
