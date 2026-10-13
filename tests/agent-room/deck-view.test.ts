@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { debateRounds, deckView, freshPulses, latestSeq, messageLine, miniSlots, nearBottom, plateText } from "../../app/room/deck/deck-view";
+import { debateRounds, deckView, freshPulses, latestSeq, lookTargets, messageLine, miniSlots, nearBottom, plateText } from "../../app/room/deck/deck-view";
 import type { Message, RoomStatus, SessionView } from "../../app/room/room-types";
 
 const ready: RoomStatus = { online: true, agents: { codex: { state: "ready" }, claude: { state: "ready" }, agy: { state: "offline", detail: "x" } } };
@@ -117,4 +117,11 @@ test("freshPulses drops messages naming agents the deck does not know", () => {
 test("nearBottom: only a reader already at the bottom gets auto-scrolled", () => {
   assert.equal(nearBottom({ scrollTop: 560, scrollHeight: 1000, clientHeight: 400 }), true);
   assert.equal(nearBottom({ scrollTop: 100, scrollHeight: 1000, clientHeight: 400 }), false);
+});
+
+test("lookTargets: everyone looks at the working agent, who looks at you", () => {
+  assert.deepEqual(lookTargets(deckView(session(), ready)), { codex: 1, claude: 0, agy: -1 });
+  const codexBusy = deckView(session({ active: { agent: "codex", activity: "planning", since: "x" } }), ready);
+  assert.deepEqual(lookTargets(codexBusy), { codex: 0, claude: -1, agy: -1 });
+  assert.deepEqual(lookTargets(deckView(session({ active: null }), ready)), { codex: 0, claude: 0, agy: 0 });
 });

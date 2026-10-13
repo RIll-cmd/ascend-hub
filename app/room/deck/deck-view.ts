@@ -44,6 +44,17 @@ export function deckView(session: SessionView | null, status: RoomStatus | null)
   return { sessionId: session?.id ?? null, mode, status: statusText(session), agents, delegation };
 }
 
+// Left-to-right order of the desks as seen from the camera.
+const SEAT_X: Record<AgentId, number> = { codex: -1, claude: 0, agy: 1 };
+
+// Idle agents look toward whoever is working; the working agent looks at the owner (straight ahead).
+export function lookTargets(view: DeckView): Record<AgentId, number> {
+  const active = view.agents.find(a => a.state === "busy")?.id;
+  return Object.fromEntries(AGENT_IDS.map(id => [
+    id, !active || id === active ? 0 : Math.max(-1, Math.min(1, SEAT_X[active] - SEAT_X[id])),
+  ])) as Record<AgentId, number>;
+}
+
 export function plateText(agent: DeckAgent): string {
   if (agent.state === "offline") return "offline";
   if (agent.state === "checking") return "checking…";

@@ -66,3 +66,26 @@ test("screenKey only changes when what the screen shows changes", () => {
   assert.equal(screenKey(base), screenKey({ ...base }));
   assert.notEqual(screenKey(base), screenKey({ ...base, activity: "reviewing" }));
 });
+
+const pupilX = (calls: { op: string; args: unknown[]; fillStyle?: unknown }[]) =>
+  Number(calls.filter(c => c.op === "arc")[1]?.args[0]);
+
+test("paintScreen: the pupil follows the gaze", () => {
+  const left = recorder(), centre = recorder(), right = recorder();
+  paintScreen(left.ctx, 512, 384, { ...base, look: -1 });
+  paintScreen(centre.ctx, 512, 384, { ...base, look: 0 });
+  paintScreen(right.ctx, 512, 384, { ...base, look: 1 });
+  assert.ok(pupilX(left.calls) < pupilX(centre.calls) && pupilX(centre.calls) < pupilX(right.calls));
+});
+
+test("paintScreen: a blink hides the pupil and draws a closed lid", () => {
+  const r = recorder();
+  paintScreen(r.ctx, 512, 384, { ...base, blink: true });
+  assert.equal(r.calls.some(c => c.op === "fill" && c.fillStyle === "#d97757"), false);
+  assert.ok(r.calls.some(c => c.op === "fillRect" && c.fillStyle === "#d97757"), "lid line in agent colour");
+});
+
+test("screenKey changes with gaze and blink", () => {
+  assert.notEqual(screenKey(base), screenKey({ ...base, look: 1 }));
+  assert.notEqual(screenKey(base), screenKey({ ...base, blink: true }));
+});
