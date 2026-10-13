@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { claudeResultText, parseJsonLine } from './events.mjs';
 import { roomError } from './paths.mjs';
 
 export const CLAUDE_ALLOWED_TOOLS = ['Bash(node:*)', 'Bash(npm:*)', 'Bash(npx:*)', 'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)'];
@@ -29,29 +30,33 @@ export function mergeSettings(base, override = {}) {
   };
 }
 
-export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile }) {
+export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile, subagents = true }) {
   const agent = settings.agents[agentId];
   if (!agent) throw roomError('AGENT_UNKNOWN', String(agentId));
   if (mode !== 'read' && mode !== 'edit') throw roomError('MODE_INVALID', String(mode));
   const edit = mode === 'edit';
   if (agentId === 'codex') {
+    // Codex has no working switch for sub-agents (--disable multi_agent still spawned them in the spike).
     return {
       command: agent.command,
-      args: [...agent.prefixArgs, 'exec', '-m', agent.model, '--sandbox', edit ? 'workspace-write' : 'read-only', '--skip-git-repo-check', '-C', cwd, '-o', outFile, '-'],
+      args: [...agent.prefixArgs, 'exec', '-m', agent.model, '--sandbox', edit ? 'workspace-write' : 'read-only', '--skip-git-repo-check', '--json', '-C', cwd, '-o', outFile, '-'],
       stdin: prompt,
       outFile,
+      stream: 'codex',
     };
   }
   if (agentId === 'claude') {
     return {
       command: agent.command,
-      args: [...agent.prefixArgs, '-p', '--permission-mode', edit ? 'acceptEdits' : 'plan', '--disallowedTools', 'PowerShell', ...(edit ? ['--allowedTools', ...CLAUDE_ALLOWED_TOOLS] : [])],
+      args: [...agent.prefixArgs, '-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', edit ? 'acceptEdits' : 'plan',
+        '--disallowedTools', 'PowerShell', ...(subagents ? [] : ['Agent']), ...(edit ? ['--allowedTools', ...CLAUDE_ALLOWED_TOOLS] : [])],
       stdin: prompt,
       outFile: null,
+      stream: 'claude',
     };
   }
   // agy does not read the prompt from stdin; it must be attached to --print.
-  return { command: agent.command, args: [...agent.prefixArgs, '--mode', edit ? 'accept-edits' : 'plan', `--print=${prompt}`], stdin: null, outFile: null };
+  return { command: agent.command, args: [...agent.prefixArgs, '--mode', edit ? 'accept-edits' : 'plan', `--print=${prompt}`], stdin: null, outFile: null, stream: null };
 }
 
 export function killTree(child) {
@@ -60,19 +65,34 @@ export function killTree(child) {
   else child.kill('SIGKILL');
 }
 
-export function runTurn(invocation, { cwd, timeoutMs, signal } = {}) {
+export function runTurn(invocation, { cwd, timeoutMs, signal, onEvent } = {}) {
   return new Promise(resolve => {
     const started = Date.now();
     if (invocation.outFile) rmSync(invocation.outFile, { force: true });
     let stdout = '';
     let stderr = '';
+    let partial = '';
+    let resultText = null;
     let timedOut = false;
     let aborted = false;
     let settled = false;
     const child = spawn(invocation.command, invocation.args, { cwd, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
-    child.stdout.on('data', chunk => { if (stdout.length < 200_000) stdout += chunk; });
+    // Stream lines are parsed as they arrive, so the result event survives the stdout cap.
+    const readLine = text => {
+      const event = parseJsonLine(text);
+      if (!event) return;
+      if (invocation.stream === 'claude') resultText = claudeResultText(event) ?? resultText;
+      onEvent?.(event);
+    };
+    child.stdout.on('data', chunk => {
+      if (stdout.length < 200_000) stdout += chunk;
+      if (!invocation.stream) return;
+      const lines = (partial + chunk).split('\n');
+      partial = lines.pop();
+      lines.forEach(readLine);
+    });
     child.stderr.on('data', chunk => { if (stderr.length < 20_000) stderr += chunk; });
     const timer = setTimeout(() => { timedOut = true; killTree(child); }, timeoutMs);
     const onAbort = () => { aborted = true; killTree(child); };
@@ -83,7 +103,8 @@ export function runTurn(invocation, { cwd, timeoutMs, signal } = {}) {
       settled = true;
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
-      let text = stdout;
+      if (invocation.stream && partial) readLine(partial);
+      let text = invocation.stream === 'claude' ? resultText ?? '' : stdout;
       if (invocation.outFile && existsSync(invocation.outFile)) text = readFileSync(invocation.outFile, 'utf8');
       text = text.trim();
       resolve({

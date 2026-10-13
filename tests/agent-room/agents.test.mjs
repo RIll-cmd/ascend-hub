@@ -40,15 +40,21 @@ test('role mode maps to each CLI permission flag', () => {
   const s = defaultSettings({ APPDATA: 'C:\\A', LOCALAPPDATA: 'C:\\L' });
   const opts = { cwd: 'D:\\b\\p', settings: s, outFile: 'D:\\o.txt' };
   assert.deepEqual(buildInvocation('codex', 'read', 'hi', opts).args.slice(1),
-    ['exec', '-m', 'gpt-6-astra', '--sandbox', 'read-only', '--skip-git-repo-check', '-C', 'D:\\b\\p', '-o', 'D:\\o.txt', '-']);
+    ['exec', '-m', 'gpt-6-astra', '--sandbox', 'read-only', '--skip-git-repo-check', '--json', '-C', 'D:\\b\\p', '-o', 'D:\\o.txt', '-']);
   assert.ok(buildInvocation('codex', 'edit', 'hi', opts).args.includes('workspace-write'));
   assert.equal(buildInvocation('codex', 'read', 'hi', opts).stdin, 'hi');
-  assert.deepEqual(buildInvocation('claude', 'read', 'hi', opts).args, ['-p', '--permission-mode', 'plan', '--disallowedTools', 'PowerShell']);
+  assert.equal(buildInvocation('codex', 'read', 'hi', opts).stream, 'codex');
+  const stream = ['--output-format', 'stream-json', '--verbose'];
+  assert.deepEqual(buildInvocation('claude', 'read', 'hi', opts).args, ['-p', ...stream, '--permission-mode', 'plan', '--disallowedTools', 'PowerShell']);
   assert.deepEqual(buildInvocation('claude', 'edit', 'hi', opts).args,
-    ['-p', '--permission-mode', 'acceptEdits', '--disallowedTools', 'PowerShell', '--allowedTools', ...CLAUDE_ALLOWED_TOOLS]);
+    ['-p', ...stream, '--permission-mode', 'acceptEdits', '--disallowedTools', 'PowerShell', '--allowedTools', ...CLAUDE_ALLOWED_TOOLS]);
+  assert.equal(buildInvocation('claude', 'read', 'hi', opts).stream, 'claude');
+  assert.deepEqual(buildInvocation('claude', 'edit', 'hi', { ...opts, subagents: false }).args,
+    ['-p', ...stream, '--permission-mode', 'acceptEdits', '--disallowedTools', 'PowerShell', 'Agent', '--allowedTools', ...CLAUDE_ALLOWED_TOOLS]);
+  assert.equal(buildInvocation('agy', 'read', 'hi', opts).stream, null);
   assert.deepEqual(CLAUDE_ALLOWED_TOOLS, ['Bash(node:*)', 'Bash(npm:*)', 'Bash(npx:*)', 'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)']);
   const tricky = 'say "hi" --mode edit\nline2 & del *';
-  assert.deepEqual(buildInvocation('agy', 'read', tricky, opts), { command: s.agents.agy.command, args: ['--mode', 'plan', `--print=${tricky}`], stdin: null, outFile: null });
+  assert.deepEqual(buildInvocation('agy', 'read', tricky, opts), { command: s.agents.agy.command, args: ['--mode', 'plan', `--print=${tricky}`], stdin: null, outFile: null, stream: null });
   assert.equal(buildInvocation('agy', 'edit', 'x', opts).args[1], 'accept-edits');
   assert.throws(() => buildInvocation('gpt', 'read', 'x', opts), { code: 'AGENT_UNKNOWN' });
   assert.throws(() => buildInvocation('codex', 'write', 'x', opts), { code: 'MODE_INVALID' });
@@ -90,7 +96,7 @@ test('runTurn finishes soon after the CLI exits even if a grandchild keeps its s
   assert.ok(Date.now() - started < 4000, `took ${Date.now() - started} ms`);
   assert.equal(res.ok, true);
   assert.equal(res.timedOut, false);
-  assert.ok(res.text.startsWith('ECHO:LINGER please|'));
+  assert.match(res.text, /LINGER please/);
 });
 
 test('debate defaults: the three Ascend repos and a longer read-only turn limit', () => {
@@ -98,4 +104,21 @@ test('debate defaults: the three Ascend repos and a longer read-only turn limit'
   assert.deepEqual(s.debateFolders, ['D:\\ascend_hub', 'D:\\ascend-core', 'D:\\ascend-vision']);
   assert.ok(s.debateFolders.every(f => f.startsWith('D:\\ascend')), 'backslashes survive');
   assert.equal(s.timeouts.debate, 600000);
+});
+
+test('runTurn streams sub-agent events and takes Claude\'s reply from the result event', async () => {
+  const events = [];
+  const res = await runTurn(buildInvocation('claude', 'read', 'SUBAGENT hello', { cwd, settings: fakeSettings, outFile }),
+    { cwd, timeoutMs: 20_000, onEvent: e => events.push(e) });
+  assert.equal(res.ok, true);
+  assert.equal(res.text, 'final: SUBAGENT hello');
+  assert.deepEqual(events.map(e => e.subtype ?? e.type), ['task_started', 'task_progress', 'task_updated', 'success']);
+});
+
+test('runTurn streams Codex events but still reads its reply from the -o file', async () => {
+  const events = [];
+  const res = await runTurn(buildInvocation('codex', 'read', 'SUBAGENT hi', { cwd, settings: fakeSettings, outFile }),
+    { cwd, timeoutMs: 20_000, onEvent: e => events.push(e) });
+  assert.ok(res.text.startsWith('ECHO:SUBAGENT hi|'), res.text);
+  assert.deepEqual(events.map(e => `${e.type}:${e.item?.tool}`), ['item.started:wait', 'item.completed:wait']);
 });
