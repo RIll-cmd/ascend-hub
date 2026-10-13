@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { BriefForm, Crt, GateBar, StageSteps, TaskBoard, Transcript } from "./room-parts";
+import { BriefForm, Crt, GateBar, StageSteps, TaskBoard, Transcript, VerdictPanel } from "./room-parts";
 import { AGENT_IDS, BOARD_STAGES, TERMINAL_STAGES, type RoomStatus, type SessionView } from "./room-types";
 
 function useRoom() {
@@ -75,10 +75,11 @@ export default function RoomPage() {
           </section>
           <div className={`agent-room-body${showBoard ? " has-board" : ""}`}>
             <div className="agent-room-main">
-              {session && <StageSteps stage={session.stage} paused={Boolean(session.pause)} />}
+              {session && <StageSteps stage={session.stage} paused={Boolean(session.pause)} mode={session.mode} />}
               {session && <Transcript messages={session.transcript} />}
               {session && <GateBar session={session} act={act} />}
-              {!running && <BriefForm agents={status?.agents} act={act} />}
+              {session && <VerdictPanel session={session} />}
+              {!running && <BriefForm agents={status?.agents} folders={status?.folders} act={act} />}
               {error && <p role="alert" className="agent-room-error">{error}</p>}
             </div>
             {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES, rolesOf,
-  type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionView, type Stage,
+  type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
 } from "./room-types";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
@@ -19,27 +19,35 @@ const STEPS: { label: string; stages: Stage[] }[] = [
   { label: "Done", stages: ["done", "rejected", "stopped"] },
 ];
 
+const DEBATE_STEPS: { label: string; stages: Stage[] }[] = [
+  { label: "Opening", stages: ["opening"] },
+  { label: "Critique", stages: ["critique"] },
+  { label: "Verdict", stages: ["verdict"] },
+  { label: "Done", stages: ["done", "stopped"] },
+];
+
 export function Crt({ id, availability, session }: { id: AgentId; availability?: Availability; session: SessionView | null }) {
   const active = session?.active ?? null;
   const busy = active?.agent === id;
   const status = availability?.state === "offline" ? "offline · not signed in"
     : availability?.state !== "ready" ? "checking…"
       : busy && active ? `${active.activity}…` : "idle";
+  const badges = session?.mode === "debate" ? (session.judge === id ? ["judge"] : []) : rolesOf(id, session?.roles ?? null);
   return (
     <div className={`agent-room-crt agent-room-${id}${busy ? " is-busy" : ""}`}>
       <b>{AGENT_NAMES[id]}</b>
       <span className="agent-room-badges">
-        {rolesOf(id, session?.roles ?? null).map(role => <span key={role} className="agent-room-badge">{role}</span>)}
+        {badges.map(role => <span key={role} className="agent-room-badge">{role}</span>)}
       </span>
       <span className="agent-room-crt-status" aria-live="polite" title={availability?.detail}>{status}</span>
     </div>
   );
 }
 
-export function StageSteps({ stage, paused }: { stage: Stage; paused: boolean }) {
+export function StageSteps({ stage, paused, mode = "build" }: { stage: Stage; paused: boolean; mode?: SessionMode }) {
   return (
     <ol className="agent-room-steps" aria-label="Session stage">
-      {STEPS.map(step => {
+      {(mode === "debate" ? DEBATE_STEPS : STEPS).map(step => {
         const current = step.stages.includes(stage);
         const label = current && step.label === "Done" ? stage : step.label;
         return (
@@ -112,26 +120,75 @@ export function RolesEditor({ value, onChange }: { value: Roles; onChange: (role
   );
 }
 
-export function BriefForm({ agents, act }: { agents?: Record<AgentId, Availability>; act: Act }) {
+export function BriefForm({ agents, folders = [], act }: { agents?: Record<AgentId, Availability>; folders?: string[]; act: Act }) {
+  const [kind, setKind] = useState<SessionMode>("build");
   const [project, setProject] = useState("");
   const [task, setTask] = useState("");
   const [ownRoles, setOwnRoles] = useState(false);
   const [roles, setRoles] = useState<Roles>(DEFAULT_ROLES);
+  const [question, setQuestion] = useState("");
+  const [folder, setFolder] = useState("");
+  const [judge, setJudge] = useState<AgentId>("codex");
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
+  const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
+  const body = kind === "debate"
+    ? { mode: "debate", question, folder: chosenFolder, judge }
+    : { project, task, ...(ownRoles ? { roles } : {}) };
   return (
-    <form className="agent-room-brief" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", { project, task, ...(ownRoles ? { roles } : {}) }); }}>
-      <label>Project name
-        <input value={project} onChange={e => setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder="todo-system" />
-      </label>
-      <small>Built in D:\ascend-builds\{project || "<name>"} as its own git repository.</small>
-      <label>What should they build?
-        <textarea value={task} onChange={e => setTask(e.target.value)} maxLength={4000} required rows={4} />
-      </label>
-      <label><input type="checkbox" checked={ownRoles} onChange={e => setOwnRoles(e.target.checked)} /> Set roles myself (skip the discussion)</label>
-      {ownRoles && <RolesEditor value={roles} onChange={setRoles} />}
-      <button type="submit" disabled={missing.length > 0}>Start</button>
+    <form className="agent-room-brief" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", body); }}>
+      <div className="agent-room-kind" role="radiogroup" aria-label="Session type">
+        <label><input type="radio" name="room-kind" checked={kind === "build"} onChange={() => setKind("build")} /> Build a project</label>
+        <label><input type="radio" name="room-kind" checked={kind === "debate"} onChange={() => setKind("debate")} /> Debate a question</label>
+      </div>
+      {kind === "build" ? (
+        <>
+          <label>Project name
+            <input value={project} onChange={e => setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder="todo-system" />
+          </label>
+          <small>Built in D:\ascend-builds\{project || "<name>"} as its own git repository.</small>
+          <label>What should they build?
+            <textarea value={task} onChange={e => setTask(e.target.value)} maxLength={4000} required rows={4} />
+          </label>
+          <label><input type="checkbox" checked={ownRoles} onChange={e => setOwnRoles(e.target.checked)} /> Set roles myself (skip the discussion)</label>
+          {ownRoles && <RolesEditor value={roles} onChange={setRoles} />}
+        </>
+      ) : (
+        <>
+          <label>What should they debate?
+            <textarea value={question} onChange={e => setQuestion(e.target.value)} maxLength={4000} required rows={4} />
+          </label>
+          <label>Folder they may read
+            <select value={chosenFolder} onChange={e => setFolder(e.target.value)} required>
+              {folders.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </label>
+          <label>Judge <AgentSelect label="Judge" value={judge} options={AGENT_IDS} onChange={setJudge} /></label>
+          <small>Each agent answers alone, then critiques the others; the judge writes the combined answer. Read-only: nothing in the folder changes.</small>
+        </>
+      )}
+      <button type="submit" disabled={missing.length > 0 || (kind === "debate" && !chosenFolder)}>Start</button>
       {missing.length > 0 && <p className="agent-room-hint">Waiting for: {missing.map(id => AGENT_NAMES[id]).join(", ")}</p>}
     </form>
+  );
+}
+
+export function VerdictPanel({ session }: { session: SessionView }) {
+  if (session.mode !== "debate" || !session.answer) return null;
+  const answer = session.answer;
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([`# Debate\n\n**Question:** ${session.task}\n\n${answer}\n`], { type: "text/markdown" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `debate-${session.id}.md`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <section className="agent-room-verdict" aria-label="Verdict">
+      <h2>Verdict</h2>
+      <div className="agent-room-verdict-text">{answer}</div>
+      <button onClick={download}>Download .md</button>
+    </section>
   );
 }
 
