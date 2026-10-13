@@ -26,14 +26,14 @@ test('default settings point at the verified executables', () => {
   assert.equal(s.agents.agy.command, join('C:\\L', 'agy', 'bin', 'agy.exe'));
   assert.equal(s.buildsRoot, 'D:\\ascend-builds');
   assert.equal(defaultSettings({ ASCEND_BUILDS_ROOT: 'E:\\b' }).buildsRoot, 'E:\\b');
-  assert.deepEqual(s.timeouts, { chat: 180000, build: 900000 });
+  assert.deepEqual(s.timeouts, { chat: 180000, build: 900000, debate: 600000 });
 });
 
 test('mergeSettings overrides per agent without dropping defaults', () => {
   const merged = mergeSettings(defaultSettings({}), { agents: { codex: { model: 'x' } }, timeouts: { build: 5 } });
   assert.equal(merged.agents.codex.model, 'x');
   assert.equal(merged.agents.codex.command, process.execPath);
-  assert.deepEqual(merged.timeouts, { chat: 180000, build: 5 });
+  assert.deepEqual(merged.timeouts, { chat: 180000, build: 5, debate: 600000 });
 });
 
 test('role mode maps to each CLI permission flag', () => {
@@ -91,4 +91,11 @@ test('runTurn finishes soon after the CLI exits even if a grandchild keeps its s
   assert.equal(res.ok, true);
   assert.equal(res.timedOut, false);
   assert.ok(res.text.startsWith('ECHO:LINGER please|'));
+});
+
+test('debate defaults: the three Ascend repos and a longer read-only turn limit', () => {
+  const s = defaultSettings({});
+  assert.deepEqual(s.debateFolders, ['D:\\ascend_hub', 'D:\\ascend-core', 'D:\\ascend-vision']);
+  assert.ok(s.debateFolders.every(f => f.startsWith('D:\\ascend')), 'backslashes survive');
+  assert.equal(s.timeouts.debate, 600000);
 });

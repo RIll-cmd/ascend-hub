@@ -10,7 +10,8 @@ export function defaultSettings(env = process.env) {
   return {
     buildsRoot: env.ASCEND_BUILDS_ROOT ?? 'D:\\ascend-builds',
     maxDiscussTurns: 6,
-    timeouts: { chat: 180_000, build: 900_000 },
+    debateFolders: ['D:\\ascend_hub', 'D:\\ascend-core', 'D:\\ascend-vision'],
+    timeouts: { chat: 180_000, build: 900_000, debate: 600_000 },
     agents: {
       codex: { command: process.execPath, prefixArgs: [join(npmModules, '@openai', 'codex', 'bin', 'codex.js')], model: 'gpt-6-astra' },
       claude: { command: join(npmModules, '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'), prefixArgs: [] },

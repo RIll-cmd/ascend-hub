@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, symlinkSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { resolveProjectDir, roomDataDir } from '../../scripts/agent-room/paths.mjs';
+import { listDebateFolders, resolveDebateFolder, resolveProjectDir, roomDataDir } from '../../scripts/agent-room/paths.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from '../../scripts/agent-room/store.mjs';
 
 const root = () => mkdtempSync(join(tmpdir(), 'ascend-room-paths-'));
@@ -58,4 +58,22 @@ test('store writes JSON atomically and appends JSON lines', () => {
   appendJsonLine(lines, { n: 2 });
   assert.deepEqual(readJsonLines(lines), [{ n: 1 }, { n: 2 }]);
   assert.deepEqual(readJsonLines(join(dir, 'none.jsonl')), []);
+});
+
+test('debate folders: only the allowlist or an existing project under the builds root', () => {
+  const base = root();
+  const repo = join(base, 'repo');
+  const builds = join(base, 'builds');
+  mkdirSync(repo);
+  mkdirSync(join(builds, 'todo'), { recursive: true });
+  const settings = { debateFolders: [repo, join(base, 'missing')], buildsRoot: builds };
+  assert.equal(resolveDebateFolder(repo, settings), repo);
+  assert.equal(resolveDebateFolder(repo.toUpperCase(), settings), repo, 'Windows paths compare case-insensitively');
+  assert.equal(resolveDebateFolder(join(builds, 'todo'), settings), join(builds, 'todo'));
+  for (const bad of [base, join(repo, 'sub'), join(builds, 'nope'), builds, join(repo, '..', 'repo2'), 'C:\Windows', '', 42, undefined]) {
+    assert.throws(() => resolveDebateFolder(bad, settings), { code: 'FOLDER_NOT_ALLOWED' }, String(bad));
+  }
+  symlinkSync(repo, join(builds, 'linked'), 'junction');
+  assert.throws(() => resolveDebateFolder(join(builds, 'linked'), settings), { code: 'FOLDER_NOT_ALLOWED' });
+  assert.deepEqual(listDebateFolders(settings), [repo, join(builds, 'todo')]);
 });
