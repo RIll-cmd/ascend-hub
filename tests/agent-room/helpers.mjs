@@ -22,11 +22,11 @@ export const stageOf = prompt => /^Room stage: (\w+)/.exec(prompt)[1];
 
 // respond({ agent, mode, stage, prompt, cwd, signal }) -> { text, files?, ok?, aborted? } (may be async)
 export function fakeRunTurn(respond, calls = []) {
-  return async (invocation, { cwd, signal }) => {
+  return async (invocation, { cwd, signal, timeoutMs }) => {
     const agent = invocation.command.replace('fake-', '');
     const mode = invocation.args.some(a => ['workspace-write', 'acceptEdits', 'accept-edits'].includes(a)) ? 'edit' : 'read';
     const prompt = invocation.stdin ?? invocation.args.find(a => a.startsWith('--print=')).slice('--print='.length);
-    const call = { agent, mode, stage: stageOf(prompt), prompt };
+    const call = { agent, mode, stage: stageOf(prompt), prompt, cwd, timeoutMs };
     calls.push(call);
     const reply = await respond({ ...call, cwd, signal });
     for (const [file, content] of Object.entries(reply.files ?? {})) writeFileSync(join(cwd, file), content);

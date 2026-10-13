@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
-import { resolveProjectDir, roomError } from './paths.mjs';
+import { resolveDebateFolder, resolveProjectDir, roomError } from './paths.mjs';
 import { commitAll, createProject, headCommit, lastCommitDiff, renderPlan, rollback } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
@@ -22,7 +22,9 @@ export class RoomSession {
     this.loop = null;
   }
 
-  static create({ dataDir, settings, runTurn }, { project, task, roles } = {}) {
+  static create({ dataDir, settings, runTurn }, body = {}) {
+    if (body.mode === 'debate') return RoomSession.createDebate({ dataDir, settings, runTurn }, body);
+    const { project, task, roles } = body;
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
     let presetRoles = null;
     if (roles !== undefined && roles !== null) {
@@ -35,12 +37,28 @@ export class RoomSession {
     createProject(projectDir);
     const id = `${Date.now()}-${randomBytes(3).toString('hex')}`;
     const state = {
-      id, project, projectDir, task: task.trim(), stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
+      id, mode: 'build', project, projectDir, task: task.trim(), stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
     session.say('room', `Session started for project "${project}" in ${projectDir}.`);
+    return session;
+  }
+
+  // A debate only reads projectDir (an allowlisted repo); it never creates, commits or rolls back anything there.
+  static createDebate({ dataDir, settings, runTurn }, { question, folder, judge = 'codex' }) {
+    if (typeof question !== 'string' || !question.trim() || question.length > 4000) throw roomError('QUESTION_INVALID');
+    if (!AGENT_IDS.includes(judge)) throw roomError('JUDGE_INVALID');
+    const projectDir = resolveDebateFolder(folder, settings);
+    const id = `${Date.now()}-${randomBytes(3).toString('hex')}`;
+    const state = {
+      id, mode: 'debate', project: basename(projectDir), projectDir, task: question.trim(), stage: 'opening', roles: null, judge,
+      plan: null, debateTurns: 0, answer: null, pause: null, active: null, createdAt: new Date().toISOString(),
+    };
+    const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
+    session.save();
+    session.say('room', `Debate started in ${projectDir}. Judge: ${AGENT_NAMES[judge]}.`);
     return session;
   }
 
@@ -104,6 +122,9 @@ export class RoomSession {
       case 'plan': return this.planStep();
       case 'build': return this.buildStep();
       case 'finish': return this.finishStep();
+      case 'opening':
+      case 'critique': return this.debateStep();
+      case 'verdict': return this.verdictStep();
       default: throw roomError('STAGE_INVALID', this.state.stage);
     }
   }
@@ -121,7 +142,8 @@ export class RoomSession {
       this.setActive(agent, activity);
       this.controller = new AbortController();
       const invocation = buildInvocation(agent, mode, prompt, { cwd: this.state.projectDir, settings: this.settings, outFile: join(this.dir, 'codex-last.txt') });
-      const timeoutMs = mode === 'edit' ? this.settings.timeouts.build : this.settings.timeouts.chat;
+      const { timeouts } = this.settings;
+      const timeoutMs = mode === 'edit' ? timeouts.build : this.state.mode === 'debate' ? timeouts.debate : timeouts.chat;
       const result = await this.runTurn(invocation, { cwd: this.state.projectDir, timeoutMs, signal: this.controller.signal });
       this.controller = null;
       if (this.state.stage === 'stopped' || result.aborted) return null;
@@ -279,6 +301,32 @@ export class RoomSession {
     this.say('room', 'Work finished. Waiting for the owner to accept or reject.');
   }
 
+  async debateStep() {
+    const state = this.state;
+    const agent = AGENT_IDS[state.debateTurns % AGENT_IDS.length];
+    // Openings must be independent, so they never see the conversation.
+    const transcript = state.stage === 'opening' ? [] : this.transcript.filter(m => m.from !== 'room');
+    const prompt = buildPrompt({ stage: state.stage, agent, roles: null, task: state.task, transcript });
+    const text = await this.turn(agent, 'read', prompt, state.stage === 'opening' ? 'answering' : 'critiquing');
+    if (text === null) return;
+    state.debateTurns += 1;
+    if (state.debateTurns === AGENT_IDS.length) state.stage = 'critique';
+    if (state.debateTurns === AGENT_IDS.length * 2) state.stage = 'verdict';
+    this.save();
+  }
+
+  async verdictStep() {
+    const state = this.state;
+    const transcript = this.transcript.filter(m => m.from !== 'room');
+    const text = await this.turn(state.judge, 'read', buildPrompt({ stage: 'verdict', agent: state.judge, roles: null, task: state.task, transcript }), 'judging');
+    if (text === null) return;
+    writeFileSync(join(this.dir, 'answer.md'), `${text}\n`, 'utf8');
+    state.answer = text;
+    state.stage = 'done';
+    this.save();
+    this.say('room', 'Verdict saved.');
+  }
+
   gate({ gate, decision, roles, plan } = {}) {
     const state = this.state;
     if (GATES[state.stage] !== gate || state.pause) throw roomError('GATE_NOT_OPEN');
@@ -337,6 +385,8 @@ export class RoomSession {
     this.say('room', 'Owner stopped the session.');
     this.save();
     await this.loop;
+    // A debate folder is the owner's own repo: never reset or clean it.
+    if (this.state.mode === 'debate') return;
     // Committed work stays; anything half-written by the killed turn goes.
     rollback(this.state.projectDir);
   }
