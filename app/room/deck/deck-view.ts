@@ -44,6 +44,31 @@ export function deckView(session: SessionView | null, status: RoomStatus | null)
   return { sessionId: session?.id ?? null, mode, status: statusText(session), agents, delegation };
 }
 
+const BUILD_STEPS: { label: string; stages: string[] }[] = [
+  { label: "Discuss", stages: ["discuss", "roles"] },
+  { label: "Roles", stages: ["gate-roles"] },
+  { label: "Plan", stages: ["plan", "gate-plan"] },
+  { label: "Build", stages: ["build"] },
+  { label: "Finish", stages: ["finish", "gate-result"] },
+  { label: "Done", stages: ["done", "rejected", "stopped"] },
+];
+const DEBATE_STEPS: { label: string; stages: string[] }[] = [
+  { label: "Opening", stages: ["opening"] },
+  { label: "Critique", stages: ["critique"] },
+  { label: "Verdict", stages: ["verdict"] },
+  { label: "Done", stages: ["done", "stopped"] },
+];
+
+// The progress track: steps before the current one are done; the final step shows the actual end state.
+export function stepStates(stage: string, mode: "build" | "debate" = "build"): { label: string; state: "done" | "current" | "todo" }[] {
+  const steps = mode === "debate" ? DEBATE_STEPS : BUILD_STEPS;
+  const current = steps.findIndex(step => step.stages.includes(stage));
+  return steps.map((step, i) => ({
+    label: i === current && step.label === "Done" ? stage : step.label,
+    state: i < current ? "done" : i === current ? "current" : "todo",
+  }));
+}
+
 // Left-to-right order of the desks as seen from the camera.
 const SEAT_X: Record<AgentId, number> = { codex: -1, claude: 0, agy: 1 };
 

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { messageLine, type DeckAgent, type DeckView } from "./deck/deck-view";
+import { messageLine, plateText, type DeckAgent, type DeckView } from "./deck/deck-view";
 import { StageSteps, Transcript, type Act } from "./room-parts";
 import { AGENT_IDS, AGENT_NAMES, type AgentId, type Message, type SessionView } from "./room-types";
 
@@ -19,8 +19,26 @@ export function TopBar({ session, view, running, act }: { session: SessionView |
   );
 }
 
-export function Inspector({ agent, session }: { agent: DeckAgent | null; session: SessionView }) {
-  if (!agent) return <section className="agent-room-inspector"><p>Select an agent to inspect its work.</p></section>;
+export function Inspector({ agent, view, session, pinned, onSelect }: {
+  agent: DeckAgent | null; view: DeckView; session: SessionView | null; pinned: boolean; onSelect: (id: AgentId) => void;
+}) {
+  if (!agent) {
+    return (
+      <section className="agent-room-inspector agent-room-cards" aria-label="Agents">
+        <h3>Agents</h3>
+        {view.agents.map(a => {
+          const latest = a.latest ? messageLine(a.latest) : null;
+          return (
+            <button key={a.id} type="button" className="agent-room-card" style={{ borderLeftColor: a.color }} onClick={() => onSelect(a.id)}>
+              <span><b style={{ color: a.color }}>{a.name}</b> {a.roles.map(role => <span key={role} className="agent-room-badge">{role}</span>)}</span>
+              <small>{plateText(a)}</small>
+              {latest && <small className="agent-room-card-line">{latest.to ? `→ ${latest.to}: ` : ""}{latest.text}</small>}
+            </button>
+          );
+        })}
+      </section>
+    );
+  }
   const latest = agent.latest ? messageLine(agent.latest) : null;
   return (
     <section className="agent-room-inspector" aria-label={`${agent.name} details`} style={{ borderColor: agent.color }}>
@@ -43,7 +61,8 @@ export function Inspector({ agent, session }: { agent: DeckAgent | null; session
           {latest.to && <p className="agent-room-sent">Sent to {latest.to}</p>}
         </>
       )}
-      {session.mode !== "debate" && session.roles?.reviewer === agent.id && <p className="agent-room-hint">Reviews every task.</p>}
+      {session && session.mode !== "debate" && session.roles?.reviewer === agent.id && <p className="agent-room-hint">Reviews every task.</p>}
+      {pinned && <button type="button" className="agent-room-link" onClick={() => onSelect(agent.id)}>Show all agents</button>}
     </section>
   );
 }

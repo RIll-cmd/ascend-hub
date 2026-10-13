@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { debateRounds, deckView, freshPulses, latestSeq, lookTargets, messageLine, miniSlots, nearBottom, plateText } from "../../app/room/deck/deck-view";
+import { debateRounds, deckView, freshPulses, latestSeq, lookTargets, messageLine, miniSlots, nearBottom, plateText, stepStates } from "../../app/room/deck/deck-view";
 import type { Message, RoomStatus, SessionView } from "../../app/room/room-types";
 
 const ready: RoomStatus = { online: true, agents: { codex: { state: "ready" }, claude: { state: "ready" }, agy: { state: "offline", detail: "x" } } };
@@ -124,4 +124,12 @@ test("lookTargets: everyone looks at the working agent, who looks at you", () =>
   const codexBusy = deckView(session({ active: { agent: "codex", activity: "planning", since: "x" } }), ready);
   assert.deepEqual(lookTargets(codexBusy), { codex: 0, claude: -1, agy: -1 });
   assert.deepEqual(lookTargets(deckView(session({ active: null }), ready)), { codex: 0, claude: 0, agy: 0 });
+});
+
+test("stepStates: earlier steps are done, the current one is marked, later ones wait", () => {
+  assert.deepEqual(stepStates("build", "build").map(s => `${s.label}:${s.state}`),
+    ["Discuss:done", "Roles:done", "Plan:done", "Build:current", "Finish:todo", "Done:todo"]);
+  assert.deepEqual(stepStates("critique", "debate").map(s => `${s.label}:${s.state}`),
+    ["Opening:done", "Critique:current", "Verdict:todo", "Done:todo"]);
+  assert.deepEqual(stepStates("stopped", "build").at(-1), { label: "stopped", state: "current" });
 });

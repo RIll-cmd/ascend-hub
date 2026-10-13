@@ -4,41 +4,21 @@ import {
   AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES,
   type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
 } from "./room-types";
-import { messageLine, nearBottom } from "./deck/deck-view";
+import { messageLine, nearBottom, stepStates } from "./deck/deck-view";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
 
 const GATE = "/api/room/sessions/current/gate";
 const RESUME = "/api/room/sessions/current/resume";
 
-const STEPS: { label: string; stages: Stage[] }[] = [
-  { label: "Discuss", stages: ["discuss", "roles"] },
-  { label: "Roles", stages: ["gate-roles"] },
-  { label: "Plan", stages: ["plan", "gate-plan"] },
-  { label: "Build", stages: ["build"] },
-  { label: "Finish", stages: ["finish", "gate-result"] },
-  { label: "Done", stages: ["done", "rejected", "stopped"] },
-];
-
-const DEBATE_STEPS: { label: string; stages: Stage[] }[] = [
-  { label: "Opening", stages: ["opening"] },
-  { label: "Critique", stages: ["critique"] },
-  { label: "Verdict", stages: ["verdict"] },
-  { label: "Done", stages: ["done", "stopped"] },
-];
-
 export function StageSteps({ stage, paused, mode = "build" }: { stage: Stage; paused: boolean; mode?: SessionMode }) {
   return (
     <ol className="agent-room-steps" aria-label="Session stage">
-      {(mode === "debate" ? DEBATE_STEPS : STEPS).map(step => {
-        const current = step.stages.includes(stage);
-        const label = current && step.label === "Done" ? stage : step.label;
-        return (
-          <li key={step.label} className={current ? "is-current" : undefined} aria-current={current ? "step" : undefined}>
-            {label}{current && paused ? " · paused" : ""}
-          </li>
-        );
-      })}
+      {stepStates(stage, mode).map(step => (
+        <li key={step.label} className={`is-${step.state}`} aria-current={step.state === "current" ? "step" : undefined}>
+          {step.label}{step.state === "current" && paused ? " · paused" : ""}
+        </li>
+      ))}
     </ol>
   );
 }
@@ -139,7 +119,7 @@ export function BriefForm({ agents, folders = [], act }: { agents?: Record<Agent
           <label>What should they build?
             <textarea value={task} onChange={e => setTask(e.target.value)} maxLength={4000} required rows={4} />
           </label>
-          <label><input type="checkbox" checked={ownRoles} onChange={e => setOwnRoles(e.target.checked)} /> Set roles myself (skip the discussion)</label>
+          <label className="agent-room-check"><input type="checkbox" checked={ownRoles} onChange={e => setOwnRoles(e.target.checked)} /> Set roles myself (skip the discussion)</label>
           {ownRoles && <RolesEditor value={roles} onChange={setRoles} />}
         </>
       ) : (
@@ -158,7 +138,7 @@ export function BriefForm({ agents, folders = [], act }: { agents?: Record<Agent
       )}
       <fieldset className="agent-room-subagents">
         <legend>Sub-agents</legend>
-        <label><input type="checkbox" checked={claudeSubagents} onChange={e => setClaudeSubagents(e.target.checked)} /> Claude may use sub-agents</label>
+        <label className="agent-room-check"><input type="checkbox" checked={claudeSubagents} onChange={e => setClaudeSubagents(e.target.checked)} /> Claude may use sub-agents</label>
         <small>Codex: always on (it cannot be switched off). Antigravity: not supported yet.</small>
       </fieldset>
       <button type="submit" disabled={missing.length > 0 || (kind === "debate" && !chosenFolder)}>Start</button>

@@ -4,7 +4,7 @@ import { DebateView } from "./debate-view";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse } from "./deck/deck-view";
 import { Inspector, Ticker, TopBar, TranscriptDrawer } from "./room-frame";
-import { BriefForm, GateBar, TaskBoard, VerdictPanel } from "./room-parts";
+import { BriefForm, GateBar, TaskBoard, Transcript, VerdictPanel } from "./room-parts";
 import { BOARD_STAGES, TERMINAL_STAGES, type AgentId, type RoomStatus, type SessionView } from "./room-types";
 
 function useRoom() {
@@ -99,9 +99,10 @@ export default function RoomPage() {
               ? <DebateView session={session} />
               : <DeckCanvas view={view} pulses={pulses} selected={selected} onSelect={setSelected} />}
             <Ticker messages={messages} onOpen={() => setDrawer(true)} />
+            {session && <Transcript messages={messages.slice(-80)} />}
           </section>
           <aside className="agent-room-side">
-            {session && <Inspector agent={focus} session={session} />}
+            <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} />
             {session && <GateBar session={session} act={act} />}
             {session && <VerdictPanel session={session} />}
             {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}

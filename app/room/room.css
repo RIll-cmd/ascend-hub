@@ -113,3 +113,28 @@
 .agent-room-judge { display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--room-ink); padding-top: 8px; font-size: 12px; }
 .agent-room-live { margin-left: auto; }
 @media (max-width: 900px) { .agent-room-debate-cards { grid-template-columns: 1fr; } }
+
+/* Progress track: done steps filled, current highlighted, future dimmed, joined by a line */
+.agent-room-bar .agent-room-steps { gap: 0; align-items: center; }
+.agent-room-bar .agent-room-steps li { position: relative; border: 0; border-radius: 999px; padding: 3px 10px; font-size: 11px; color: #a8957a; }
+.agent-room-bar .agent-room-steps li + li::before { content: ""; position: absolute; left: -10px; top: 50%; width: 12px; height: 2px; background: #6b5a48; }
+.agent-room-bar .agent-room-steps li.is-done { color: var(--room-ink); background: #c9b79a; }
+.agent-room-bar .agent-room-steps li.is-done + li::before { background: #c9b79a; }
+.agent-room-bar .agent-room-steps li.is-current { color: var(--room-ink); background: var(--room-accent); font-weight: bold; }
+.agent-room-bar .agent-room-steps li + li { margin-left: 12px; }
+
+/* Inline transcript under the deck */
+.agent-room-stage > .agent-room-log { max-height: 260px; }
+
+/* Inspector agent cards */
+.agent-room-cards { display: flex; flex-direction: column; gap: 6px; }
+.agent-room-cards h3 { margin: 0 0 2px; }
+.agent-room .agent-room-card { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; background: #fffdf6;
+  border: 1px solid var(--room-ink); border-left: 6px solid; border-radius: 4px; padding: 6px 8px; color: var(--room-ink); }
+.agent-room .agent-room-card:hover { background: #fff3d6; }
+.agent-room-card-line { color: #6b5a48; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-room .agent-room-link { background: none; border: 0; padding: 0; margin-top: 8px; text-decoration: underline; color: #6b5a48; }
+
+/* Form: checkbox labels on one line */
+.agent-room-brief label.agent-room-check { flex-direction: row; align-items: center; gap: 6px; }
+.agent-room-subagents legend { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #6b5a48; }
