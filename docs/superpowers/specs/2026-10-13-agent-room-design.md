@@ -168,6 +168,22 @@ The permissions come from the CLI flags in the "Verified CLI facts" table, which
 - **Manual live check:** one small real session ("make a hello-world Node CLI") with all three agents, recording the outcome.
 - The existing checks still pass: `npx --no-install tsc --noEmit`, lint on the new files, `npm run test:status`, and `git diff --check`.
 
+## Debate mode (added 2026-10-13)
+
+Approved in chat as a bounded change; there is no separate spec.
+
+- **Start:** the start form switches between *Build a project* and *Debate a question*. A debate takes the question (at most 4,000 characters), a folder, and a judge (Codex by default).
+- **Folder:** the folder must be one of `settings.debateFolders` (default `D:\ascend_hub`, `D:\ascend-core`, `D:\ascend-vision`) or an existing project directly under the builds root. Links are refused. `GET /status` lists the allowed folders.
+- **Flow:** seven turns, all in read mode with the folder as the working directory, and no gates.
+  1. **Opening:** Codex, Claude, then Antigravity each answer without seeing the conversation.
+  2. **Critique:** each agent critiques the others, seeing the openings and any earlier critiques.
+  3. **Verdict:** the judge writes Markdown with *Where they agree*, *Where they disagree* and *Recommendation*.
+
+  The verdict is saved to `<session>/answer.md` and `state.answer`, and the stage becomes `done`.
+- **Turn limit:** `timeouts.debate`, 600,000 ms by default.
+- **Never touches the folder:** a debate never creates, commits, rolls back or cleans anything in the folder. `stop()` skips its rollback for debates.
+- **Page:** shows Opening, Critique, Verdict and Done, a *judge* badge on the judge's CRT, and a verdict panel with *Download .md*.
+
 ## Out of scope for this spec
 
-Debate mode (Phase 3). The owner speaking mid-session. Parallel task execution. Building inside existing Ascend repositories. Ambient or self-started chats. Desktop launcher integration (the room starts with `npm run dev`). Running the room under `npm start` (Wrangler). Status-shelf reporting of room sessions.
+The owner speaking mid-session. Parallel task execution. Building inside existing Ascend repositories. Ambient or self-started chats. Desktop launcher integration (the room starts with `npm run dev`). Running the room under `npm start` (Wrangler). Status-shelf reporting of room sessions.
