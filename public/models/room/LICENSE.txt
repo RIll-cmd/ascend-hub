@@ -1,0 +1,9 @@
+Room props for the Agent Room command deck.
+
+Source: Furniture Kit 2.0 by Kenney (www.kenney.nl)
+Download: https://kenney.nl/assets/furniture-kit
+Files used: bookcaseOpen.glb, books.glb, lampRoundFloor.glb, pottedPlant.glb, radio.glb (unmodified)
+
+License: Creative Commons Zero (CC0)
+http://creativecommons.org/publicdomain/zero/1.0/
+Free to use in personal, educational and commercial projects. Credit is appreciated, not required.
