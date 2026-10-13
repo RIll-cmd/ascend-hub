@@ -79,10 +79,9 @@ export function paintScreen(ctx: Ctx2D, w: number, h: number, s: ScreenState): v
   ctx.font = `bold ${Math.round(h / 10)}px monospace`;
   ctx.textAlign = "left";
   ctx.fillText(s.name.toUpperCase(), w * 0.06, h * 0.14);
-  ctx.textAlign = "right";
   ctx.fillStyle = "#c9b79a";
-  ctx.font = `${Math.round(h / 13)}px monospace`;
-  ctx.fillText(s.roles.join(" · "), w * 0.94, h * 0.14);
+  ctx.font = `${Math.round(h / 14)}px monospace`;
+  ctx.fillText(s.roles.join(" · "), w * 0.06, h * 0.23);
   ctx.textAlign = "center";
   ctx.fillStyle = "#9fe8b0";
   ctx.font = `${Math.round(h / 10)}px monospace`;

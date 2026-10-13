@@ -2,8 +2,9 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { AGENT_IDS, type AgentId } from "../room-types";
 import { buildCrt, SCREEN_Y, type Crt } from "./crt";
-import { AGENT_COLORS, miniSlots, type DeckPulse, type DeckView } from "./deck-view";
+import { AGENT_COLORS, lookTargets, miniSlots, type DeckPulse, type DeckView } from "./deck-view";
 import { arcPoints, easeInOut, pulseProgress, type Vec3 } from "./pulses";
+import { buildRoom } from "./room";
 
 export type PlatePosition = { id: AgentId; x: number; y: number; visible: boolean };
 export type Deck = {
@@ -15,7 +16,8 @@ export type Deck = {
 };
 type Prop = { file: string; position: Vec3; rotationY?: number; scale?: number };
 
-const SEATS: Record<AgentId, Vec3> = { codex: [-2.3, 0, 0.5], claude: [0, 0, -1.3], agy: [2.3, 0, 0.5] };
+// Desks in an arc around the centre table (0, 0, 0.9).
+const SEATS: Record<AgentId, Vec3> = { codex: [-2.1, 0, 0.25], claude: [0, 0, -1.05], agy: [2.1, 0, 0.25] };
 const MAX_PULSES = 8;
 const TILT = (3 * Math.PI) / 180;
 
@@ -25,34 +27,16 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#1a120c");
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  const target = new THREE.Vector3(0, 0.7, 0);
-  const baseSpherical = new THREE.Spherical().setFromVector3(new THREE.Vector3(5.5, 6.2, 8.2).sub(target));
+  const target = new THREE.Vector3(0, 0.9, -0.5);
+  const baseSpherical = new THREE.Spherical().setFromVector3(new THREE.Vector3(1.1, 4.3, 7.2).sub(target));
   const disposables: { dispose(): void }[] = [];
   const keep = <T extends { dispose(): void }>(item: T) => { disposables.push(item); return item; };
-  const plane = (w: number, h: number, color: string) =>
-    new THREE.Mesh(keep(new THREE.PlaneGeometry(w, h)), keep(new THREE.MeshStandardMaterial({ color, roughness: 0.9 })));
-
-  // Room
-  const floor = plane(10, 8, "#6b4a32");
-  floor.rotation.x = -Math.PI / 2;
-  const back = plane(10, 4, "#e9d7b5");
-  back.position.set(0, 2, -3.5);
-  const left = plane(8, 4, "#dcc7a1");
-  left.rotation.y = Math.PI / 2;
-  left.position.set(-5, 2, 0.5);
-  const rug = new THREE.Mesh(keep(new THREE.CircleGeometry(2.3, 48)), keep(new THREE.MeshStandardMaterial({ color: "#8a3b2e", roughness: 1 })));
-  rug.rotation.x = -Math.PI / 2;
-  rug.position.y = 0.01;
-  scene.add(floor, back, left, rug);
-  scene.add(new THREE.AmbientLight("#fff1dc", 0.85));
-  const sun = new THREE.DirectionalLight("#ffffff", 1.3);
-  sun.position.set(-4, 8, 6);
-  const lamp = new THREE.PointLight("#ffb46a", 1.2, 9);
-  lamp.position.set(-3.5, 2.6, -2.5);
-  scene.add(sun, lamp);
+  buildRoom(scene, keep);
 
   // Agents
   const crts = {} as Record<AgentId, Crt>;
@@ -60,7 +44,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   for (const id of AGENT_IDS) {
     const crt = buildCrt(AGENT_COLORS[id]);
     crt.group.position.set(...SEATS[id]);
-    crt.group.lookAt(0, 0, 6);
+    crt.group.lookAt(0, 0, 3.2);
     crt.group.traverse(object => { object.userData.agentId = id; });
     scene.add(crt.group);
     crts[id] = crt;
@@ -93,6 +77,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   let frameCb: ((plates: PlatePosition[]) => void) | null = null;
   let yaw = 0, pitch = 0, targetYaw = 0, targetPitch = 0;
   let disposed = false;
+  const nextBlink = Object.fromEntries(AGENT_IDS.map(id => [id, performance.now() + 1500 + Math.random() * 4000])) as Record<AgentId, number>;
 
   const miniSpot = (agent: AgentId, index: number): Vec3 => add3(SEATS[agent], [1.15, 0, 0.6 - index * 0.5]);
   const screenPoint = (agent: AgentId): Vec3 => add3(SEATS[agent], [0, SCREEN_Y, 0]);
@@ -200,7 +185,11 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     spherical.phi = Math.min(Math.PI / 2.2, Math.max(0.3, spherical.phi + pitch));
     camera.position.setFromSpherical(spherical).add(target);
     camera.lookAt(target);
+    const looks = view ? lookTargets(view) : null;
     for (const agent of view?.agents ?? []) {
+      if (now > nextBlink[agent.id] + 140) nextBlink[agent.id] = now + 2500 + Math.random() * 3500;
+      const blink = now > nextBlink[agent.id] && agent.state !== "offline";
+      crts[agent.id].setScreen({ name: agent.name, color: agent.color, state: agent.state, activity: agent.activity, roles: agent.roles, look: looks?.[agent.id] ?? 0, blink });
       crts[agent.id].setGlow(agent.state === "busy" ? 0.55 + 0.45 * Math.sin(now / 320) : 0);
       rings[agent.id].visible = agent.waiting;
       rings[agent.id].rotation.z = now / 1500;
@@ -228,7 +217,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     if (frameCb) {
       const { clientWidth: w, clientHeight: h } = canvas;
       frameCb(AGENT_IDS.map(id => {
-        projected.set(...add3(SEATS[id], [0, 2.05, 0])).project(camera);
+        projected.set(...add3(SEATS[id], [0, 1.82, 0])).project(camera);
         return { id, x: ((projected.x + 1) / 2) * w, y: ((1 - projected.y) / 2) * h, visible: projected.z < 1 };
       }));
     }
@@ -283,9 +272,6 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
           retired.clear();
         }
         view = next;
-        for (const agent of next.agents) {
-          crts[agent.id].setScreen({ name: agent.name, color: agent.color, state: agent.state, activity: agent.activity, roles: agent.roles });
-        }
         syncMinis(next);
         syncDelegation(next);
         for (const pulse of fresh) {
