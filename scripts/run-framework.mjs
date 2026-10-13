@@ -18,7 +18,7 @@ if (managedLinux && command === "build") {
 }
 
 // The agent room is its own long-lived process: Hub's routes run in workerd, which cannot spawn it.
-// shortcut: always spawns; a second copy exits on EADDRINUSE (see room.log). Add a port check if that noise matters.
+// shortcut: always spawns; a second copy binds first and exits on EADDRINUSE before touching anything (see room.log).
 function startAgentRoom() {
   const root = fileURLToPath(new URL("../", import.meta.url));
   ensureRoomToken(join(root, ".env.local"));

@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
+import { once } from 'node:events';
 import { existsSync, readFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { join } from 'node:path';
 import test from 'node:test';
 import { startRoomServer } from '../../scripts/agent-room/server.mjs';
+import { RoomSession } from '../../scripts/agent-room/session.mjs';
 import { fakeRunTurn, json, tempRoom, testSettings } from './helpers.mjs';
 
 const ROLES = { orchestrator: 'codex', coders: ['claude'], reviewer: null };
@@ -35,6 +38,24 @@ test('uses a supplied token so Hub can share it through .env.local', async () =>
   const res = await fetch(`http://127.0.0.1:${room.port}/status`, { headers: { authorization: 'Bearer shared-secret' } });
   assert.equal(res.status, 200);
   await room.close();
+});
+
+test('a second room on a taken port touches nothing before failing', async () => {
+  const { dataDir, buildsRoot } = tempRoom();
+  const settings = testSettings(buildsRoot);
+  RoomSession.create({ dataDir, settings, runTurn: async () => { throw new Error('unused'); } }, { project: 'live', task: 't' });
+  const blocker = createServer().listen(0, '127.0.0.1');
+  await once(blocker, 'listening');
+  const calls = [];
+  const probes = [];
+  await assert.rejects(startRoomServer({
+    dataDir, settings, runTurn: fakeRunTurn(() => ({ text: 'x' }), calls),
+    probe: async id => { probes.push(id); return { state: 'ready' }; }, port: blocker.address().port,
+  }), { code: 'EADDRINUSE' });
+  await new Promise(resolve => setTimeout(resolve, 50));
+  assert.deepEqual(calls, []);
+  assert.deepEqual(probes, []);
+  blocker.close();
 });
 
 test('status reports agent availability and refuses to start until all are ready', async () => {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -42,4 +42,19 @@ test('rollback discards uncommitted edits and new files only', () => {
 test('renders the plan as Markdown', () => {
   assert.equal(renderPlan([{ id: 1, title: 'Scaffold', assignee: 'claude', description: 'Line one\nLine two' }]),
     '# Plan\n\n1. **Scaffold** (claude)\n   Line one\n   Line two\n');
+});
+
+test('room commits ignore project hooks and signing config the agents could set', () => {
+  const dir = join(mkdtempSync(join(tmpdir(), 'ascend-room-project-')), 'p');
+  createProject(dir);
+  mkdirSync(join(dir, 'hooks'));
+  for (const hook of ['pre-commit', 'post-commit']) {
+    writeFileSync(join(dir, 'hooks', hook), `#!/bin/sh\necho ran > "${hook}.marker"\nexit 1\n`, { mode: 0o755 });
+  }
+  spawnSync('git', ['config', 'core.hooksPath', 'hooks'], { cwd: dir });
+  spawnSync('git', ['config', 'commit.gpgsign', 'true'], { cwd: dir });
+  writeFileSync(join(dir, 'a.txt'), 'x');
+  assert.match(commitAll(dir, 'task-1: a'), /^[0-9a-f]{7,}$/);
+  assert.equal(existsSync(join(dir, 'pre-commit.marker')), false);
+  assert.equal(existsSync(join(dir, 'post-commit.marker')), false);
 });

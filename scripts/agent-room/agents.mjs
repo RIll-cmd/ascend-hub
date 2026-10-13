@@ -92,6 +92,14 @@ export function runTurn(invocation, { cwd, timeoutMs, signal } = {}) {
     };
     child.on('error', error => finish(null, error));
     child.on('close', code => finish(code, null));
+    // 'close' waits for every holder of the pipes; a server the agent left running would hold them forever.
+    child.on('exit', code => {
+      setTimeout(() => {
+        child.stdout.destroy();
+        child.stderr.destroy();
+        finish(code, null);
+      }, 1000).unref();
+    });
     child.stdin.on('error', () => {});
     child.stdin.end(invocation.stdin ?? '');
   });

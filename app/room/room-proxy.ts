@@ -29,7 +29,7 @@ export async function readCommand(request: Request): Promise<{ body: Record<stri
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) return { error: Response.json({ error: "ORIGIN_MISMATCH" }, { status: 403 }) };
   const text = await request.text();
-  if (text.length > 16_384) return { error: Response.json({ error: "BODY_TOO_LARGE" }, { status: 413 }) };
+  if (text.length > 65_536) return { error: Response.json({ error: "BODY_TOO_LARGE" }, { status: 413 }) };
   if (!text) return { body: {} };
   try {
     const body = JSON.parse(text);

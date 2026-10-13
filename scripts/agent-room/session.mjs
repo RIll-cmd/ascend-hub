@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { resolveProjectDir, roomError } from './paths.mjs';
-import { commitAll, createProject, lastCommitDiff, renderPlan, rollback } from './project.mjs';
+import { commitAll, createProject, headCommit, lastCommitDiff, renderPlan, rollback } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
@@ -206,10 +206,12 @@ export class RoomSession {
       rollback(state.projectDir);
       task.status = 'running';
       this.save();
+      const before = headCommit(state.projectDir);
       const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task }), 'editing');
       if (text === null) return;
       const message = `task-${task.id}: ${task.title}`;
-      const hash = commitAll(state.projectDir, message);
+      // Codex and agy can run git commit themselves; their commits count as the task's changes.
+      const hash = commitAll(state.projectDir, message) ?? (headCommit(state.projectDir) !== before ? headCommit(state.projectDir) : null);
       if (!hash) return this.taskFailed(task, 'no changes were made');
       task.commit = hash;
       this.say('room', `Committed ${hash} "${message}".`);

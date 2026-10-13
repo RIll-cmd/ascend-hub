@@ -45,7 +45,10 @@ test("readCommand enforces same origin, size and object shape", async () => {
   assert.deepEqual(await readCommand(req("")), { body: {} });
   const cross = await readCommand(req("{}", "http://evil.test"));
   assert.ok("error" in cross && cross.error.status === 403);
-  const big = await readCommand(req(JSON.stringify({ t: "x".repeat(17_000) })));
+  // A full plan (20 tasks x 2,000-char descriptions) must fit; the room itself caps at 64 KB.
+  const plan = await readCommand(req(JSON.stringify({ t: "x".repeat(45_000) })));
+  assert.ok("body" in plan);
+  const big = await readCommand(req(JSON.stringify({ t: "x".repeat(70_000) })));
   assert.ok("error" in big && big.error.status === 413);
   const arr = await readCommand(req("[1]"));
   assert.ok("error" in arr && arr.error.status === 400);

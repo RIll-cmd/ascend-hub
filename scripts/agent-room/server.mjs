@@ -71,10 +71,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       probeOne(id).then(result => { agents[id] = result; }, error => { agents[id] = { state: 'offline', detail: error.message }; });
     }
   };
-  refreshProbes();
-
-  let session = restoreSession(dataDir, settings, runTurn);
-  session?.kick();
+  let session = null;
   const busy = () => Boolean(session && !TERMINAL.has(session.state.stage));
   let lastRequest = Date.now();
 
@@ -118,6 +115,10 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     server.once('error', reject);
     server.listen(port, '127.0.0.1', resolveListen);
   });
+  // Only the process that owns the port may probe, restore or touch a project: a duplicate must fail first.
+  refreshProbes();
+  session = restoreSession(dataDir, settings, runTurn);
+  session?.kick();
   const actualPort = server.address().port;
   const infoFile = join(dataDir, 'server.json');
   writeJsonAtomic(infoFile, { port: actualPort, token, pid: process.pid });

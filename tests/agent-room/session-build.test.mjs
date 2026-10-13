@@ -136,3 +136,22 @@ test('owner reassign while paused in build changes the assignee and resumes', as
   assert.equal(calls.filter(c => c.stage === 'build').at(-1).agent, 'agy');
   assert.equal(session.state.stage, 'gate-result');
 });
+
+test('a coder that commits by itself still completes its task', async () => {
+  const { session, dir } = await toBuild(({ stage, cwd }) => {
+    if (stage === 'plan') return { text: json({ tasks: [PLAN.tasks[0]] }) };
+    if (stage === 'build') {
+      writeFileSync(join(cwd, 'own.txt'), 'x');
+      spawnSync('git', ['-c', 'user.name=a', '-c', 'user.email=a@b', 'add', '-A'], { cwd });
+      spawnSync('git', ['-c', 'user.name=a', '-c', 'user.email=a@b', 'commit', '-q', '-m', 'agent commit'], { cwd });
+      return { text: 'done' };
+    }
+    if (stage === 'finish') return { text: 'summary' };
+    throw new Error(stage);
+  }, { orchestrator: 'codex', coders: ['claude'], reviewer: null });
+  await session.gate({ gate: 'plan', decision: 'approve' });
+  const head = spawnSync('git', ['rev-parse', '--short', 'HEAD~1'], { cwd: dir, encoding: 'utf8' }).stdout.trim();
+  assert.equal(session.state.plan.tasks[0].status, 'done');
+  assert.equal(session.state.plan.tasks[0].commit, head);
+  assert.equal(session.state.plan.tasks[0].attempts, 0);
+});

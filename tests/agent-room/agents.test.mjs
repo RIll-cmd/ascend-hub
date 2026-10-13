@@ -83,3 +83,12 @@ test('runTurn reports failure, empty output, timeout and abort', async () => {
   const missing = await runTurn({ command: join(cwd, 'nope.exe'), args: [], stdin: null, outFile: null }, { cwd, timeoutMs: 5_000 });
   assert.equal(missing.ok, false); assert.match(missing.error, /ENOENT/);
 });
+
+test('runTurn finishes soon after the CLI exits even if a grandchild keeps its stdout open', async () => {
+  const started = Date.now();
+  const res = await runTurn(buildInvocation('claude', 'read', 'LINGER please', { cwd, settings: fakeSettings, outFile }), { cwd, timeoutMs: 20_000 });
+  assert.ok(Date.now() - started < 4000, `took ${Date.now() - started} ms`);
+  assert.equal(res.ok, true);
+  assert.equal(res.timedOut, false);
+  assert.ok(res.text.startsWith('ECHO:LINGER please|'));
+});
