@@ -45,10 +45,10 @@ Hub page /room ──poll──▶ Hub API app/api/room/* ──HTTP 127.0.0.1 +
 A plain Node ESM process, the same style as `scripts/status-adapters/worker.mjs`.
 
 - Listens on `127.0.0.1` only, on a fixed port (default `5181`, overridable by `ASCEND_ROOM_PORT`).
-- On startup it writes `.sites-runtime/agent-room/server.json` with `{ port, token, pid }`. The token is 32 random bytes in hex, regenerated each start. The file is written with the same private-permission approach `lib/spotify.ts` uses for its token file.
+- The shared token is `ASCEND_ROOM_TOKEN` in Hub's git-ignored `.env.local`. It is appended there (32 random bytes in hex) the first time it is needed. Hub's route handlers run in workerd, which has no `child_process` and no real disk, so `.env.local` (exposed as `process.env`) is the only channel they share with the room. On startup the room also writes `.sites-runtime/agent-room/server.json` with `{ port, token, pid }` for local diagnostics.
 - Every request must carry `Authorization: Bearer <token>`; anything else gets `401`.
 - Runs at most **one session at a time**. Starting a second one while one is active returns `409`.
-- Survives Hub restarts. Started on demand (see Hub API) as a detached process; it stays up until stopped or until it has been idle with no active session for 30 minutes.
+- Survives Hub restarts. `npm run dev` (`scripts/run-framework.mjs`) starts it as a detached process, logging to `.sites-runtime/agent-room/room.log`. It can also be started alone with `node scripts/agent-room/server.mjs`. It stays up until stopped or until it has been idle with no active session for 30 minutes.
 
 Modules (one job each):
 
@@ -64,12 +64,11 @@ Modules (one job each):
 
 ### Hub API — `app/api/room/`
 
-Server-side routes that read `server.json` and forward to the room process. The token never reaches the browser.
+Server-side routes that read `ASCEND_ROOM_TOKEN` (and optional `ASCEND_ROOM_PORT`) from `process.env` and forward to the room process. The token never reaches the browser.
 
 | Route | Purpose |
 | --- | --- |
 | `GET /api/room` | Room status (`online`/`offline`), agent availability, current session summary |
-| `POST /api/room/start-server` | Spawns `node scripts/agent-room/server.mjs` detached if it is not running |
 | `POST /api/room/sessions` | Start a session: `{ project, task, roles? }` |
 | `GET /api/room/sessions/current` | Full state: stage, roles, transcript, plan, task statuses |
 | `POST /api/room/sessions/current/gate` | Approve or edit at a gate: `{ gate, decision, roles?, plan? }` |
@@ -133,7 +132,7 @@ The permissions come from the CLI flags in the "Verified CLI facts" table, which
 - **Bottom:** the stage steps; gate controls when a gate is open (Approve, Edit, and Accept/Reject at Gate 3); and Stop, which is always visible during a session.
 - **Build:** a task board slides in on the right showing each task's status (`pending`, `running`, `review`, `done`, `failed`, `skipped`), assignee, and commit hash.
 - **Brief form:** project name, task text, an optional "set roles myself" section, and Start. Shown when no session is active.
-- **States:** "Room offline" with a Start room button (calls `start-server`); "Paused" with the failure and Retry / Reassign / Stop.
+- **States:** "Room offline" with the reason and how to start it (`npm run dev`, or `node scripts/agent-room/server.mjs`); "Paused" with the failure and Retry / Reassign / Stop.
 - **Back:** a "◂ Shelf" control returns to `/`.
 - The page polls `GET /api/room/sessions/current` every 1.5 s while visible and every 10 s when hidden. No WebSocket.
 - Visual language: the existing retro cream/brown chrome used by the TV inspection windows.
@@ -171,4 +170,4 @@ The permissions come from the CLI flags in the "Verified CLI facts" table, which
 
 ## Out of scope for this spec
 
-Debate mode (Phase 3). The owner speaking mid-session. Parallel task execution. Building inside existing Ascend repositories. Ambient or self-started chats. Desktop launcher integration (the room starts on demand from Hub). Status-shelf reporting of room sessions.
+Debate mode (Phase 3). The owner speaking mid-session. Parallel task execution. Building inside existing Ascend repositories. Ambient or self-started chats. Desktop launcher integration (the room starts with `npm run dev`). Running the room under `npm start` (Wrangler). Status-shelf reporting of room sessions.
