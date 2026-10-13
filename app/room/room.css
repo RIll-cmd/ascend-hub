@@ -97,3 +97,19 @@
   .agent-room .agent-room-plate { font-size: 10px; padding: 2px 6px; }
   .agent-room-flatdeck { grid-template-columns: 1fr; }
 }
+
+/* Debate view */
+.agent-room-debate { display: flex; flex-direction: column; gap: 10px; background: var(--room-card); border: 2px solid var(--room-ink); border-radius: 6px; padding: 12px; min-height: 360px; }
+.agent-room-debate > header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.agent-room-debate h2 { font: 22px/1.25 Georgia, "Times New Roman", serif; margin: 0; }
+.agent-room-debate-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.agent-room-debate-card { display: flex; flex-direction: column; gap: 6px; border: 2px solid var(--room-ink); border-top: 6px solid var(--crt-color); border-radius: 4px; padding: 8px; background: #fffdf6; }
+.agent-room-debate-card header { display: flex; align-items: center; gap: 6px; }
+.agent-room-debate-card header em { margin-left: auto; color: #b4532f; font-style: normal; font-size: 11px; }
+.agent-room-debate-text { font: 14px/1.45 Georgia, "Times New Roman", serif; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow-y: auto; }
+.agent-room-debate-card footer { font-size: 11px; color: #6b5a48; }
+.agent-room-debate-verdict h3 { font-size: 15px; margin: 10px 0 4px; }
+.agent-room-debate-verdict p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.agent-room-judge { display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--room-ink); padding-top: 8px; font-size: 12px; }
+.agent-room-live { margin-left: auto; }
+@media (max-width: 900px) { .agent-room-debate-cards { grid-template-columns: 1fr; } }
