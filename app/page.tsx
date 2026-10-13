@@ -1815,8 +1815,12 @@ export default function Home() {
                                           </div>
                                         )
                                       ) : slot.isPoster ? (
-                                        <div
+                                        <Link
+                                          href="/room"
+                                          aria-label="Enter the agent room"
                                           className="framed-poster"
+                                          draggable={false}
+                                          onClick={event => { if (edit) event.preventDefault(); }}
                                           onPointerMove={event => {
                                             if (event.pointerType === "touch") return;
                                             const bounds = event.currentTarget.getBoundingClientRect();
@@ -1830,7 +1834,7 @@ export default function Home() {
                                             <img src="/ascend-hub-staircase.png" alt="Ascend Hub — One level at a time" draggable={false} />
                                             <span className="framed-poster-glass" aria-hidden="true" />
                                           </div>
-                                        </div>
+                                        </Link>
                                       ) : (
                                         <div
                                           className="empty-cubby-prompt"
