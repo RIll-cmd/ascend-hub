@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { AGENT_IDS, type AgentId } from "../room-types";
 import { buildCrt, SCREEN_Y, type Crt } from "./crt";
-import { AGENT_COLORS, lookTargets, miniSlots, type DeckPulse, type DeckView } from "./deck-view";
+import { AGENT_COLORS, frameIntervalMs, lookTargets, miniSlots, type DeckPulse, type DeckView } from "./deck-view";
 import { arcPoints, easeInOut, pulseProgress, type Vec3 } from "./pulses";
 import { buildRoom } from "./room";
 
@@ -25,7 +25,7 @@ const add3 = (a: Vec3, b: Vec3): Vec3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
 
 export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: { tilt?: boolean; onLost?: () => void } = {}): Deck {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -174,7 +174,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     const busy = view?.agents.some(a => a.state === "busy") ?? false;
     const moving = pulses.length > 0 || [...minis.values()].some(m => m.leftAt !== null) || busy
       || Math.abs(yaw - targetYaw) > 1e-4 || Math.abs(pitch - targetPitch) > 1e-4;
-    if (!moving && now - lastRender < 33) return;
+    if (now - lastRender < frameIntervalMs(moving)) return;
     lastRender = now;
     yaw += (targetYaw - yaw) * 0.08;
     pitch += (targetPitch - pitch) * 0.08;

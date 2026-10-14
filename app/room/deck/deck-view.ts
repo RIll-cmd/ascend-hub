@@ -4,6 +4,11 @@ export const AGENT_COLORS: Record<AgentId, string> = { codex: "#e28a2b", claude:
 const GATE_STAGES = ["gate-roles", "gate-plan", "gate-result"];
 export const MAX_MINIS = 4;
 
+// Frame budget for the deck: smooth while something moves, a trickle when idle (still under one 140 ms blink).
+export function frameIntervalMs(moving: boolean): number {
+  return moving ? 33 : 125;
+}
+
 export type DeckSubagent = { id: string; label: string; tool: string | null; status: string };
 export type DeckAgent = {
   id: AgentId; name: string; color: string; roles: string[];
