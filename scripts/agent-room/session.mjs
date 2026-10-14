@@ -5,7 +5,7 @@ import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { subagentEvent, usageEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, createProject, createWorktree, finishWorktree, headCommit, lastCommitDiff, linkDependencies, renderPlan, rollback, rootCommit, runCheck } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, createProject, createWorktree, finishWorktree, headCommit, lastCommitDiff, linkDependencies, renderPlan, resetTo, rollback, rootCommit, runCheck } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
@@ -24,6 +24,21 @@ function subagentChoice(choice) {
 }
 export { GATES };
 
+const TEMPLATES = ['feature', 'bugfix', 'refactor'];
+
+// Optional model per agent ("sonnet", "gpt-6-mini"); names only, never flags or paths.
+function cleanModels(value) {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== 'object' || Array.isArray(value)) throw roomError('MODELS_INVALID');
+  const models = {};
+  for (const [agent, model] of Object.entries(value)) {
+    if (model === '' || model === null) continue;
+    if (!['codex', 'claude'].includes(agent) || typeof model !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,59}$/.test(model)) throw roomError('MODELS_INVALID', `${agent}: ${model}`);
+    models[agent] = model;
+  }
+  return models;
+}
+
 export class RoomSession {
   constructor({ dir, settings, runTurn = realRunTurn, state, transcript }) {
     this.dir = dir;
@@ -40,6 +55,10 @@ export class RoomSession {
   static create({ dataDir, settings, runTurn }, body = {}) {
     if (body.mode === 'debate') return RoomSession.createDebate({ dataDir, settings, runTurn }, body);
     const { project, task, roles, repo, check } = body;
+    const template = body.template ?? 'feature';
+    if (!TEMPLATES.includes(template)) throw roomError('TEMPLATE_INVALID');
+    if (template !== 'feature' && !(typeof check === 'string' && check.trim())) throw roomError('CHECK_REQUIRED', 'Bug fix and refactor sessions need a check command.');
+    const models = cleanModels(body.models);
     const limits = cleanLimits(body.limits, settings.limits ?? DEFAULT_LIMITS);
     if (check !== undefined && check !== null && (typeof check !== 'string' || check.length > 500)) throw roomError('CHECK_INVALID');
     const subagents = subagentChoice(body.subagents);
@@ -70,7 +89,7 @@ export class RoomSession {
     const state = {
       id, mode: 'build', subagents, project, projectDir, task: task.trim(), stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
-      repo: repoInfo, check: check?.trim() || null, limits, turns: 0, workMs: 0, usage: {},
+      repo: repoInfo, check: check?.trim() || null, limits, turns: 0, workMs: 0, usage: {}, template, models,
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
@@ -245,7 +264,7 @@ export class RoomSession {
   prompt(stage, agent, extra = {}) {
     return buildPrompt({
       stage, agent, roles: this.state.roles, task: this.state.task,
-      planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript, extra,
+      planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript, extra: { template: this.state.template, ...extra },
     });
   }
 
@@ -260,8 +279,10 @@ export class RoomSession {
       this.setActive(agent, activity);
       this.turnUsage = null;
       this.controller = new AbortController();
+      const chosen = this.state.models?.[agent];
+      const settings = chosen ? { ...this.settings, agents: { ...this.settings.agents, [agent]: { ...this.settings.agents[agent], model: chosen } } } : this.settings;
       const invocation = buildInvocation(agent, mode, prompt, {
-        cwd: this.state.projectDir, settings: this.settings, outFile: join(this.dir, 'codex-last.txt'), subagents: this.state.subagents?.claude !== false,
+        cwd: this.state.projectDir, settings, outFile: join(this.dir, 'codex-last.txt'), subagents: this.state.subagents?.claude !== false,
       });
       const { timeouts } = this.settings;
       const timeoutMs = mode === 'edit' ? timeouts.build : this.state.mode === 'debate' ? timeouts.debate : timeouts.chat;
@@ -351,6 +372,17 @@ export class RoomSession {
       this.save();
       return;
     }
+    // A refactor must start from green checks, or "behaviour unchanged" cannot be told apart from already broken.
+    if (state.template === 'refactor' && !state.baseline?.ok) {
+      const baseline = await this.runChecks();
+      if (baseline === null) return;
+      state.baseline = baseline;
+      if (!baseline.ok) {
+        this.pauseWith(`Checks already fail before any change (exit ${baseline.code ?? 'none'}). Fix them, then retry, or start a Feature session.`, { kind: 'baseline' });
+        return;
+      }
+      this.say('room', 'Checks pass before any change; the refactor must keep them green.');
+    }
     if (task.status !== 'review') {
       const allowed = (state.limits?.rounds ?? Infinity) + (task.extraRounds ?? 0);
       if ((task.rounds ?? 0) >= allowed) {
@@ -377,8 +409,18 @@ export class RoomSession {
         if (result === null) return;
         task.check = result;
         const last = result.output.split('\n').filter(Boolean).at(-1) ?? '';
-        this.say('room', result.ok ? `Checks passed (${Math.round(result.ms / 1000)}s).` : `Checks failed (exit ${result.code ?? 'none'}): ${last.slice(0, 300)}`);
-        if (!result.ok) return this.taskFailed(task, `the checks failed (${state.check}):\n${result.output.slice(-3000)}`);
+        // A bug fix starts with a test that reproduces the bug, so task 1 must leave the checks red.
+        if (state.template === 'bugfix' && task.id === 1) {
+          if (result.ok) {
+            resetTo(state.projectDir, before);
+            task.commit = null;
+            return this.taskFailed(task, 'the checks already pass, so the new test does not reproduce the bug. Add a test that fails until the bug is fixed, and do not fix it yet.');
+          }
+          this.say('room', `Checks fail as expected (exit ${result.code ?? 'none'}): the new test reproduces the bug.`);
+        } else {
+          this.say('room', result.ok ? `Checks passed (${Math.round(result.ms / 1000)}s).` : `Checks failed (exit ${result.code ?? 'none'}): ${last.slice(0, 300)}`);
+          if (!result.ok) return this.taskFailed(task, `the checks failed (${state.check}):\n${result.output.slice(-3000)}`);
+        }
       }
       if (!state.roles.reviewer) {
         task.status = 'done';

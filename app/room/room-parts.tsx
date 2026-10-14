@@ -107,15 +107,21 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
   const [repoDir, setRepoDir] = useState("");
   const [check, setCheck] = useState<string | null>(null);
   const [limits, setLimits] = useState({ minutes: 120, turns: 80, rounds: 3 });
+  const [template, setTemplate] = useState<"feature" | "bugfix" | "refactor" | "review">("feature");
+  const [models, setModels] = useState<{ codex: string; claude: string }>({ codex: "", claude: "" });
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
   const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
   const inRepo = where === "repo" && repos.length > 0;
   const chosenRepo = repos.find(r => r.dir === repoDir) ?? repos[0];
   // The suggested command follows the chosen repo until the owner edits it.
   const checkCommand = check ?? (inRepo ? chosenRepo?.check ?? "" : "");
+  const needsCheck = template === "bugfix" || template === "refactor";
+  const chosenModels = Object.fromEntries(Object.entries(models).filter(([, m]) => m.trim()).map(([a, m]) => [a, m.trim()]));
+  // "Review only" runs through the read-only debate flow on the chosen repo, so nothing in it can change.
+  const reviewBody = { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : { project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits };
   return (
     <form className="agent-room-brief" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", body); }}>
       <div className="agent-room-kind" role="radiogroup" aria-label="Session type">
@@ -124,6 +130,15 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
       </div>
       {kind === "build" ? (
         <>
+          <label>Kind of work
+            <select value={template} onChange={e => setTemplate(e.target.value as typeof template)}>
+              <option value="feature">Feature: discuss, plan, build</option>
+              <option value="bugfix">Bug fix: reproduce with a failing test first</option>
+              <option value="refactor">Refactor: behaviour must not change</option>
+              <option value="review">Review only: findings, no edits</option>
+            </select>
+          </label>
+          {needsCheck && <small>Needs a check command below: {template === "bugfix" ? "task 1 must make it fail, the fix must make it pass." : "it must pass before and after every task."}</small>}
           <div className="agent-room-kind" role="radiogroup" aria-label="Where">
             <label><input type="radio" name="room-where" checked={!inRepo} onChange={() => { setWhere("new"); setCheck(null); }} /> New project</label>
             <label><input type="radio" name="room-where" checked={inRepo} disabled={repos.length === 0} onChange={() => { setWhere("repo"); setCheck(null); }} /> Existing repo</label>
@@ -145,6 +160,13 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
             <input value={checkCommand} onChange={e => setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
           </label>
           <small>Runs in the project folder after each task. A failing check sends the task back to the coder with the output.</small>
+          <fieldset className="agent-room-limits">
+            <legend>Models (empty uses each CLI&apos;s default)</legend>
+            <label>Codex <input list="room-codex-models" value={models.codex} onChange={e => setModels(m => ({ ...m, codex: e.target.value }))} placeholder="gpt-6-astra" spellCheck={false} /></label>
+            <label>Claude <input list="room-claude-models" value={models.claude} onChange={e => setModels(m => ({ ...m, claude: e.target.value }))} placeholder="default" spellCheck={false} /></label>
+            <datalist id="room-codex-models"><option value="gpt-6-astra" /></datalist>
+            <datalist id="room-claude-models"><option value="opus" /><option value="sonnet" /><option value="haiku" /></datalist>
+          </fieldset>
           <fieldset className="agent-room-limits">
             <legend>Limits (the room pauses and asks you when one is reached)</legend>
             <label>Work minutes <input type="number" min={5} max={720} value={limits.minutes} onChange={e => setLimits(l => ({ ...l, minutes: Number(e.target.value) }))} /></label>
@@ -177,7 +199,7 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
         <small>Codex: always on (it cannot be switched off). Antigravity: not supported yet.</small>
       </fieldset>
       {quotaWarning && <p className="agent-room-hint is-problem" role="status">{quotaWarning}</p>}
-      <button type="submit" disabled={missing.length > 0 || (kind === "debate" && !chosenFolder)}>Start</button>
+      <button type="submit" disabled={missing.length > 0 || (kind === "debate" && !chosenFolder) || (kind === "build" && needsCheck && !checkCommand.trim())}>Start</button>
       {missing.length > 0 && <p className="agent-room-hint">Waiting for: {missing.map(id => AGENT_NAMES[id]).join(", ")}</p>}
     </form>
   );

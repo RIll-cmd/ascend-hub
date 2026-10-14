@@ -56,7 +56,7 @@ export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile,
   if (agentId === 'claude') {
     return {
       command: agent.command,
-      args: [...agent.prefixArgs, '-p', '--output-format', 'stream-json', '--verbose', '--permission-mode', edit ? 'acceptEdits' : 'plan',
+      args: [...agent.prefixArgs, '-p', ...(agent.model ? ['--model', agent.model] : []), '--output-format', 'stream-json', '--verbose', '--permission-mode', edit ? 'acceptEdits' : 'plan',
         '--disallowedTools', 'PowerShell', ...(subagents ? [] : ['Agent']), ...(edit ? ['--allowedTools', ...CLAUDE_ALLOWED_TOOLS] : [])],
       stdin: prompt,
       outFile: null,

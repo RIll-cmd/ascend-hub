@@ -93,6 +93,20 @@ function stageRules(stage, agent, roles, extra) {
   }
 }
 
+// Extra rules a session template adds to the plan and build prompts.
+function templateRules(stage, extra) {
+  if (extra.template === 'bugfix' && stage === 'plan') {
+    return 'This is a bug fix. Task 1 must only add an automated test that reproduces the bug and fails now. The later tasks fix the bug so that test, and every other check, passes.';
+  }
+  if (extra.template === 'bugfix' && stage === 'build' && extra.task?.id === 1) {
+    return 'Only add the failing test that reproduces the bug. Do not fix the bug in this task; the checks must fail after it.';
+  }
+  if (extra.template === 'refactor' && ['plan', 'build', 'review'].includes(stage)) {
+    return 'This is a refactor. Behaviour must not change, and every existing check must stay green.';
+  }
+  return '';
+}
+
 export function buildPrompt({ stage, agent, roles, task, planText = '', transcript = [], extra = {} }) {
   const mine = rolesOf(agent, roles);
   const fixed = [
@@ -100,6 +114,7 @@ export function buildPrompt({ stage, agent, roles, task, planText = '', transcri
     `You are ${AGENT_NAMES[agent]} (${agent}) in the Ascend Agent Room${mine.length ? `, roles: ${mine.join(', ')}` : ''}.`,
     '',
     stageRules(stage, agent, roles, extra),
+    templateRules(stage, extra),
     '',
     DEBATE_STAGES.has(stage) ? 'QUESTION:' : 'OWNER TASK:',
     cap(task, 4000),

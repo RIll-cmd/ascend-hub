@@ -39,8 +39,10 @@ export type SessionView = {
   stage: Stage;
   roles: Roles | null;
   plan: { tasks: PlanTask[] } | null;
-  pause: { reason: string; at: string; kind?: "turns" | "minutes" | "rounds"; task?: number } | null;
+  pause: { reason: string; at: string; kind?: "turns" | "minutes" | "rounds" | "baseline"; task?: number } | null;
   limits?: { minutes: number; turns: number; rounds: number };
+  template?: "feature" | "bugfix" | "refactor";
+  models?: Partial<Record<AgentId, string>>;
   turns?: number;
   workMs?: number;
   usage?: Partial<Record<AgentId, { turns: number; tokens: number; costUsd: number }>>;

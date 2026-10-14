@@ -35,6 +35,12 @@ export function headCommit(dir) {
   return git(dir, ['rev-parse', '--short', 'HEAD']).trim();
 }
 
+// Drops a rejected attempt's commit, so the next try starts from where the task began.
+export function resetTo(dir, commit) {
+  git(dir, ['reset', '-q', '--hard', commit]);
+  git(dir, ['clean', '-fdq']);
+}
+
 export function rollback(dir) {
   git(dir, ['reset', '-q', '--hard', 'HEAD']);
   git(dir, ['clean', '-fdq']);

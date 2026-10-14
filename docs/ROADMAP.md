@@ -105,6 +105,17 @@ Each slice ships on its own, with tests and a live run, in this order.
 
 ### M6c — Session templates and per-role models
 
+**Done (2026-10-14):**
+- The start form's "Kind of work" offers four templates:
+  - **Feature:** unchanged.
+  - **Bug fix:** needs a check. Task 1 must leave the checks red. If they already pass, that attempt is reset and sent back. Later tasks must turn them green.
+  - **Refactor:** needs a check. Checks run on the untouched code first, and a red baseline pauses with kind `baseline`. Prompts say behaviour must not change.
+  - **Review only:** runs the read-only debate flow on the chosen repo, with a findings question.
+- **Models per agent:** a session can set `models: { codex, claude }`, names only.
+  - Codex takes `-m`; Claude now takes `--model`. Antigravity has no flag yet.
+  - The model is chosen per agent rather than per role, because an agent can hold several roles and the CLIs take one model per run.
+- **Live:** a bug-fix session saw task 1 leave `node --test` red as expected and task 2 make it green. Claude on `haiku` cost $0.013 for 321k tokens.
+
 - **Templates** in the start form preset roles, prompts, checks and gates:
   - **Feature:** today's flow (discuss → plan → build). Discussion works as a short spec interview: open questions become owner questions at the plan gate.
   - **Bug fix (reproduce first):** task 1 must add a failing test, and the check must fail before the fix and pass after (RED → fix → green). The cycle has an iteration cap from M6a.
