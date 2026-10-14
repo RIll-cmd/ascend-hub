@@ -70,6 +70,11 @@ Updated 2026-10-14.
   - a step rail with durations;
   - a task timeline where each node opens to show the coder ↔ reviewer exchange and a **Show changes** button that loads the coloured diff;
   - three or more rounds on one task are marked "looping?".
+- Polish, after a web search of agent-trace UIs ([Honeycomb's agent timeline](https://www.honeycomb.io/platform/agent-timeline), [Langfuse's timeline and agent graphs](https://langfuse.com/docs/observability/features/agent-graphs), and [a PromptLayer thread on loops](https://www.producthunt.com/products/promptlayer-2?embed=true)):
+  - **Run summary first:** total time, turns per agent, retries, problems.
+  - **Swim lanes:** one row per agent, one bar per turn, including the turn in progress.
+  - **Retries stay separate:** each round is kept on its own (Round 1, Round 2…) instead of folded together.
+  - **Problems stand out:** failed and invalid turns and pauses are shown in red; skipped, looping or failing tasks get a red outline; and a filter shows only the tasks that need attention.
 
 ## M2 — Vision agent announcer and voice gates
 

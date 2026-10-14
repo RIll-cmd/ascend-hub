@@ -65,3 +65,36 @@ test("durations read like a stopwatch", async () => {
   assert.equal(formatMs(192_000), "3m 12s");
   assert.equal(formatMs(3_840_000), "1h 4m");
 });
+
+const busy = {
+  ...session,
+  transcript: [
+    ...session.transcript,
+    msg(9, 96, "room", "Claude turn failed (exit 1). Retrying once."),
+  ],
+  active: { agent: "claude", activity: "editing", since: t(96) },
+} as unknown as SessionView;
+
+test("the run summary leads with time, turns per agent, retries and problems", () => {
+  const { summary } = workflowView(busy, Date.parse(t(100)));
+  assert.equal(summary.ms, 100_000);
+  assert.deepEqual(summary.turns, { codex: 0, claude: 3, agy: 2 });
+  assert.equal(summary.retries, 1);
+  assert.equal(summary.problems, 1);
+});
+
+test("swim lanes show when each agent was working, including the turn in progress", () => {
+  const { lanes } = workflowView(busy, Date.parse(t(100)));
+  assert.equal(lanes.start, Date.parse(t(0)));
+  assert.equal(lanes.end, Date.parse(t(100)));
+  const claude = lanes.rows.find(r => r.agent === "claude")!;
+  assert.deepEqual(claude.spans.map(s => [s.start - lanes.start, s.end - lanes.start]), [[50_000, 60_000], [70_000, 80_000], [90_000, 95_000], [96_000, 100_000]]);
+  assert.deepEqual(lanes.rows.find(r => r.agent === "agy")!.spans.length, 2);
+});
+
+test("retries stay separate rounds, and failing or looping tasks need attention", () => {
+  const [one, two] = workflowView(busy, Date.parse(t(100))).tasks;
+  assert.deepEqual(one.roundGroups.map(g => g.map(m => m.seq)), [[1, 2, 3], [4, 5, 6]]);
+  assert.equal(one.needsAttention, false);
+  assert.equal(two.needsAttention, true);
+});
