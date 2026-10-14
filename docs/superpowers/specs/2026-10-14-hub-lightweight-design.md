@@ -83,3 +83,21 @@ The Wrangler production mode (`npm start`) cannot run: Workers assets are capped
 - Deck frame pacing: a pure `frameInterval(view, activity)` function, unit tested for 30 fps active and 5 fps idle.
 - Images: a test that every `app/collectibles.ts` image path exists in `public/`.
 - Live: measure RAM and page load again with the same scripts as the baseline.
+
+## Results (measured 2026-10-14 after implementation)
+
+| What | Before | After |
+| --- | --- | --- |
+| Hub server | 283 MB working set, 1,091 MB private (`npm run dev`, plus `workerd`) | 117 MB working set, 154 MB private (`npm run serve`, after `/`, `/room` and `/api/room` three times each) |
+| Agent room process | 36 MB private | 36 MB private |
+| `serve` start | — | first run builds and starts in about 15 s; later runs start in about 2 s |
+| Home page (page only) | 9.9 MB, load event 16.4 s | 2.2 MB, load event 0.46 s |
+| TV iframe (`/zzz-tv/index.html`) | 10.3 MB (not counted in the first baseline) | 4.8 MB |
+| Heavy shelf art and poster | 7.1 MB PNG | 191 KB WebP |
+| TV background and anchor | 5.7 MB PNG | 251 KB WebP |
+| Status clock | re-renders `Home` every 1 s | every 10 s, every 1 s only while a status detail is open |
+| Room deck | up to 60 fps, pixel ratio 2 | 30 fps moving, 8 fps idle, pixel ratio 1.5 |
+
+The home page is just above the 2 MB target. What remains is the page's own JavaScript and CSS (about 1 MB) and the four autoplaying status videos (about 1 MB). The TV iframe's biggest remaining file is the 2.9 MB opening video. Both are features, so they were kept.
+
+`/api/room` refuses LAN connections under `serve`, because the server listens on 127.0.0.1 only.
