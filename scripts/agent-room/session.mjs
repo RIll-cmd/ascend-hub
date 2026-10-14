@@ -3,9 +3,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { subagentEvent, usageEvent } from './events.mjs';
-import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
+import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, createProject, createWorktree, finishWorktree, headCommit, lastCommitDiff, linkDependencies, renderPlan, resetTo, rollback, rootCommit, runCheck } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, createProject, createWorktree, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, renderPlan, resetTo, rollback, rootCommit, runCheck } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
@@ -47,7 +47,9 @@ export class RoomSession {
     this.runTurn = runTurn;
     this.state = state;
     this.transcript = transcript;
-    this.controller = null;
+    // One per running turn or check; a race runs several at once.
+    this.controllers = new Set();
+    this.turnUsage = {};
     this.loop = null;
     this.lastSave = 0;
     this.startLabels = new Map();
@@ -165,7 +167,7 @@ export class RoomSession {
   // Sub-agent progress only updates the CRT (saved at most once a second); start and finish also go to the transcript.
   onAgentEvent(agent, event) {
     const used = usageEvent(agent, event);
-    if (used) this.turnUsage = used;
+    if (used) this.turnUsage[agent] = used;
     const quota = agent === 'claude' ? claudeQuota(event) : null;
     if (quota) this.onQuota?.('claude', quota);
     // Codex writes its windows to its own session log; refresh after each Codex turn.
@@ -219,8 +221,8 @@ export class RoomSession {
     state.workMs = (state.workMs ?? 0) + durationMs;
     const total = ((state.usage ??= {})[agent] ??= { turns: 0, tokens: 0, costUsd: 0 });
     total.turns += 1;
-    total.tokens += this.turnUsage?.tokens ?? 0;
-    total.costUsd += this.turnUsage?.costUsd ?? 0;
+    total.tokens += this.turnUsage[agent]?.tokens ?? 0;
+    total.costUsd += this.turnUsage[agent]?.costUsd ?? 0;
   }
 
   pauseWith(reason, extra = {}) {
@@ -277,7 +279,8 @@ export class RoomSession {
     try { return this.state.mode === 'debate' ? [] : readMemory(this.dataDir, memoryKey(this.state)); } catch { return []; }
   }
 
-  async turn(agent, mode, prompt, activity, to = []) {
+  // A race turn runs in its own worktree (cwd), leaves the deck's active agent alone and reports failure instead of pausing.
+  async turn(agent, mode, prompt, activity, to = [], { cwd = this.state.projectDir, race = false } = {}) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       if (this.state.stage === 'stopped') return null;
       const hit = sessionLimitHit(this.state);
@@ -285,30 +288,32 @@ export class RoomSession {
         this.pauseWith(hit.reason, { kind: hit.kind });
         return null;
       }
-      this.setActive(agent, activity);
-      this.turnUsage = null;
-      this.controller = new AbortController();
+      if (!race) this.setActive(agent, activity);
+      this.turnUsage[agent] = null;
+      const controller = new AbortController();
+      this.controllers.add(controller);
       const chosen = this.state.models?.[agent];
       const settings = chosen ? { ...this.settings, agents: { ...this.settings.agents, [agent]: { ...this.settings.agents[agent], model: chosen } } } : this.settings;
       const invocation = buildInvocation(agent, mode, prompt, {
-        cwd: this.state.projectDir, settings, outFile: join(this.dir, 'codex-last.txt'), subagents: this.state.subagents?.claude !== false,
+        cwd, settings, outFile: join(this.dir, 'codex-last.txt'), subagents: this.state.subagents?.claude !== false,
       });
       const { timeouts } = this.settings;
       const timeoutMs = mode === 'edit' ? timeouts.build : this.state.mode === 'debate' ? timeouts.debate : timeouts.chat;
       const onEvent = event => this.onAgentEvent(agent, event);
-      const result = await this.runTurn(invocation, { cwd: this.state.projectDir, timeoutMs, signal: this.controller.signal, onEvent });
-      this.controller = null;
+      const result = await this.runTurn(invocation, { cwd, timeoutMs, signal: controller.signal, onEvent });
+      this.controllers.delete(controller);
       if (this.state.stage === 'stopped' || result.aborted) return null;
-      this.setActive(null);
+      if (!race) this.setActive(null);
       this.countTurn(agent, result.durationMs);
       if (result.ok) {
-        this.say(agent, result.text, { to: typeof to === 'function' ? to(result.text) : to, usage: this.turnUsage });
+        this.say(agent, result.text, { to: typeof to === 'function' ? to(result.text) : to, usage: this.turnUsage[agent] });
         return result.text;
       }
       const why = result.timedOut ? 'timed out' : result.error ?? (result.code === 0 ? 'returned no text' : `exited with code ${result.code}`);
       const detail = result.stderr ? ` ${result.stderr.slice(-300)}` : '';
       this.say('room', `${AGENT_NAMES[agent]} turn failed (${why}).${detail}${attempt === 1 ? ' Retrying once.' : ''}`);
     }
+    if (race) return null;
     this.pauseWith(`${AGENT_NAMES[agent]} failed twice.`);
     return null;
   }
@@ -403,6 +408,8 @@ export class RoomSession {
       task.status = 'running';
       this.save();
       const before = headCommit(state.projectDir);
+      // Bug fix task 1 must go red, which no race can rank, so it never races.
+      if (task.race && state.roles.coders.length > 1 && !(state.template === 'bugfix' && task.id === 1)) return this.raceTask(task, before);
       this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
       const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task }), 'editing',
         state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator]);
@@ -451,12 +458,88 @@ export class RoomSession {
   }
 
   // The owner's check command, stoppable like an agent turn; null means the session stopped meanwhile.
-  async runChecks() {
-    this.controller = new AbortController();
-    this.say('room', `Running checks: ${this.state.check}`);
-    const result = await runCheck(this.state.projectDir, this.state.check, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: this.controller.signal });
-    this.controller = null;
+  async runChecks(dir = this.state.projectDir) {
+    const controller = new AbortController();
+    this.controllers.add(controller);
+    if (dir === this.state.projectDir) this.say('room', `Running checks: ${this.state.check}`);
+    const result = await runCheck(dir, this.state.check, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: controller.signal });
+    this.controllers.delete(controller);
     return this.state.stage === 'stopped' ? null : result;
+  }
+
+  // Best-of-N: every coder attempts the task at once in its own worktree, branched from the session's HEAD.
+  // Attempts that change nothing or fail the checks drop out; one judge turn ranks the rest; the winner fast-forwards in.
+  async raceTask(task, base) {
+    const state = this.state;
+    const coders = state.roles.coders;
+    const message = `task-${task.id}: ${task.title}`;
+    const to = state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator];
+    // Every prompt is built before any attempt replies, so no racer sees another's work.
+    const prompts = Object.fromEntries(coders.map(agent => [agent, this.prompt('build', agent, { task })]));
+    const attempts = coders.map(agent => ({
+      agent, branch: `room/try-${state.id.slice(-6)}-t${task.id}-${agent}`,
+      dir: join(this.settings.buildsRoot, 'worktrees', `${basename(state.projectDir)}-t${task.id}-${agent}`),
+    }));
+    this.say('room', `Task ${task.id}: ${task.title} → raced by ${coders.map(a => AGENT_NAMES[a]).join(', ')}, each in its own worktree.`,
+      { kind: 'assign', by: state.roles.orchestrator, to: [...coders] });
+    this.setActive(coders[0], `racing ${coders.length} attempts`);
+    try {
+      // A leftover from a crashed race would block the new worktree.
+      for (const a of attempts) {
+        try { finishWorktree(state.projectDir, a.dir, a.branch, null, 'reject'); } catch { /* nothing left over */ }
+      }
+      // allSettled: one attempt's setup error must not clean up worktrees another agent is still editing.
+      const settled = await Promise.allSettled(attempts.map(async attempt => {
+        createWorktree(state.projectDir, attempt.dir, attempt.branch);
+        attempt.made = true;
+        linkDependencies(state.repo?.dir ?? state.projectDir, attempt.dir);
+        const text = await this.turn(attempt.agent, 'edit', prompts[attempt.agent], 'racing', to, { cwd: attempt.dir, race: true });
+        if (text === null) return Object.assign(attempt, { ok: false, why: 'the turn failed' });
+        attempt.summary = text;
+        attempt.commit = commitAll(attempt.dir, message) ?? (headCommit(attempt.dir) !== base ? headCommit(attempt.dir) : null);
+        if (!attempt.commit) return Object.assign(attempt, { ok: false, why: 'no changes were made' });
+        if (state.check) {
+          attempt.check = await this.runChecks(attempt.dir);
+          if (!attempt.check?.ok) return Object.assign(attempt, { ok: false, why: `the checks failed (exit ${attempt.check?.code ?? 'none'})` });
+        }
+        attempt.diff = branchDiff(attempt.dir, base, 20_000);
+        attempt.ok = true;
+      }));
+      const broken = settled.find(r => r.status === 'rejected');
+      if (broken) throw broken.reason;
+      this.setActive(null);
+      if (state.stage === 'stopped' || state.pause) return;
+      for (const a of attempts) this.say('room', `${AGENT_NAMES[a.agent]}'s attempt ${a.ok ? (state.check ? 'passed the checks' : 'is ready') : `dropped out: ${a.why}`}.`);
+      const survivors = attempts.filter(a => a.ok);
+      task.raced = { attempts: attempts.map(a => ({ agent: a.agent, ok: Boolean(a.ok), commit: a.commit ?? null, why: a.why ?? '' })), winner: null, reason: '' };
+      if (survivors.length === 0) {
+        const why = attempts.map(a => `${AGENT_NAMES[a.agent]}: ${a.why}`).join('; ');
+        return this.taskFailed(task, `no attempt passed (${why}).${attempts.find(a => a.check)?.check ? `\n${attempts.find(a => a.check).check.output.slice(-2000)}` : ''}`);
+      }
+      let winner = survivors[0];
+      if (survivors.length > 1) {
+        const judge = state.roles.reviewer ?? state.roles.orchestrator;
+        const pick = await this.jsonTurn(judge, this.prompt('judge', judge, { task, attempts: survivors }), 'judging',
+          v => validateJudge(v, survivors.map(a => a.agent)), survivors.map(a => a.agent));
+        if (!pick) return;
+        winner = survivors.find(a => a.agent === pick.winner);
+        task.raced.reason = pick.reason;
+      }
+      task.raced.winner = winner.agent;
+      task.assignee = winner.agent;
+      task.commit = fastForward(state.projectDir, winner.branch);
+      if (winner.check) task.check = winner.check;
+      task.status = 'done';
+      this.say('room', `Kept ${AGENT_NAMES[winner.agent]}'s attempt (${task.commit})${task.raced.reason ? `: ${task.raced.reason.replace(/\.$/, '')}` : ''}. The other attempts were deleted.`);
+      this.save();
+    } finally {
+      if (state.active?.activity?.startsWith('racing')) this.setActive(null);
+      for (const a of attempts) if (a.made) finishWorktree(state.projectDir, a.dir, a.branch, null, 'reject');
+      if (task.status === 'running') {
+        task.status = 'pending';
+        this.save();
+      }
+    }
   }
 
   async taskFailed(task, reason) {
@@ -634,7 +717,7 @@ export class RoomSession {
     this.state.stage = 'stopped';
     this.state.pause = null;
     this.state.active = null;
-    this.controller?.abort();
+    for (const controller of this.controllers) controller.abort();
     this.say('room', 'Owner stopped the session.');
     this.save();
     await this.loop;

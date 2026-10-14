@@ -46,6 +46,12 @@ export function rollback(dir) {
   git(dir, ['clean', '-fdq']);
 }
 
+// Takes a race winner's commits; the session worktree is clean and the attempt branched from its HEAD.
+export function fastForward(dir, branch) {
+  git(dir, ['merge', '--ff-only', '-q', branch]);
+  return headCommit(dir);
+}
+
 export function lastCommitDiff(dir) {
   return git(dir, ['show', '--stat', '--patch', '--format=%s', 'HEAD']);
 }

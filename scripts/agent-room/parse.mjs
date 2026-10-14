@@ -38,7 +38,10 @@ export function validatePlan(v, coders) {
     if (!task || typeof task.title !== 'string' || !task.title.trim() || task.title.length > 120) return fail(`Task ${n} needs a title of at most 120 characters.`);
     if (typeof task.description !== 'string' || task.description.length > 2000) return fail(`Task ${n} needs a description of at most 2000 characters.`);
     if (!coders.includes(task.assignee)) return fail(`Task ${n} assignee must be one of the coders: ${coders.join(', ')}.`);
-    tasks.push({ id: n, title: task.title.replace(/\s+/g, ' ').trim(), assignee: task.assignee, description: task.description.trim() });
+    const clean = { id: n, title: task.title.replace(/\s+/g, ' ').trim(), assignee: task.assignee, description: task.description.trim() };
+    // A race needs rivals: every coder attempts the task and the best attempt is kept.
+    if (task.race === true && coders.length > 1) clean.race = true;
+    tasks.push(clean);
   }
   return { ok: true, value: { tasks, options: cleanOptions(v.options) } };
 }
@@ -46,6 +49,11 @@ export function validatePlan(v, coders) {
 export function validateVerdict(v) {
   if (!v || !['ok', 'changes'].includes(v.verdict)) return fail('verdict must be "ok" or "changes".');
   return { ok: true, value: { verdict: v.verdict, notes: typeof v.notes === 'string' ? v.notes.slice(0, 4000) : '' } };
+}
+
+export function validateJudge(v, agents) {
+  if (!agents.includes(v?.winner)) return fail(`winner must be one of ${agents.join(', ')}.`);
+  return { ok: true, value: { winner: v.winner, reason: typeof v.reason === 'string' ? v.reason.replace(/\s+/g, ' ').trim().slice(0, 500) : '' } };
 }
 
 export function validateReassign(v, coders, current) {

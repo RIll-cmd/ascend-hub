@@ -57,6 +57,12 @@ function TaskNode({ task }: { task: WorkflowTask }) {
           </p>
         )}
         {task.check && !task.check.ok && task.check.output && <pre className="agent-room-diff">{task.check.output.slice(-2000)}</pre>}
+        {task.raced && (
+          <p className="agent-room-hint">
+            Raced: {task.raced.attempts.map(a => `${AGENT_NAMES[a.agent]} ${a.ok ? "✓" : `✗ (${a.why})`}`).join(", ")}.
+            {task.raced.winner && ` Kept ${AGENT_NAMES[task.raced.winner]}${task.raced.reason ? `: ${task.raced.reason}` : "."}`}
+          </p>
+        )}
         {task.notes && <p className="agent-room-hint">Last note: {task.notes}</p>}
         {task.roundGroups.length > 0 ? task.roundGroups.map((round, i) => (
           <div key={i} className="agent-room-wf-round">

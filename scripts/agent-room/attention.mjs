@@ -20,7 +20,7 @@ export function attention(state, transcript = []) {
   }
   if (gate === 'plan') {
     const tasks = state.plan.tasks;
-    const list = tasks.map((t, i) => `${i + 1}, ${t.title}, for ${AGENT_NAMES[t.assignee]}.`).join(' ');
+    const list = tasks.map((t, i) => `${i + 1}, ${t.title}, ${t.race ? 'raced by every coder' : `for ${AGENT_NAMES[t.assignee]}`}.`).join(' ');
     const summary = `The plan has ${tasks.length} task${tasks.length === 1 ? '' : 's'}. ${list}`;
     return { kind: 'gate', gate, summary, options: state.plan.options ?? [], decisions: ['approve', 'revise'] };
   }

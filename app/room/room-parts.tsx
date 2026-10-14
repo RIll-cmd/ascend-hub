@@ -265,7 +265,7 @@ function RolesGate({ initial, act }: { initial: Roles; act: Act }) {
 }
 
 function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]; act: Act }) {
-  const [draft, setDraft] = useState(tasks.map(t => ({ title: t.title, assignee: t.assignee, description: t.description })));
+  const [draft, setDraft] = useState(tasks.map(t => ({ title: t.title, assignee: t.assignee, description: t.description, race: t.race === true })));
   const update = (index: number, patch: Partial<(typeof draft)[number]>) => setDraft(d => d.map((t, j) => (j === index ? { ...t, ...patch } : t)));
   return (
     <div className="agent-room-gate">
@@ -275,6 +275,11 @@ function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]
           <li key={i}>
             <input aria-label={`Task ${i + 1} title`} value={t.title} maxLength={120} onChange={e => update(i, { title: e.target.value })} />
             <AgentSelect label={`Task ${i + 1} assignee`} value={t.assignee} options={coders} onChange={assignee => update(i, { assignee })} />
+            {coders.length > 1 && (
+              <label className="agent-room-check" title="Every coder attempts this task in its own worktree; the checks and a judge pick the best attempt.">
+                <input type="checkbox" checked={t.race} onChange={e => update(i, { race: e.target.checked })} /> Race all coders
+              </label>
+            )}
             <p>{t.description}</p>
           </li>
         ))}

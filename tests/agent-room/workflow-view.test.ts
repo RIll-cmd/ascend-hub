@@ -113,3 +113,9 @@ test("the summary adds tokens and cost per agent and how much of each limit is u
   assert.equal(view.tasks[0].tokens, 2000);
   assert.equal(view.tasks[1].tokens, 0);
 });
+
+test("a raced task carries every attempt and the judge's pick", () => {
+  const raced = { attempts: [{ agent: "claude", ok: true, commit: "abc1234", why: "" }, { agent: "agy", ok: false, commit: null, why: "the checks failed (exit 1)" }], winner: "claude", reason: "Simpler." };
+  const withRace = { ...session, plan: { tasks: [{ ...session.plan!.tasks[0], race: true, raced }] } } as SessionView;
+  assert.deepEqual(workflowView(withRace, Date.parse(t(100))).tasks[0].raced, raced);
+});

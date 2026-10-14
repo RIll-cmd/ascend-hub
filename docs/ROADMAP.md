@@ -147,6 +147,15 @@ Each slice ships on its own, with tests and a live run, in this order.
 
 ### M6e — Best-of-N
 
+**Done (2026-10-14):**
+- A plan task can carry `"race": true` when the session has two or more coders. The orchestrator may mark one hard task, and the owner can tick "Race all coders" per task at the plan gate.
+- Every coder attempts a race task at once, each in its own worktree and branch (`room/try-<id>-t<task>-<agent>`) cut from the session's HEAD. All prompts are built before any attempt replies.
+- Attempts that change nothing, fail their turn or fail the checks drop out. With two or more survivors, one judge turn (the reviewer, or the orchestrator when there is none) reads their diffs and picks a winner.
+- The winner fast-forwards into the session branch, and every attempt worktree and branch is deleted. The Workflow tab shows each attempt and the judge's reason.
+- No survivor counts as one failed attempt, and round limits apply. Bug fix task 1 never races, because it must go red.
+- **Live:** Claude on haiku and Codex both passed the checks. Codex judged and kept Claude's attempt, and no worktrees were left behind.
+- Not done: an owner override gate with side-by-side diffs. The losing attempts are deleted right after judging.
+
 - **Option:** for one hard task, 2–3 coders each attempt it in their own worktree, with the same prompt (guidance: start with 2–3).
 - **Gates:** the checks are the automatic gate.
 - **Choosing:** the reviewer judges the survivors' diffs (the Agent S3 best-of-N idea: summarise each attempt, then a one-shot judge), and the owner can override in the Workflow tab, which shows the diffs side by side.

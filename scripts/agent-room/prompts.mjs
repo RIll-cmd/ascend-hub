@@ -52,7 +52,7 @@ function stageRules(stage, agent, roles, extra) {
     case 'roles':
       return 'Write the roles the discussion agreed on (or your best proposal) as one fenced json block and nothing else:\n```json\n{"orchestrator": "codex", "coders": ["claude"], "reviewer": "agy", "options": ["Make Claude the reviewer", "Let Antigravity code too"]}\n```\nUse the agent ids codex, claude, agy. reviewer may be null. options lists 2 to 4 short changes the owner might want instead (each under 160 characters). If the owner asked for changes in the conversation, apply them. Do not edit files.';
     case 'plan':
-      return `You are the orchestrator. Break the owner's task into 1 to 20 small tasks that coders do one at a time, in order.\nThe coders are:\n${team}\nPlan around what each coder can run. Reply with one fenced json block:\n\`\`\`json\n{"tasks": [{"title": "short title", "assignee": "${coders[0] ?? 'claude'}", "description": "what to do and how to check it"}], "options": ["Merge tasks 1 and 2", "Add a test task"]}\n\`\`\`\noptions lists 2 to 4 short changes the owner might want instead (each under 160 characters). If the owner asked for changes in the conversation, apply them.\nDo not edit files.`;
+      return `You are the orchestrator. Break the owner's task into 1 to 20 small tasks that coders do one at a time, in order.\nThe coders are:\n${team}\nPlan around what each coder can run. Reply with one fenced json block:\n\`\`\`json\n{"tasks": [{"title": "short title", "assignee": "${coders[0] ?? 'claude'}", "description": "what to do and how to check it"}], "options": ["Merge tasks 1 and 2", "Add a test task"]}\n\`\`\`\noptions lists 2 to 4 short changes the owner might want instead (each under 160 characters). If the owner asked for changes in the conversation, apply them.\n${coders.length > 1 ? 'For at most one hard task where approaches may differ, add "race": true: every coder then attempts it in parallel and the best attempt is kept. Races cost one attempt per coder, so use them sparingly.\n' : ''}Do not edit files.`;
     case 'build':
       return [
         `You are a coder. You ${CAPABILITIES[agent]}.`,
@@ -64,6 +64,14 @@ function stageRules(stage, agent, roles, extra) {
       ].filter(Boolean).join('\n');
     case 'review':
       return `You are the reviewer. Review task ${extra.task.id}: ${extra.task.title}\n${cap(extra.task.description, 2000)}\n${extra.check ? `Checks passed: ${extra.check}\n` : ''}Do not edit files. Reply with one fenced json block:\n\`\`\`json\n{"verdict": "ok", "notes": ""}\n\`\`\`\nUse "changes" with clear notes if the task is not done correctly.\n\nDIFF:\n${cap(extra.diff, 8000)}`;
+    case 'judge':
+      return [
+        `You judge a race. Every coder attempted task ${extra.task.id} (${extra.task.title}) on its own, and every attempt below passed the checks.`,
+        cap(extra.task.description, 2000),
+        'Pick the attempt to keep: correct first, then simplest and easiest to maintain. Do not edit files. Reply with one fenced json block:',
+        `\`\`\`json\n{"winner": "${extra.attempts[0].agent}", "reason": "one sentence"}\n\`\`\``,
+        ...extra.attempts.map(a => `\nATTEMPT BY ${AGENT_NAMES[a.agent].toUpperCase()} (${a.agent}): ${cap(a.summary, 500)}\nDIFF:\n${cap(a.diff, Math.floor(12_000 / extra.attempts.length))}`),
+      ].join('\n');
     case 'reassign':
       return `You are the orchestrator. Task ${extra.task.id} (${extra.task.title}) failed twice with ${AGENT_NAMES[extra.task.assignee]}. Last reason: ${cap(extra.reason, 2000)}\nThe coders are:\n${team}\nReply with one fenced json block, either {"action": "reassign", "to": "<coder id>"} with a different coder, or {"action": "skip"}.`;
     case 'finish':
