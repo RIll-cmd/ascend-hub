@@ -21,12 +21,13 @@ $visionRoot = Join-Path $scratch 'vision'
 $destination = Join-Path $scratch 'installed'
 $shortcuts = Join-Path $scratch 'shortcuts'
 foreach ($directory in @(
-        (Join-Path $hubRoot 'node_modules\vinext\dist'),
+        (Join-Path $hubRoot 'node_modules\vinext\dist'), (Join-Path $hubRoot 'scripts'),
         (Join-Path $visionRoot 'fairy-ui\dist'), $destination, $shortcuts)) {
     [void][System.IO.Directory]::CreateDirectory($directory)
 }
 foreach ($file in @(
         (Join-Path $hubRoot 'node_modules\vinext\dist\cli.js'),
+        (Join-Path $hubRoot 'scripts\run-framework.mjs'),
         (Join-Path $visionRoot 'fairy-ui\dist\index.html'),
         (Join-Path $visionRoot 'desktop_host.py'),
         (Join-Path $visionRoot 'config.yaml'),
@@ -42,6 +43,7 @@ $installer = Join-Path $PSScriptRoot '..\Install-Ascend.ps1'
 
 $expectedProfile = Join-Path $destination 'profile.json'
 Assert (Test-Path -LiteralPath $expectedProfile) 'installer must write the profile'
+Assert ((Get-Content -Raw -LiteralPath $expectedProfile | ConvertFrom-Json).hub.runtime -eq 'production') 'Hub defaults to the production runtime'
 $shell = New-Object -ComObject WScript.Shell
 foreach ($name in @('Vision', 'Hub')) {
     $shortcut = $shell.CreateShortcut((Join-Path $shortcuts "Ascend $name.lnk"))
@@ -58,4 +60,9 @@ foreach ($name in @('Vision', 'Hub')) {
     -DestinationRoot $destination -ShortcutDirectory $shortcuts -Force | Out-Null
 $backups = @(Get-ChildItem -LiteralPath $destination -Filter 'profile-backup-*.json' -File)
 Assert ($backups.Count -eq 1) 'forced reinstall must retain one profile backup'
+& $installer -HubRoot $hubRoot -VisionRoot $visionRoot `
+    -NodeExe (Join-Path $env:WINDIR 'System32\cmd.exe') `
+    -PythonExe (Join-Path $env:WINDIR 'System32\cmd.exe') `
+    -DestinationRoot $destination -SkipShortcuts -Force -HubRuntime development | Out-Null
+Assert ((Get-Content -Raw -LiteralPath $expectedProfile | ConvertFrom-Json).hub.runtime -eq 'development') 'development runtime stays selectable'
 'installer shortcut profile checks passed'
