@@ -27,5 +27,19 @@ try {
   Assert ([Ascend.Desktop.HubSessionConflict]::KnownEntry($cli,[string[]]@('node',$cli,'start'),$roots)) 'vinext start is known'
   Assert (-not [Ascend.Desktop.HubSessionConflict]::KnownEntry($rf,[string[]]@('node',$rf,'build'),$roots)) 'a build is not a session'
   Assert (-not [Ascend.Desktop.HubSessionConflict]::KnownEntry((Join-Path $env:TEMP 'other.js'),[string[]]@('node','x','serve'),$roots)) 'other scripts are not sessions'
+  . (Join-Path $desktop 'LauncherPresentation.ps1')
+  Assert ((Get-HubFailureText 'port-in-use') -eq 'Another copy of Hub is using port 5173.') 'port text'
+  Assert ((Get-HubFailureText 'child-exit-1') -eq 'Hub stopped unexpectedly.') 'exit text'
+  Assert ((Get-HubFailureText 'profile-missing') -eq "Hub isn't set up yet.") 'setup text'
+  Assert ((Get-HubFailureText 'weird') -eq "Hub couldn't start.") 'fallback text'
+  Assert ((Get-AgentSummary $null) -eq 'Offline') 'no room'
+  Assert ((Get-AgentSummary ([pscustomobject]@{online=$false})) -eq 'Offline') 'room offline'
+  $room=[pscustomobject]@{online=$true;agents=[pscustomobject]@{codex=[pscustomobject]@{state='ready'};claude=[pscustomobject]@{state='busy'};agy=[pscustomobject]@{state='offline'}}}
+  Assert ((Get-AgentSummary $room) -eq '2 of 3 agents') 'agent count'
+  $room.agents.agy.state='checking';$room.agents.codex.state='checking';$room.agents.claude.state='checking'
+  Assert ((Get-AgentSummary $room) -eq 'Starting') 'all checking means starting'
+  $edge=Join-Path $root 'msedge.exe';[IO.File]::WriteAllText($edge,'')
+  Assert ((Resolve-EdgePath @($null,'','relative\msedge.exe',(Join-Path $root 'nope\msedge.exe'),"`"$edge`"")) -eq $edge) 'first existing rooted msedge, quotes trimmed'
+  Assert ($null -eq (Resolve-EdgePath @((Join-Path $env:WINDIR 'System32\cmd.exe')))) 'only msedge.exe accepted'
   'hub runtime checks passed'
 } finally { Remove-Item -Recurse -Force $root -ErrorAction SilentlyContinue }

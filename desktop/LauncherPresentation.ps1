@@ -25,6 +25,36 @@ function Get-CapabilityLabel([string]$value) {
         default { 'Not checked' }
     }
 }
+# Plain sentence for each startup failure; the code itself stays under Details.
+function Get-HubFailureText([string]$code) {
+    switch -Wildcard ($code) {
+        'profile-missing' { "Hub isn't set up yet."; break }
+        'port-in-use' { 'Another copy of Hub is using port 5173.'; break }
+        'runtime-missing' { "Node.js wasn't found."; break }
+        'hub-build-missing' { "Hub's files are missing."; break }
+        'startup-timeout' { 'Hub took too long to start.'; break }
+        'child-exit-*' { 'Hub stopped unexpectedly.'; break }
+        default { "Hub couldn't start." }
+    }
+}
+# $room is the parsed /api/room reply, or $null when Hub or the room is unreachable.
+function Get-AgentSummary($room) {
+    if ($null -eq $room -or -not $room.online -or $null -eq $room.agents) { return 'Offline' }
+    $states = @($room.agents.PSObject.Properties | ForEach-Object { [string]$_.Value.state })
+    if ($states.Count -eq 0) { return 'Offline' }
+    if (@($states | Where-Object { $_ -ne 'checking' }).Count -eq 0) { return 'Starting' }
+    $up = @($states | Where-Object { $_ -notin @('offline','checking') }).Count
+    "$up of $($states.Count) agents"
+}
+# First candidate that is a rooted, existing msedge.exe; App Paths values may arrive quoted.
+function Resolve-EdgePath([string[]]$candidates) {
+    foreach ($candidate in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+        $path = $candidate.Trim().Trim('"')
+        if ([IO.Path]::IsPathRooted($path) -and [IO.Path]::GetFileName($path) -ieq 'msedge.exe' -and (Test-Path -LiteralPath $path -PathType Leaf)) { return $path }
+    }
+    $null
+}
 function Set-LauncherSnapshot($window, $snapshot, [string]$product) {
     $state = $snapshot.State
     $canStart = $state -in @('stopped', 'failed')
