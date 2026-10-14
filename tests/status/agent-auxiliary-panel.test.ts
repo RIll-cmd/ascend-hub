@@ -57,7 +57,7 @@ test("details retain the selected shelf TV artwork and its square screen crop", 
     service: null, loading: false, error: null, stale: false });
   const markup = render({ compactTv: tv });
   const styles = await readFile("app/globals.css", "utf8");
-  assert.match(markup, /class="agent-auxiliary-panel__monitor"[\s\S]*class="crt-tv-frame" src="\/crt-tvs-and-imac\/imac1-removebg-preview\.png"/);
+  assert.match(markup, /class="agent-auxiliary-panel__monitor"[\s\S]*class="crt-tv-frame" src="\/crt-tvs-and-imac\/imac1-removebg-preview\.webp"/);
   assert.match(markup, /width:66\.0%;height:49\.5%/);
   assert.doesNotMatch(styles, /agent-auxiliary-panel__monitor \.crt-tv-frame\s*\{\s*display:\s*none/);
   assert.doesNotMatch(styles, /agent-auxiliary-panel__monitor \.crt-screen\s*\{[^}]*width:\s*90%/);

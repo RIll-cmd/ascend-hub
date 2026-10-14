@@ -103,7 +103,7 @@ export function buildRoom(scene: THREE.Scene, keep: Keep): void {
   scene.add(moonlight);
 
   // The Hub's staircase poster in a wooden frame.
-  const posterTexture = keep(new THREE.TextureLoader().load("/ascend-hub-staircase.png"));
+  const posterTexture = keep(new THREE.TextureLoader().load("/ascend-hub-staircase.webp"));
   posterTexture.colorSpace = THREE.SRGBColorSpace;
   mesh(new THREE.BoxGeometry(1.16, 1.16, 0.04), frame, -1.55, 2.35, -3.47);
   mesh(new THREE.PlaneGeometry(1.04, 1.04), keep(new THREE.MeshStandardMaterial({ map: posterTexture, roughness: 0.6 })), -1.55, 2.35, -3.44);

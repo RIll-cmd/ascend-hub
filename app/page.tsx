@@ -1831,7 +1831,7 @@ export default function Home() {
                                           onPointerLeave={event => { event.currentTarget.style.transform = ""; }}
                                         >
                                           <div className="framed-poster-art">
-                                            <img src="/ascend-hub-staircase.png" alt="Ascend Hub — One level at a time" draggable={false} />
+                                            <img src="/ascend-hub-staircase.webp" alt="Ascend Hub — One level at a time" draggable={false} />
                                             <span className="framed-poster-glass" aria-hidden="true" />
                                           </div>
                                         </Link>
