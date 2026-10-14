@@ -1,147 +1,211 @@
+<div align="center">
+
+<img src="desktop/assets/hub.png" alt="Ascend Hub icon" width="96" />
+
 # Ascend Hub
 
-A customizable retro dashboard for the Ascend ecosystem, with CRT-style televisions for live AI status, music, weather, and video. The status shelf supports Codex CLI, Antigravity CLI, and Ascend Core and Vision.
+**A retro control room for your AI coding agents.**
+Watch Codex, Claude and Antigravity work together in one Agent Room, see their status on CRT televisions, and keep an eye on your subscription limits, all from one local dashboard.
 
-Future Ideas: Agent Orchestration.
+![Node 22.13+](https://img.shields.io/badge/node-%E2%89%A522.13-3c873a)
+![React 19](https://img.shields.io/badge/react-19-149eca)
+![Platform: Windows first](https://img.shields.io/badge/platform-Windows%20first-0078d4)
+![Runs locally](https://img.shields.io/badge/runs-127.0.0.1%20only-555)
 
-Hub is the presentation layer—not the status authority. Ascend Core stores normalized status and derives offline state; Hub reads that existing v1 API through a server-side proxy.
+<img src="docs/screenshots/shelf.webp" alt="The Ascend Hub status shelf: four CRT televisions for Ascend Core, Ascend Vision, Codex CLI and Antigravity around the Ascend Hub poster" width="900" />
+
+</div>
+
+## Contents
+
+- [What it is](#what-it-is)
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [One-click desktop launcher](#one-click-desktop-launcher-windows)
+- [Using the Agent Room](#using-the-agent-room)
+- [Status shelf setup](#status-shelf-setup)
+- [Media setup](#media-setup)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+- [Development](#development)
+- [Security and privacy](#security-and-privacy)
+- [Documentation](#documentation)
+- [License and credits](#license-and-credits)
+
+## What it is
+
+Ascend Hub is the front end of the Ascend ecosystem:
+
+| Project | Role |
+| --- | --- |
+| **Ascend Hub** (this repo) | The dashboard you look at: status shelf, Agent Room, media and limits. |
+| [Ascend Core](https://github.com/RIll-cmd/ascend-core) | The status authority. It stores each service's state; Hub only reads it. |
+| [Ascend Vision](https://github.com/RIll-cmd/ascend-vision) | The desktop assistant. It can read Agent Room questions aloud and take spoken answers. |
+
+```mermaid
+flowchart LR
+  You((You)) --> Hub[Ascend Hub<br/>127.0.0.1:5173]
+  Hub -- reads status --> Core[Ascend Core]
+  Hub -- runs sessions --> Room[Agent Room<br/>127.0.0.1:5181]
+  Room --> Codex[Codex CLI]
+  Room --> Claude[Claude Code]
+  Room --> Agy[Antigravity CLI]
+  Vision[Ascend Vision] -- voice gates --> Room
+  Codex & Agy & Vision -- heartbeats --> Core
+```
+
+Everything runs on your own computer and listens on `127.0.0.1` only.
 
 ## Features
 
-- Retro TV cards, shelves, collectibles, and an editable room layout.
-- A data-driven Status Shelf generated from Core's `services[]` response.
-- Four states: `idle`, `working`, `stuck`, and `offline`, with textual state cues and last-seen information.
-- Four-second polling, reduced polling in hidden tabs, and visible stale/error handling.
-- A focused-TV auxiliary console with privacy-safe lifecycle details and local status-copy controls; transcripts and browser message sending are intentionally excluded.
-- Generic TV cards for unknown services, without frontend changes.
-- Separate, instance-bound local-agent adapters with durable operation tracking.
-- Cassette player with dynamic background depending on what music is playing.
-- A media shelf with a Spotify account setup screen, configurable Visual Crossing weather, and a YouTube tuner with curated recommendations and search.
+### Home dashboard
 
-Media integrations are configured from their TV screens. Spotify needs a Spotify developer app ID and secret; playback uses the account authorization flow. Weather needs a Visual Crossing API key and location. YouTube search and playback availability depend on YouTube and the selected stream. Secrets are stored by the local Hub runtime under the ignored `.sites-runtime/` directory and are not returned by the setup APIs. Keep that directory private and do not commit it.
+- A detailed retro room: CRT television, shelves, posters, a flip calendar, an LED clock and collectible props.
+- **Edit mode** (**Ctrl+E**) to move and resize items, and add shelves, lights and collectibles. The layout is saved in your browser.
+- A cassette and CD player whose background follows the music that is playing.
 
-## Connected services
+### Status shelf
 
-| Service | Status identity | Supported reporting path |
-| --- | --- | --- |
-| Ascend Core / AIRA | `ascend-core` | Core instrumentation with concurrent-operation tracking |
-| Ascend Vision | `ascend-vision` | Authenticated Vision heartbeats |
-| Codex CLI | `codex-cli` | Status wrapper with explicit session hook overrides |
-| Antigravity CLI | `antigravity-cli` | Status wrapper, workspace hooks, and child-process-exit cleanup |
+- Four shelf TVs, built from Ascend Core's `services[]` list: **CH 01 Ascend Core / AIRA**, **CH 02 Ascend Vision**, **CH 03 Codex CLI** and **CH 04 Antigravity CLI**. Unknown services get a generic TV with no code changes.
+- Four states (`idle`, `working`, `stuck`, `offline`), shown as text as well as colour, with last-seen times.
+- Polls every four seconds and slows down in hidden tabs. Stale or failed reports are labelled as such, never shown as live.
+- Click a TV, or move the Vision eye with **WASD** / **arrow keys** and press **Space**, to open its status monitor. **Escape** zooms back out.
 
-CLI reporting applies only to sessions launched through their status wrappers. Antigravity IDE/sidebar reporting remains **blocked / unsupported**; it is not the CLI integration. Hermes and standalone bot adapters are not implemented yet.
+### Subscription limits
 
-Phase 1 (Core + Vision), Phase 2 (Hub), and the approved Phase 3 CLI path have been live-validated. See the [implementation status](docs/phase-3-implementation-status.md) for evidence and limitations.
+- A **Limits** pill on the home screen names your fullest window, for example `Claude weekly 82%`.
+- Open it for a 5-hour and a weekly bar per agent, each with its reset countdown and the age of the reading. Bars turn amber at 70% and red at 90%.
+- **Refresh limits** re-reads Codex's own session log (free) and runs one tiny Claude turn, at most once a minute. Antigravity's CLI does not report limits.
 
-## Run the Hub locally
+### Agent Room (`/room`)
 
-Requires Node.js **22.13.0 or newer** and npm. The Hub development runtime supports Windows, macOS, and Linux; the current operator-facing CLI adapter launchers use Windows PowerShell and DPAPI.
+A 3D room where **Codex**, **Claude** and **Antigravity** build software together while you approve each step.
 
-### 1. Start Ascend Core
+- **Build a project:** the agents discuss the task, agree on roles (orchestrator, coders, reviewer), plan small tasks, build them one by one with a commit each, review, and write a summary.
+- **Three owner gates:** you approve the roles, the plan and the result. At the roles and plan gates you can also send the step back with a note, or pick one of the agents' suggested changes.
+- **New project or existing repo:** a new project gets its own git repository in `D:\ascend-builds\<name>`. An existing repo session works on its own branch in its own git worktree, so your checkout is never touched. At the end you can merge (fast-forward only), keep the branch, or reject it.
+- **Checks after every task:** your test command runs after each task. A failure sends the task back to its coder with the output.
+- **Templates:** *Feature*, *Bug fix* (task 1 must add a failing test, later tasks make it pass), *Refactor* (checks must pass before and after every task) and *Review only*.
+- **Limits and loop guard:** caps on work minutes, agent turns and rounds per task. The room pauses and asks you instead of looping, and **Retry** grants a little more.
+- **Models per agent:** pick a model for Codex and for Claude, for example a cheaper one for reviews.
+- **Project memory:** at the result gate the orchestrator proposes up to five notes for next time. You tick and edit the ones to keep, and later sessions for that repo read them.
+- **Best-of-N races:** mark a hard task as a race and every coder attempts it at once in its own worktree. The checks filter the attempts, a judge picks the best, and only the winner is kept.
+- **Parallel tasks (experimental):** independent tasks run at the same time, then merge one by one through a merge queue, with checks after each merge.
+- **Debate a question:** the agents answer on their own, critique each other, and a judge writes the combined answer with *Where they agree*, *Where they disagree* and *Recommendation*. Debates are read-only.
+- **See everything:** the *Workflow* tab shows stage timings, swim lanes per agent, each task's rounds, reviews, checks, tokens and diffs. The *Deck* shows the 3D room, Claude's sub-agents and an optional sound layer.
+- **Usage:** tokens per agent and task, plus cost where the CLI reports it.
+- **Voice gates:** with Ascend Vision running, it announces when the room needs you and accepts spoken decisions such as "approve" or "merge", confirmed with "yes".
 
-Keep the existing Ascend Core server running. Hub reads the live Shelf snapshot from Core; it does not create status data itself.
+### Media
 
-### 2. Configure the read-only connection
+- **Spotify** now-playing, through your own Spotify developer app.
+- **Weather** from Visual Crossing, for a location you choose.
+- A **YouTube** tuner with curated recommendations and search.
 
-Create an ignored `.env.local` file at the repository root:
+### Desktop launcher (Windows)
 
-```env
-ASCEND_CORE_SHELF_URL=<full URL of your existing Core Shelf read endpoint>
-ASCEND_SHELF_READ_CREDENTIAL=<dedicated read-only authority credential>
-```
+- **Ascend Hub** and **Ascend Vision** desktop shortcuts with a small native console: Start, Open, Stop, Force stop, Retry and diagnostics.
+- Hub opens in an Edge app window when it is ready and keeps a tray icon with *Open Hub*, *Show launcher*, *Stop Hub* and *Quit*.
+- Hub runs from a production build: it starts in about 2 seconds and uses about 150 MB of memory.
 
-Replace the placeholders with your deployment values and restart Hub after changing them. Production requires an HTTPS Core endpoint reachable from the Hub server and equivalent server-side environment/secret configuration.
+## Screenshots
 
-Use a dedicated **read-only** credential—not a browser session cookie, user Bearer token, or Core/Vision/CLI producer credential. Never prefix these variables with `NEXT_PUBLIC_` or commit real credentials.
+| | |
+| --- | --- |
+| <img src="docs/screenshots/home.webp" alt="Home screen with the retro CRT television, calendar and clock" /> **Home** | <img src="docs/screenshots/limits.webp" alt="The Limits panel open over the home screen, with 5-hour and weekly bars for Claude and Codex" /> **Subscription limits** |
+| <img src="docs/screenshots/tv-detail.webp" alt="The Codex CLI status monitor opened from its shelf TV" /> **Status monitor** | <img src="docs/screenshots/room-start.webp" alt="The Agent Room: three agent desks in a 3D room, agent cards with limits, and the start form" /> **Agent Room** |
+| <img src="docs/screenshots/room-workflow.webp" alt="The Workflow tab of a finished parallel session, with swim lanes and three tasks" /> **Workflow view** (two tasks ran in parallel) | <img src="docs/screenshots/room-debate.webp" alt="A finished debate with the judge's combined answer" /> **Debate verdict** |
 
-The browser requests only `GET /api/status/shelf`. Hub authenticates upstream using `X-Status-Read-Credential`, validates the schema-v1 response, and returns the normalized snapshot without exposing the credential. Missing configuration or an unavailable authority produces a visible unavailable/stale state, not simulated live status.
+## Requirements
 
-### 3. Start Hub
+- **Node.js 22.13 or newer** and npm.
+- **Windows 10 or 11** for the desktop launcher and the CLI status adapters. The web app itself also runs on macOS and Linux.
+- For the Agent Room, the agent CLIs installed and signed in:
+  - [Codex CLI](https://github.com/openai/codex) (`npm i -g @openai/codex`, then `codex login`)
+  - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`npm i -g @anthropic-ai/claude-code`, then sign in inside `claude`)
+  - Antigravity CLI (`agy`)
+- Optional: a running [Ascend Core](https://github.com/RIll-cmd/ascend-core) for live shelf status, and [Ascend Vision](https://github.com/RIll-cmd/ascend-vision) for voice gates.
 
-In a new PowerShell terminal:
+> [!NOTE]
+> The Agent Room runs each CLI as you, with the account that CLI is signed into. Sessions count against the same subscription limits as your own terminal use, and API keys in your environment (such as `ANTHROPIC_API_KEY`) would be used instead of a subscription.
+
+## Quick start
 
 ```powershell
-Set-Location D:\ascend_hub
-# Run this once after cloning or after dependency changes.
+git clone https://github.com/RIll-cmd/ascend-hub.git
+cd ascend-hub
 npm run install:ci
-npm run dev
+npm run serve
 ```
 
-If Node is not on your `PATH`, use the known Node executable instead:
+Open **http://127.0.0.1:5173**.
+
+`npm run serve` builds Hub only when the source changed since the last build, then serves the production build together with the Agent Room. The first start takes about 15 seconds; later starts take about 2. On first start the room writes a random `ASCEND_ROOM_TOKEN` to `.env.local`; Hub uses it to talk to the room.
+
+For development with hot reload, use `npm run dev` instead (it starts at `http://localhost:5173` and needs much more memory).
+
+## One-click desktop launcher (Windows)
+
+Install the desktop shortcuts once, from Windows PowerShell, with your own paths:
 
 ```powershell
-Set-Location D:\ascend_hub
-& D:\node.exe scripts\run-framework.mjs dev
+& 'D:\ascend_hub\desktop\Install-Ascend.ps1' `
+  -HubRoot 'D:\ascend_hub' `
+  -VisionRoot 'D:\ascend-vision\ascend-vision' `
+  -NodeExe 'D:\node.exe' `
+  -PythonExe 'D:\ascend-vision\ascend-vision\.venv\Scripts\python.exe' `
+  -VisionEnvFile 'D:\ascend-vision\ascend-vision\.env'
 ```
 
-Leave this terminal open. Hub normally starts at `http://localhost:5173`.
+Then double-click **Ascend Hub** on the desktop. Closing the launcher window while Hub runs hides it to the tray; **Quit** stops Hub and the Agent Room. See [desktop/README.md](desktop/README.md) for every option.
 
-For everyday use, run `npm run serve` instead of `npm run dev`. It runs Hub from a production build on `http://127.0.0.1:5173`, together with the agent room, and needs far less memory than the development server. It rebuilds only when the source changed since the last build, and it listens on this computer only.
+## Using the Agent Room
 
-### 4. Confirm the Hub proxy
+1. Open **http://127.0.0.1:5173/room**, or click the *Ascend Hub* poster on the shelf. Wait until all three agents show as ready.
+2. Choose **Build a project** or **Debate a question**.
+3. For a build, pick the **Kind of work** and either a **New project** name or an **Existing repo**. Add a **check** command such as `npm test`. It is required for *Bug fix* and *Refactor*.
+4. Optionally set models, limits, sub-agents and **Run independent tasks at the same time**. Tick **Set roles myself** to skip the discussion.
+5. Describe the task and press **Start**.
+6. Answer the gates as they come:
+   - **Roles:** edit the roles or approve them.
+   - **Plan:** rename tasks, change who does each, tick **Race all coders** on a hard task, then approve. Or ask for changes with a note.
+   - **Result:** read the summary and diff, tick the memory notes worth keeping, then merge, keep or reject.
+7. Follow progress in the *Deck* and *Workflow* tabs. **Stop** in the top bar ends the session at any time; committed work stays.
 
-In another PowerShell terminal, request the normalized Shelf snapshot:
+> [!TIP]
+> Check the **Limits** bars before a long session. The start form also warns when an agent has used 90% or more of a window.
 
-```powershell
-Invoke-RestMethod 'http://localhost:5173/api/status/shelf' |
-  ConvertTo-Json -Depth 10
-```
+## Status shelf setup
 
-Expected shape:
+The shelf shows live data only when Ascend Core is running and Hub can read it. Hub never invents status: without Core, the TVs say the status feed is unavailable.
 
-```json
-{
-  "schemaVersion": 1,
-  "generatedAt": "...",
-  "services": []
-}
-```
+1. Start Ascend Core (see its README).
+2. Add the read-only connection to `.env.local`:
 
-The service list should include `ascend-core`, `ascend-vision`, `codex-cli`, and `antigravity-cli` when those reporters have been provisioned. CLI services may correctly appear offline while their wrappers are not running.
+   ```env
+   ASCEND_CORE_SHELF_URL=<full URL of your Core Shelf read endpoint>
+   ASCEND_SHELF_READ_CREDENTIAL=<dedicated read-only credential>
+   ```
 
-If `localhost` does not load, the development server may be listening only on IPv6 loopback. Use:
+   Use a dedicated **read-only** credential, never a browser cookie, user token or producer credential. Never prefix these with `NEXT_PUBLIC_`. Restart Hub after changing them.
+3. Confirm the proxy answers:
 
-```powershell
-Invoke-RestMethod 'http://[::1]:5173/api/status/shelf' |
-  ConvertTo-Json -Depth 10
-```
+   ```powershell
+   Invoke-RestMethod 'http://127.0.0.1:5173/api/status/shelf' | ConvertTo-Json -Depth 10
+   ```
 
-Do not substitute `127.0.0.1` when the server is bound only to `::1`.
+   It returns `{ "schemaVersion": 1, "generatedAt": "...", "services": [...] }`.
 
-### 5. Open the dashboard
+The browser only ever calls `GET /api/status/shelf`. Hub adds the credential on the server side, validates the schema-v1 response and never sends the credential to the browser.
 
-Open `http://localhost:5173` in a browser. If needed, use `http://[::1]:5173`.
+<details>
+<summary><b>Report Codex and Antigravity CLI status</b></summary>
 
-Check that the four shelf TVs report the correct service:
+CLI status is reported only for sessions started through their status wrappers. The Antigravity IDE/sidebar is not a supported reporter.
 
-| TV | Service | Expected state |
-| --- | --- | --- |
-| CH 01 | Ascend Core / AIRA | `idle`, `working`, `stuck`, or `offline` |
-| CH 02 | Ascend Vision | `idle`, `working`, `stuck`, or `offline` |
-| CH 03 | Codex CLI | `idle`, `working`, `stuck`, or `offline` |
-| CH 04 | Antigravity CLI | `idle`, `working`, `stuck`, or `offline` |
-
-The dashboard refreshes about every four seconds. Offline TVs show last-seen information. The read credential must never appear in browser responses or developer tools.
-
-#### Blue-eye TV navigation
-
-- Use **WASD** or the **Arrow keys** to move the Ascend Vision eye between the four status TVs. Moving does not zoom the shelf.
-- Press **Space** to open the selected TV and its read-only auxiliary panel.
-- Click or tap a TV to open it immediately.
-- Press **Escape** or choose **Zoom Out** to return to the shelf. The previous TV remains selected.
-
-### 6. Test Vision (optional)
-
-With Core and Hub running:
-
-1. Start Vision normally and confirm its TV becomes `idle`.
-2. Confirm its heartbeat advances.
-3. Stop Vision and wait about 30 seconds.
-4. Confirm its TV becomes `offline` and displays its last-seen time.
-
-### 7. Test Codex CLI (optional)
-
-Launch Codex through its status wrapper—not directly through the Codex executable:
+**Codex CLI:**
 
 ```powershell
 Set-Location D:\ascend-core
@@ -149,77 +213,102 @@ Set-Location D:\ascend-core
   -ConfigPath 'D:\ascend-status-adapters\codex-local-1\config.json'
 ```
 
-Run a harmless task. The Codex TV should transition `offline → working → idle`. After Codex exits, it should become `offline` after roughly 30 seconds.
+Run a harmless task. The Codex TV goes `offline → working → idle`, and returns to `offline` about 30 seconds after Codex exits.
 
-### 8. Test Antigravity CLI (optional)
-
-Antigravity status is supported only when launched through the wrapper. The Antigravity IDE/sidebar is not a supported reporter.
-
-First verify that the trusted local probe workspace exists:
+**Antigravity CLI:**
 
 ```powershell
 $agyWorkspace = "$env:TEMP\ascend-phase3-agy-probe-20260918-4c81e5"
-Test-Path -LiteralPath $agyWorkspace
+Test-Path -LiteralPath $agyWorkspace   # must be True
+& 'D:\ascend_hub\scripts\status-adapters\antigravity-status.ps1' -Workspace $agyWorkspace
 ```
 
-If this returns `True`, launch the real Antigravity CLI through the wrapper:
+Submit `Compute 2 + 2 and reply with the number only. Do not use tools.` and watch the TV go `offline → working → idle`. An interrupted run (`Ctrl+C`) is recorded as interrupted or abandoned, never as completed. If the workspace check returns `False`, follow the [Antigravity setup guide](docs/antigravity-cli-status-adapter.md) instead of installing hooks elsewhere.
 
-```powershell
-& 'D:\ascend_hub\scripts\status-adapters\antigravity-status.ps1' `
-  -Workspace $agyWorkspace
-```
+Each agent needs its own instance-bound producer credential, stored outside this repository. Keep `scripts/status-adapters/` paths stable, because installed hooks reference them. Full guides: [Codex adapter](docs/codex-status-adapter.md), [Antigravity adapter](docs/antigravity-cli-status-adapter.md).
 
-For a normal completion, submit:
+</details>
 
-```text
-Compute 2 + 2 and reply with the number only. Do not use tools.
-```
+<details>
+<summary><b>Check Vision on the shelf</b></summary>
 
-The Antigravity TV should transition `offline → working → idle`.
+With Core and Hub running, start Vision and confirm its TV shows `idle` and its heartbeat advances. Stop Vision; after about 30 seconds the TV shows `offline` with a last-seen time.
 
-For an interruption test, launch it again, submit a long harmless task, then press `Ctrl+C` while it is working. The wrapper must safely close the operation as interrupted or abandoned; it must never report that interrupted run as completed. After Antigravity exits, its TV should become `offline` after about 30 seconds.
+</details>
 
-If the workspace check returns `False`, do not install hooks into another workspace. Follow the [Antigravity CLI setup guide](docs/antigravity-cli-status-adapter.md) instead.
+## Media setup
 
-### 9. Stop Hub
+Each media integration is set up from its own TV screen:
 
-Press `Ctrl+C` in the Hub terminal.
+- **Spotify:** needs your Spotify developer app ID and secret, then the account authorization flow.
+- **Weather:** needs a Visual Crossing API key and a location.
+- **YouTube:** works without setup; availability depends on YouTube and the chosen stream.
 
-- `502` from the proxy means Core is unreachable.
-- `503` means Hub is missing configuration or needs a restart after changing `.env.local`.
+Secrets are stored by the local Hub runtime under the ignored `.sites-runtime/` folder and are never returned by the setup APIs. Keep that folder private.
 
-### Local-agent setup
+## Configuration
 
-Follow the operator guides before provisioning or launching an adapter:
+### `.env.local` (repository root, ignored by git)
 
-- [Codex CLI setup and lifecycle mapping](docs/codex-status-adapter.md)
-- [Antigravity CLI setup and wrapper boundary](docs/antigravity-cli-status-adapter.md)
+| Variable | Purpose |
+| --- | --- |
+| `ASCEND_CORE_SHELF_URL` | Core's Shelf read endpoint. |
+| `ASCEND_SHELF_READ_CREDENTIAL` | Dedicated read-only credential for that endpoint. |
+| `ASCEND_ROOM_TOKEN` | Shared secret between Hub and the Agent Room. Created automatically. |
 
-Each agent needs its own instance-bound producer credential. Credentials and durable runtime stores belong outside this repository. Keep `scripts/status-adapters/` paths stable because installed hooks reference them. The guides document verified versions and machine-specific executable/configuration paths; adjust deployment paths deliberately rather than bypassing launcher validation.
+### Agent Room settings (`.sites-runtime/agent-room/settings.json`)
 
-## Development commands
+Optional overrides of the defaults in `scripts/agent-room/agents.mjs`:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `buildsRoot` | `D:\ascend-builds` | Where new projects and session worktrees are created. Also set by `ASCEND_BUILDS_ROOT`. |
+| `debateFolders` | the three Ascend repos | Folders that debates may read and repo sessions may branch from. |
+| `checks` | per repo | Suggested check command for each repo. |
+| `timeouts` | chat 3 min, build 15 min, debate 10 min, check 15 min | Time limit per agent turn or check run, in milliseconds. |
+| `limits` | 120 minutes, 80 turns, 3 rounds | Limits for sessions started without their own (the start form always sends its values). |
+| `agents` | global npm installs | Command for each CLI, if yours live elsewhere. |
+
+The room keeps its sessions, project memory (`memory/<repo>.md`) and last-known quota (`quota.json`) in the same folder.
+
+## Troubleshooting
+
+| Symptom | What to do |
+| --- | --- |
+| Shelf TVs say *Cannot reach the status feed* | Core is not running or not reachable. `/api/status/shelf` returns `502` when Core is down and `503` when `.env.local` is missing values (restart Hub after editing it). |
+| `/room` says *Room offline* | Start Hub with `npm run serve` or the desktop shortcut, or run `node scripts/agent-room/server.mjs` on its own. |
+| *Not ready: claude, agy.* when starting | The room is still probing the CLIs (a few seconds after start), or a CLI is missing or signed out. Run it once in a terminal to check. |
+| A session paused | Read the reason in the gate panel. **Retry** continues and grants more turns, minutes or one more round; **Reassign** hands the task to another coder. |
+| *MERGE_REFUSED* at the result gate | Your checkout moved off the base branch, or the base branch moved. Switch back, or choose **Keep branch** and merge yourself. |
+| `localhost` does not load in development | The dev server may listen on IPv6 only. Use `http://[::1]:5173`. |
+
+## Development
 
 ```sh
-npm run dev                                      # Development server
-npm run serve                                    # Production build on 127.0.0.1 (rebuilds only when sources change)
-npm run test:status                              # Hub Shelf tests
-node --no-warnings --test tests/phase3/*.test.mjs  # Local-agent adapter tests
-npm run lint                                     # Repository lint
-npm run build                                    # Production build
-npm start                                        # Local preview of the built Worker
-git diff --check                                 # Whitespace checks
+npm run dev            # development server with hot reload
+npm run serve          # production build on 127.0.0.1 (rebuilds only when sources change)
+npm run build          # production build only
+npm run lint           # repository lint
+npm run test:status    # status shelf tests
 ```
 
-`npm start` requires a successful build and previews the generated Worker locally; it does not deploy. The full lint command currently exits with existing React Hooks and TypeScript findings in legacy UI files. It ignores local tooling, worktrees, build output, and vendored code so the result covers repository source only. A successful build or test run does not mean full lint is clean.
-
-The media integrations also have focused checks:
+Agent Room and Hub tests:
 
 ```sh
-tsx --test tests/tv/*.test.ts
-python tests/tv/channel-ui.browser.py
+node --no-warnings --test tests/agent-room/*.test.mjs tests/hub/*.test.mjs
+npx tsx --test tests/agent-room/*.test.ts
+npx tsc --noEmit
 ```
 
-On Windows, run the launcher checks from Windows PowerShell 5.1:
+Other checks:
+
+```sh
+node --no-warnings --test tests/phase3/*.test.mjs   # CLI status adapters
+npx tsx --test tests/tv/*.test.ts                   # media TVs
+python tests/tv/channel-ui.browser.py               # media TVs in a browser (Playwright)
+```
+
+Desktop launcher checks, from Windows PowerShell 5.1:
 
 ```powershell
 desktop/tests/Test-LauncherLayout.ps1
@@ -228,38 +317,45 @@ desktop/tests/Test-Supervisor.ps1
 desktop/tests/Test-SessionReplacement.ps1
 ```
 
-## Repository structure
+`npm run lint` still reports existing findings in older UI files, so a clean build or test run does not mean the whole repository lints clean.
 
-| Path | Purpose |
+### Project structure
+
+| Path | Contents |
 | --- | --- |
-| `app/` | Pages, routing, Shelf proxy, and polling logic |
-| `components/`, `hooks/`, `lib/` | UI components and shared application logic |
-| `public/` | Runtime artwork, fonts, and models |
-| `scripts/status-adapters/` | Production CLI wrappers, hooks, stores, and reporters |
-| `tests/status/`, `tests/phase3/` | Shelf and adapter regression tests |
-| `docs/`, `docs/design/` | Architecture audits, operator guides, and design references |
-| `build/` | Required build-plugin source—not generated output |
-| `vendor/` | Vendored styles/licenses and the standalone TV reference project |
-| `worker/`, `.openai/` | Worker entry point and hosting configuration |
-| `db/`, `drizzle/`, `examples/` | Optional database integration |
-| `scratch/` | Ignored local inspection and QA files |
+| `app/` | Pages and API routes: home, `/room`, the status and room proxies, media APIs |
+| `app/room/` | Agent Room UI: deck, workflow, gates, start form, limits |
+| `scripts/agent-room/` | Agent Room server: sessions, prompts, git work, checks, quota, memory |
+| `scripts/status-adapters/` | CLI status wrappers, hooks and reporters |
+| `components/`, `hooks/`, `lib/` | Shared UI components and logic |
+| `desktop/` | Windows launcher, installer and supervisor |
+| `public/` | Artwork, fonts, videos and 3D models |
+| `tests/` | Agent Room, Hub, status, adapter and media tests |
+| `docs/` | Roadmap, operator guides, audits and design references |
+| `vendor/`, `build/`, `worker/` | Vendored code, build plugins and the Worker entry point |
 
 ## Security and privacy
 
-- Browser code never receives producer or Shelf read credentials.
-- Status reporters allowlist lifecycle metadata; they do not send prompts, responses, transcripts, source code, tool I/O, terminal output, or raw errors.
-- The focused-TV auxiliary console renders only allowlisted normalized Shelf fields and ignores arbitrary provider, capability, and metadata objects.
-- Concurrent operations remain `working` until the final active operation closes.
-- Antigravity child exit is a session boundary, not proof of completion. Orphaned operations become `interrupted-or-abandoned`; completed operations are preserved.
-- Core derives `offline` after heartbeat expiry. Hub shows stale snapshots explicitly when polling fails.
-- `.gitignore` excludes local secrets, dependencies, generated output, SQLite state, and scratch evidence. Review staged changes before publishing; ignore rules do not protect secrets already tracked by Git.
+- Hub and the Agent Room listen on `127.0.0.1` only. Room requests need a bearer token, and Hub refuses requests whose host is not loopback, which blocks DNS-rebinding attacks.
+- Browser code never receives the Shelf read credential, producer credentials or the room token.
+- Repo sessions work in separate git worktrees. The room never edits your checkout, and a merge is fast-forward only.
+- Agent turns run with each CLI's own permission mode: read-only for discussion, planning, review and debates, edit mode only for coding in the session folder. Git hooks and signing are disabled for the room's own git calls.
+- Status reporters send lifecycle metadata only, never prompts, responses, transcripts, code, terminal output or raw errors.
+- The quota meter reads only the `rate_limits` field from Codex's session logs and Claude's rate-limit events.
+- `.gitignore` excludes `.env.local`, `.sites-runtime/`, build output and scratch files. Review staged changes before publishing; ignore rules do not protect secrets that are already tracked.
 
 ## Documentation
 
-- [Authoritative Status Shelf architecture](<future ai implementation.md>)
-- [Phase 3 audit](docs/phase-3-local-ai-status-adapter-audit.md)
-- [Phase 3 implementation status](docs/phase-3-implementation-status.md)
-- [Development, hosting, authentication, and optional database setup](docs/development-and-hosting.md)
+- [Roadmap](docs/ROADMAP.md): milestones M1–M6 and what is next
+- [Desktop launcher](desktop/README.md)
+- [Codex CLI status adapter](docs/codex-status-adapter.md) and [Antigravity CLI status adapter](docs/antigravity-cli-status-adapter.md)
+- [Status Shelf architecture](<future ai implementation.md>)
+- [Phase 3 audit](docs/phase-3-local-ai-status-adapter-audit.md) and [implementation status](docs/phase-3-implementation-status.md)
+- [Development, hosting and optional database setup](docs/development-and-hosting.md)
 - [Design references](docs/design/README.md)
 
-Built with React, TypeScript, Tailwind CSS, Three.js, and Vinext on a Cloudflare Worker runtime. Third-party reference assets and vendored code retain their existing files and notices; their presence does not grant redistribution rights.
+## License and credits
+
+This repository has no license file yet, so default copyright applies: you may read the code, but reuse needs the owner's permission.
+
+Built with React 19, TypeScript, Vinext (Vite), Tailwind CSS, Three.js and Framer Motion. Third-party reference artwork, media and vendored code keep their own files and notices; their presence here does not grant redistribution rights.
