@@ -381,7 +381,7 @@ export class WeatherChannel {
 
     const weatherAnchor = document.createElement("img");
     weatherAnchor.id = "weather-anchor";
-    weatherAnchor.src = "resource/anchor/von_lycaon.png";
+    weatherAnchor.src = "resource/anchor/von_lycaon.webp";
 
     // weatherAnchorImageContainer.append(weatherAnchor)
 
