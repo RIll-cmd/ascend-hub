@@ -17,6 +17,7 @@ export type PlanTask = { id: number; title: string; assignee: AgentId; descripti
 export type Message = {
   at: string; from: AgentId | "room"; text: string;
   seq?: number; to?: AgentId[]; kind?: "assign" | "subagent"; by?: AgentId; sub?: string;
+  usage?: { tokens: number; costUsd: number | null };
 };
 export type Availability = { state: "checking" | "ready" | "offline"; detail?: string };
 export type RepoChoice = { dir: string; check: string };
@@ -33,7 +34,11 @@ export type SessionView = {
   stage: Stage;
   roles: Roles | null;
   plan: { tasks: PlanTask[] } | null;
-  pause: { reason: string; at: string } | null;
+  pause: { reason: string; at: string; kind?: "turns" | "minutes" | "rounds"; task?: number } | null;
+  limits?: { minutes: number; turns: number; rounds: number };
+  turns?: number;
+  workMs?: number;
+  usage?: Partial<Record<AgentId, { turns: number; tokens: number; costUsd: number }>>;
   active: {
     agent: AgentId; activity: string; since: string;
     subagents?: { id: string; label: string; tool: string | null; status: string }[];

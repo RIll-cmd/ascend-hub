@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useNow } from "../status/use-now";
 import { AGENT_COLORS, messageLine } from "./deck/deck-view";
 import { AGENT_IDS, AGENT_NAMES, type SessionView } from "./room-types";
-import { formatMs, LOOPING, workflowView, type Lanes, type RunSummary, type WorkflowTask } from "./workflow-view";
+import { formatMs, formatTokens, LOOPING, workflowView, type Lanes, type RunSummary, type WorkflowTask } from "./workflow-view";
 
 export function DiffView({ commit, label }: { commit: string; label?: string }) {
   const [state, setState] = useState<{ text?: string; error?: string; loading?: boolean }>({});
@@ -47,6 +47,7 @@ function TaskNode({ task }: { task: WorkflowTask }) {
             {task.rounds > 0 && <span className="agent-room-badge" title="Coder rounds on this task">{task.rounds} round{task.rounds === 1 ? "" : "s"}{looping ? " · looping?" : ""}</span>}
             {task.reviews > 0 && <span className="agent-room-badge" title="Reviewer replies">{task.reviews} review{task.reviews === 1 ? "" : "s"}</span>}
             {task.check && <span className={`agent-room-badge${task.check.ok ? "" : " is-problem"}`}>{task.check.ok ? "checks ✓" : "checks ✗"}</span>}
+            {task.tokens > 0 && <span>{formatTokens(task.tokens)} tokens</span>}
             {task.ms !== null && <span>{formatMs(task.ms)}</span>}
           </span>
         </summary>
@@ -81,6 +82,17 @@ function Summary({ summary }: { summary: RunSummary }) {
       {AGENT_IDS.filter(id => summary.turns[id] > 0).map(id => (
         <span key={id} style={{ color: AGENT_COLORS[id] }}>{AGENT_NAMES[id]} {summary.turns[id]} turn{summary.turns[id] === 1 ? "" : "s"}</span>
       ))}
+      {AGENT_IDS.some(id => summary.tokens[id] > 0) && (
+        <span title="Tokens reported by each CLI; Antigravity does not report usage">
+          {AGENT_IDS.filter(id => summary.tokens[id] > 0).map(id => `${AGENT_NAMES[id]} ${formatTokens(summary.tokens[id])}`).join(" · ")} tokens
+          {summary.costUsd > 0 ? ` · $${summary.costUsd.toFixed(2)}` : ""}
+        </span>
+      )}
+      {summary.limits && (
+        <span title="Session limits; reaching one pauses the room and asks you">
+          Turns {summary.limits.turns[0]}/{summary.limits.turns[1]} · Work {summary.limits.minutes[0]}/{summary.limits.minutes[1]} min · Max {summary.limits.rounds} rounds a task
+        </span>
+      )}
       {summary.retries > 0 && <span>{summary.retries} retr{summary.retries === 1 ? "y" : "ies"}</span>}
       {summary.problems > 0 && <span className="is-problem">{summary.problems} problem{summary.problems === 1 ? "" : "s"}</span>}
     </p>

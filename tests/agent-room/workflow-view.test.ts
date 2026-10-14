@@ -98,3 +98,18 @@ test("retries stay separate rounds, and failing or looping tasks need attention"
   assert.equal(one.needsAttention, false);
   assert.equal(two.needsAttention, true);
 });
+
+test("the summary adds tokens and cost per agent and how much of each limit is used; tasks add their tokens", () => {
+  const priced = {
+    ...busy,
+    limits: { minutes: 120, turns: 80, rounds: 3 }, turns: 5, workMs: 14 * 60_000,
+    usage: { claude: { turns: 3, tokens: 9000, costUsd: 0.5 }, agy: { turns: 2, tokens: 400, costUsd: 0 } },
+    transcript: busy.transcript.map(m => (m.seq === 2 ? { ...m, usage: { tokens: 1200, costUsd: 0.1 } } : m.seq === 5 ? { ...m, usage: { tokens: 800, costUsd: null } } : m)),
+  } as unknown as SessionView;
+  const view = workflowView(priced, Date.parse(t(100)));
+  assert.deepEqual(view.summary.tokens, { codex: 0, claude: 9000, agy: 400 });
+  assert.equal(view.summary.costUsd, 0.5);
+  assert.deepEqual(view.summary.limits, { turns: [5, 80], minutes: [14, 120], rounds: 3 });
+  assert.equal(view.tasks[0].tokens, 2000);
+  assert.equal(view.tasks[1].tokens, 0);
+});

@@ -104,6 +104,7 @@ export function BriefForm({ agents, folders = [], repos = [], act }: { agents?: 
   const [where, setWhere] = useState<"new" | "repo">("new");
   const [repoDir, setRepoDir] = useState("");
   const [check, setCheck] = useState<string | null>(null);
+  const [limits, setLimits] = useState({ minutes: 120, turns: 80, rounds: 3 });
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
   const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
   const inRepo = where === "repo" && repos.length > 0;
@@ -112,7 +113,7 @@ export function BriefForm({ agents, folders = [], repos = [], act }: { agents?: 
   const checkCommand = check ?? (inRepo ? chosenRepo?.check ?? "" : "");
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : { project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}) };
+    : { project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits };
   return (
     <form className="agent-room-brief" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", body); }}>
       <div className="agent-room-kind" role="radiogroup" aria-label="Session type">
@@ -142,6 +143,12 @@ export function BriefForm({ agents, folders = [], repos = [], act }: { agents?: 
             <input value={checkCommand} onChange={e => setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
           </label>
           <small>Runs in the project folder after each task. A failing check sends the task back to the coder with the output.</small>
+          <fieldset className="agent-room-limits">
+            <legend>Limits (the room pauses and asks you when one is reached)</legend>
+            <label>Work minutes <input type="number" min={5} max={720} value={limits.minutes} onChange={e => setLimits(l => ({ ...l, minutes: Number(e.target.value) }))} /></label>
+            <label>Agent turns <input type="number" min={1} max={500} value={limits.turns} onChange={e => setLimits(l => ({ ...l, turns: Number(e.target.value) }))} /></label>
+            <label>Rounds per task <input type="number" min={1} max={10} value={limits.rounds} onChange={e => setLimits(l => ({ ...l, rounds: Number(e.target.value) }))} /></label>
+          </fieldset>
           <label>What should they build?
             <textarea value={task} onChange={e => setTask(e.target.value)} maxLength={4000} required rows={4} />
           </label>

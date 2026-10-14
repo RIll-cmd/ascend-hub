@@ -66,6 +66,8 @@ test('no changes twice with a reassigned task means skip without asking again', 
     if (stage === 'finish') return { text: 'summary' };
     throw new Error(stage);
   }, { orchestrator: 'codex', coders: ['claude', 'agy'], reviewer: null });
+  // Four rounds (two tries, reassignment, two more) needs a looser loop guard than the default three.
+  session.state.limits.rounds = 4;
   await session.gate({ gate: 'plan', decision: 'approve' });
   assert.equal(calls.filter(c => c.stage === 'reassign').length, 1);
   assert.equal(calls.filter(c => c.stage === 'build').length, 4);

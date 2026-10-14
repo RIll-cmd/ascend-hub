@@ -173,3 +173,6 @@
 .agent-room .agent-room-wf-task.needs-attention { box-shadow: 0 0 0 2px #c0392b inset; }
 .agent-room .agent-room-wf-round h4 { margin: 8px 0 0; font-size: 12px; }
 .agent-room .agent-room-wf-filter { margin: 0 0 8px; font-size: 12px; }
+.agent-room .agent-room-limits { display: flex; flex-wrap: wrap; gap: 8px; border: 1px solid #d8c7a6; border-radius: 6px; padding: 6px 8px; }
+.agent-room .agent-room-limits label { display: flex; flex-direction: column; font-size: 12px; }
+.agent-room .agent-room-limits input { width: 80px; }

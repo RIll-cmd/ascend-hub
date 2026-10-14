@@ -5,9 +5,13 @@ export type WorkflowStage = { label: string; state: "done" | "current" | "todo";
 export type WorkflowTask = {
   id: number; title: string; assignee: AgentId; status: PlanTask["status"]; commit: string | null; notes: string; check?: PlanTask["check"];
   rounds: number; reviews: number; ms: number | null; messages: Message[];
-  roundGroups: Message[][]; needsAttention: boolean;
+  roundGroups: Message[][]; needsAttention: boolean; tokens: number;
 };
-export type RunSummary = { ms: number | null; turns: Record<AgentId, number>; retries: number; problems: number };
+export type RunSummary = {
+  ms: number | null; turns: Record<AgentId, number>; retries: number; problems: number;
+  tokens: Record<AgentId, number>; costUsd: number;
+  limits: { turns: [number, number]; minutes: [number, number]; rounds: number } | null;
+};
 export type Lanes = { start: number; end: number; rows: { agent: AgentId; spans: { start: number; end: number }[] }[] };
 export type WorkflowView = { stages: WorkflowStage[]; tasks: WorkflowTask[]; summary: RunSummary; lanes: Lanes };
 
@@ -64,6 +68,7 @@ export function workflowView(session: SessionView, now: number): WorkflowView {
       id: task.id, title: task.title, assignee: task.assignee, status: task.status, commit: task.commit, notes: task.notes, check: task.check,
       rounds, roundGroups,
       needsAttention: task.status === "skipped" || rounds >= LOOPING || messages.some(isProblem) || task.check?.ok === false,
+      tokens: messages.reduce((sum, m) => sum + (m.usage?.tokens ?? 0), 0),
       reviews: session.roles?.reviewer ? messages.filter(m => m.from === session.roles!.reviewer).length : 0,
       ms: start !== undefined && end !== undefined ? end - start : null,
       messages,
@@ -75,11 +80,21 @@ export function workflowView(session: SessionView, now: number): WorkflowView {
   const end = ended ? Date.parse(log.at(-1)?.at ?? session.transcript.at(-1)?.at ?? new Date(now).toISOString()) : now;
   const turns = Object.fromEntries(AGENT_IDS.map(id => [id, 0])) as Record<AgentId, number>;
   for (const m of session.transcript) if (isTurn(m)) turns[m.from as AgentId] += 1;
+  const usage = session.usage ?? {};
+  const tokens = Object.fromEntries(AGENT_IDS.map(id => [id, usage[id]?.tokens ?? 0])) as Record<AgentId, number>;
+  const limits = session.limits;
   const summary = {
     ms: first ? end - start : null,
     turns,
     retries: tasks.reduce((sum, t) => sum + Math.max(0, t.rounds - 1), 0),
     problems: session.transcript.filter(isProblem).length,
+    tokens,
+    costUsd: AGENT_IDS.reduce((sum, id) => sum + (usage[id]?.costUsd ?? 0), 0),
+    limits: limits ? {
+      turns: [session.turns ?? 0, limits.turns] as [number, number],
+      minutes: [Math.floor((session.workMs ?? 0) / 60_000), limits.minutes] as [number, number],
+      rounds: limits.rounds,
+    } : null,
   };
   // The room runs one agent at a time, so a turn spans from the previous message to the agent's reply.
   const rows = AGENT_IDS.map(agent => ({ agent, spans: [] as { start: number; end: number }[] }));
@@ -100,4 +115,8 @@ export function formatMs(ms: number | null): string {
   if (s < 60) return `${s}s`;
   if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
   return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
+}
+
+export function formatTokens(n: number): string {
+  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n);
 }

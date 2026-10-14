@@ -2,12 +2,13 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
-import { subagentEvent } from './events.mjs';
+import { subagentEvent, usageEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
 import { branchDiff, commitAll, commitDiff, createProject, createWorktree, finishWorktree, headCommit, lastCommitDiff, linkDependencies, renderPlan, rollback, rootCommit, runCheck } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
+import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
 export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
@@ -38,6 +39,7 @@ export class RoomSession {
   static create({ dataDir, settings, runTurn }, body = {}) {
     if (body.mode === 'debate') return RoomSession.createDebate({ dataDir, settings, runTurn }, body);
     const { project, task, roles, repo, check } = body;
+    const limits = cleanLimits(body.limits, settings.limits ?? DEFAULT_LIMITS);
     if (check !== undefined && check !== null && (typeof check !== 'string' || check.length > 500)) throw roomError('CHECK_INVALID');
     const subagents = subagentChoice(body.subagents);
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
@@ -67,7 +69,7 @@ export class RoomSession {
     const state = {
       id, mode: 'build', subagents, project, projectDir, task: task.trim(), stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
-      repo: repoInfo, check: check?.trim() || null,
+      repo: repoInfo, check: check?.trim() || null, limits, turns: 0, workMs: 0, usage: {},
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
@@ -120,13 +122,14 @@ export class RoomSession {
   }
 
   // Every message gets a seq (for "what is new"); routing fields tell the deck where to draw it.
-  say(from, text, { to, kind, by, sub } = {}) {
+  say(from, text, { to, kind, by, sub, usage } = {}) {
     const last = this.transcript.at(-1)?.seq ?? this.transcript.length;
     const message = { at: new Date().toISOString(), seq: last + 1, from, text };
     if (to !== undefined) message.to = to;
     if (kind) message.kind = kind;
     if (by) message.by = by;
     if (sub) message.sub = sub;
+    if (usage) message.usage = usage;
     this.transcript.push(message);
     appendJsonLine(join(this.dir, 'transcript.jsonl'), message);
   }
@@ -140,6 +143,8 @@ export class RoomSession {
 
   // Sub-agent progress only updates the CRT (saved at most once a second); start and finish also go to the transcript.
   onAgentEvent(agent, event) {
+    const used = usageEvent(agent, event);
+    if (used) this.turnUsage = used;
     const active = this.state.active;
     const sub = subagentEvent(agent, event);
     if (!sub || active?.agent !== agent) return;
@@ -179,8 +184,19 @@ export class RoomSession {
     this.save();
   }
 
-  pauseWith(reason) {
-    this.state.pause = { reason, at: new Date().toISOString() };
+  // Turns, work time and tokens per agent; the budget limits read these.
+  countTurn(agent, durationMs = 0) {
+    const state = this.state;
+    state.turns = (state.turns ?? 0) + 1;
+    state.workMs = (state.workMs ?? 0) + durationMs;
+    const total = ((state.usage ??= {})[agent] ??= { turns: 0, tokens: 0, costUsd: 0 });
+    total.turns += 1;
+    total.tokens += this.turnUsage?.tokens ?? 0;
+    total.costUsd += this.turnUsage?.costUsd ?? 0;
+  }
+
+  pauseWith(reason, extra = {}) {
+    this.state.pause = { reason, at: new Date().toISOString(), ...extra };
     this.say('room', `Paused: ${reason}`);
     this.save();
   }
@@ -228,7 +244,13 @@ export class RoomSession {
   async turn(agent, mode, prompt, activity, to = []) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       if (this.state.stage === 'stopped') return null;
+      const hit = sessionLimitHit(this.state);
+      if (hit) {
+        this.pauseWith(hit.reason, { kind: hit.kind });
+        return null;
+      }
       this.setActive(agent, activity);
+      this.turnUsage = null;
       this.controller = new AbortController();
       const invocation = buildInvocation(agent, mode, prompt, {
         cwd: this.state.projectDir, settings: this.settings, outFile: join(this.dir, 'codex-last.txt'), subagents: this.state.subagents?.claude !== false,
@@ -240,8 +262,9 @@ export class RoomSession {
       this.controller = null;
       if (this.state.stage === 'stopped' || result.aborted) return null;
       this.setActive(null);
+      this.countTurn(agent, result.durationMs);
       if (result.ok) {
-        this.say(agent, result.text, { to: typeof to === 'function' ? to(result.text) : to });
+        this.say(agent, result.text, { to: typeof to === 'function' ? to(result.text) : to, usage: this.turnUsage });
         return result.text;
       }
       const why = result.timedOut ? 'timed out' : result.error ?? (result.code === 0 ? 'returned no text' : `exited with code ${result.code}`);
@@ -321,6 +344,12 @@ export class RoomSession {
       return;
     }
     if (task.status !== 'review') {
+      const allowed = (state.limits?.rounds ?? Infinity) + (task.extraRounds ?? 0);
+      if ((task.rounds ?? 0) >= allowed) {
+        this.pauseWith(`Task ${task.id} reached ${task.rounds} rounds. Retry allows one more.`, { kind: 'rounds', task: task.id });
+        return;
+      }
+      task.rounds = (task.rounds ?? 0) + 1;
       rollback(state.projectDir);
       task.status = 'running';
       this.save();
@@ -375,6 +404,13 @@ export class RoomSession {
     task.attempts += 1;
     task.notes = reason;
     this.say('room', `Task ${task.id} attempt ${task.attempts} not accepted: ${reason}`);
+    // The loop guard stops another round (a retry or a reassignment), never a skip: a task going in circles waits for the owner.
+    const skipping = task.attempts >= 2 && task.reassigned;
+    if (!skipping && (task.rounds ?? 0) >= (this.state.limits?.rounds ?? Infinity) + (task.extraRounds ?? 0)) {
+      task.status = 'pending';
+      this.pauseWith(`Task ${task.id} reached ${task.rounds} rounds. Retry allows one more.`, { kind: 'rounds', task: task.id });
+      return;
+    }
     if (task.attempts < 2) {
       task.status = 'pending';
       this.save();
@@ -510,6 +546,13 @@ export class RoomSession {
       this.say('room', `Owner reassigned task ${task.id} to ${AGENT_NAMES[agent]}.`);
     } else if (action !== 'retry') {
       throw roomError('ACTION_INVALID');
+    } else if (state.pause.kind === 'turns') {
+      state.limits.turns += 10;
+    } else if (state.pause.kind === 'minutes') {
+      state.limits.minutes += 15;
+    } else if (state.pause.kind === 'rounds') {
+      const task = state.plan?.tasks.find(t => t.id === state.pause.task);
+      if (task) task.extraRounds = (task.extraRounds ?? 0) + 1;
     }
     state.pause = null;
     this.save();

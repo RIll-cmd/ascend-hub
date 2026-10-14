@@ -23,6 +23,20 @@ export function subagentEvent(agentId, event) {
   return null;
 }
 
+// Tokens (and cost, when the CLI reports it) for one finished turn; Antigravity reports neither.
+export function usageEvent(agentId, event) {
+  if (agentId === 'claude' && event.type === 'result' && event.usage) {
+    const u = event.usage;
+    const tokens = (u.input_tokens ?? 0) + (u.output_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
+    return { tokens, costUsd: typeof event.total_cost_usd === 'number' ? event.total_cost_usd : null };
+  }
+  if (agentId === 'codex' && event.type === 'turn.completed' && event.usage) {
+    const u = event.usage;
+    return { tokens: (u.input_tokens ?? 0) + (u.output_tokens ?? 0) + (u.reasoning_output_tokens ?? 0), costUsd: null };
+  }
+  return null;
+}
+
 export function claudeResultText(event) {
   return event.type === 'result' && typeof event.result === 'string' ? event.result : null;
 }

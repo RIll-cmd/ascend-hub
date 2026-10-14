@@ -64,6 +64,15 @@ Each slice ships on its own, with tests and a live run, in this order.
 
 ### M6a — Budgets and loop guard (safety first)
 
+**Done (2026-10-14):**
+- `scripts/agent-room/limits.mjs`: defaults are 120 work minutes, 80 turns and 3 rounds per task, and the start form can change them.
+- A limit pauses the session with a plain reason. Retry adds 15 minutes, 10 turns or 1 round.
+- The loop guard stops another round, never a skip.
+- Usage: Claude reports tokens and cost (`result`); Codex reports tokens only (`turn.completed`).
+- It's recorded on each message and in per-agent totals, and shown in the Workflow summary and on task nodes.
+- Live run: Codex 37k and Claude 176k tokens at $0.23, 3 of 20 turns.
+- A real event check also showed that Codex's exec stream carries no rate-limit data, while Claude's `rate_limit_event` carries the 5-hour and 7-day utilisation (needed for M6b).
+
 - **Problem:** cost per task varies widely (one write-up reports about 30× across tasks), and a coder ↔ reviewer loop can run until the retry rules give up.
 - **Per-session limits**, set in the start form with sensible defaults:
   - maximum wall-clock time;
