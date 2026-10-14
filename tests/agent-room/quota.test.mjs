@@ -98,3 +98,43 @@ test('the readiness probe passes its events on, so Claude quota is known before 
   assert.equal(result.state, 'ready');
   assert.deepEqual(seen, ['rate_limit_event']);
 });
+
+test('Refresh re-reads the Codex log for free and probes Claude at most once a minute', async () => {
+  const { startRoomServer } = await import('../../scripts/agent-room/server.mjs');
+  const { tempRoom, testSettings } = await import('./helpers.mjs');
+  const home = mkdtempSync(join(tmpdir(), 'codex-home-'));
+  const day = join(home, 'sessions', '2026', '10', '14');
+  mkdirSync(day, { recursive: true });
+  writeFileSync(join(day, 'rollout-a.jsonl'), codexLine(12, 30));
+  utimesSync(join(day, 'rollout-a.jsonl'), new Date(Date.now() - 60_000), new Date(Date.now() - 60_000));
+  const { dataDir, buildsRoot } = tempRoom();
+  const probes = [];
+  const runTurn = async (invocation, { onEvent }) => {
+    const agent = invocation.command.replace('fake-', '');
+    probes.push(agent);
+    if (agent === 'claude') onEvent?.(CLAUDE_EVENT);
+    return { ok: true, text: 'READY', stderr: '', error: null, code: 0, timedOut: false, aborted: false, durationMs: 1 };
+  };
+  const room = await startRoomServer({ dataDir, settings: { ...testSettings(buildsRoot), codexHome: home }, runTurn, port: 0 });
+  try {
+    const call = (method, path) => fetch(`http://127.0.0.1:${room.port}${path}`, { method, headers: { authorization: `Bearer ${room.token}` } });
+    await new Promise(r => setTimeout(r, 20));
+    const startup = probes.filter(a => a === 'claude').length;
+    assert.equal((await (await call('GET', '/quota')).json()).quota.codex.fiveHour.usedPercent, 12);
+    assert.equal(probes.filter(a => a === 'claude').length, startup, 'reading the meter never runs a turn');
+
+    writeFileSync(join(day, 'rollout-b.jsonl'), codexLine(44, 50));
+    const first = await (await call('POST', '/quota/refresh')).json();
+    assert.equal(first.quota.codex.fiveHour.usedPercent, 44);
+    assert.equal(first.quota.claude.weekly.usedPercent, 80);
+    assert.deepEqual(first.refreshed, { codex: true, claude: true });
+    assert.equal(probes.filter(a => a === 'claude').length, startup + 1);
+    assert.deepEqual(probes.filter(a => a !== 'claude').length, 2, 'only Claude is probed again');
+
+    const second = await (await call('POST', '/quota/refresh')).json();
+    assert.deepEqual(second.refreshed, { codex: true, claude: false });
+    assert.equal(probes.filter(a => a === 'claude').length, startup + 1);
+  } finally {
+    await room.close();
+  }
+});

@@ -94,6 +94,8 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     const value = latestCodexQuota(settings.codexHome);
     if (value) recordQuota('codex', value);
   };
+  // A Claude probe is a real (tiny) turn, so a manual refresh asks at most once a minute.
+  let claudeProbedAt = 0;
   const watch = s => { if (s) s.onQuota = recordQuota; return s; };
   let lastRequest = Date.now();
 
@@ -113,6 +115,22 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         const repos = listRepos(settings).map(dir => ({ dir, check: suggestCheck(dir, settings.checks) }));
         refreshCodexQuota();
         return send(200, { online: true, agents, folders: listDebateFolders(settings), repos, quota, quotaWarning: quotaWarning(quota), session: session?.summary() ?? null });
+      }
+      // The meter alone: unlike /status it never starts readiness probes, so a page can poll it for free.
+      if (route === 'GET /quota') {
+        refreshCodexQuota();
+        return send(200, { quota, quotaWarning: quotaWarning(quota) });
+      }
+      if (route === 'POST /quota/refresh') {
+        codexQuotaAt = 0;
+        refreshCodexQuota();
+        // During a session Claude's own turns keep its reading current.
+        const claude = !busy() && Date.now() - claudeProbedAt >= 60_000;
+        if (claude) {
+          claudeProbedAt = Date.now();
+          agents.claude = await probeOne('claude').catch(error => ({ state: 'offline', detail: error.message }));
+        }
+        return send(200, { quota, quotaWarning: quotaWarning(quota), refreshed: { codex: Boolean(settings.codexHome), claude } });
       }
       if (route === 'POST /sessions') {
         if (busy()) return send(409, { error: 'SESSION_ACTIVE', message: 'A session is already running.' });

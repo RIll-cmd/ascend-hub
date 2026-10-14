@@ -9,14 +9,14 @@ export function roomConnection(env: Record<string, string | undefined> = process
   return { port: Number(env.ASCEND_ROOM_PORT ?? 5181), token };
 }
 
-export async function forwardToRoom(path: string, init: { method?: string; body?: unknown } = {}, conn = roomConnection()): Promise<Response> {
+export async function forwardToRoom(path: string, init: { method?: string; body?: unknown; timeoutMs?: number } = {}, conn = roomConnection()): Promise<Response> {
   if (!conn) return Response.json({ online: false, reason: "ASCEND_ROOM_TOKEN is not set in .env.local" }, { status: 503, headers: NO_STORE });
   try {
     const res = await fetch(`http://127.0.0.1:${conn.port}${path}`, {
       method: init.method ?? "GET",
       headers: { authorization: `Bearer ${conn.token}`, "content-type": "application/json" },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(init.timeoutMs ?? 5000),
       cache: "no-store",
     });
     return new Response(await res.text(), { status: res.status, headers: NO_STORE });

@@ -80,6 +80,7 @@ import {
 import { findCrtConfigByCollectibleId, getCrtProfile } from "../components/crt-tv-config";
 import { useStatusShelf } from "./status/use-status-shelf";
 import { shelfNowMs, statusClockMs, useNow } from "./status/use-now";
+import { HomeLimits } from "./room/limits-panel";
 
 const chapters = [
   { id: "core", number: "01", title: "Core Engine", eyebrow: "BUILD YOUR FOUNDATION", tag: "FOUNDATION", color: "#e9aa63", description: "A clear direction. A stronger operating system.", specs: ["Define your personal mission and values", "Create a focused progression roadmap", "Choose the principles that guide your work"], art: "engine" },
@@ -1498,6 +1499,7 @@ export default function Home() {
 
   return (
     <div className={`os zzz-workspace-shell ${edit ? "edit-mode" : ""} ${presetMode === "reference" ? "full-bleed-mode" : ""} lighting-${lightingMode}`} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) synth.play("click"); }}>
+      <HomeLimits />
 
 
       {/* Main clean workspace running the authentic Zenless Zone Zero TV web project */}

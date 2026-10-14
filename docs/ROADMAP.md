@@ -177,6 +177,7 @@ Each slice ships on its own, with tests and a live run, in this order.
 
 ### Small follow-ups
 
+- **Limits panel (done 2026-10-14):** the home screen has a "Limits" pill naming the fullest window, which opens to 5-hour and weekly bars per agent. Each bar shows its reset countdown and how old the reading is. The Agent Room's cards show the same bars. **Refresh limits** re-reads Codex's log and runs one tiny Claude turn, at most once a minute and never during a session. The meter itself never runs a turn (`GET /quota`). Antigravity's CLI reports no limits.
 - **Pull request:** a **Open pull request** choice at the repo result gate (push the branch, then `gh pr create`), always confirmed by the owner.
 - **Worktree clean-up:** remove stopped sessions' worktrees from Hub (they're kept today for inspection).
 - **Voice model:** a lighter Vision voice model, when the owner decides (see M5).

@@ -176,7 +176,41 @@
 .agent-room .agent-room-limits { display: flex; flex-wrap: wrap; gap: 8px; border: 1px solid #d8c7a6; border-radius: 6px; padding: 6px 8px; }
 .agent-room .agent-room-limits label { display: flex; flex-direction: column; font-size: 12px; }
 .agent-room .agent-room-limits input { width: 80px; }
-.agent-room .agent-room-quota { font-size: 11px; opacity: 0.85; }
 .agent-room .agent-room-memory { border: 1px solid #d8c7a6; border-radius: 6px; padding: 6px 8px; margin: 6px 0; }
 .agent-room .agent-room-memory label input[type=text], .agent-room .agent-room-memory label input:not([type]) { flex: 1; min-width: 0; }
 .agent-room .agent-room-memory textarea { width: 100%; box-sizing: border-box; }
+
+/* Subscription limits: shared by the room's agent cards and the home screen pill. */
+.limits-bars, .limits-agent, .limits-agent-head, .limits-bar { display: block; }
+.limits-agent + .limits-agent { margin-top: 8px; }
+.limits-agent-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.limits-agent-head small, .limits-note, .limits-resets { font-size: 11px; opacity: 0.75; }
+.limits-stale { color: #d9822b; opacity: 1 !important; }
+.limits-bar { display: grid; grid-template-columns: 52px 1fr 36px; gap: 2px 6px; align-items: center; margin-top: 3px; font-size: 11px; }
+.limits-track { display: block; height: 7px; border-radius: 4px; background: rgba(127, 127, 127, 0.28); overflow: hidden; }
+.limits-fill { display: block; height: 100%; border-radius: 4px; background: #3f9d6b; transition: width 0.4s ease; }
+.limits-bar[data-tone="warn"] .limits-fill { background: #d9a227; }
+.limits-bar[data-tone="full"] .limits-fill { background: #d9534f; }
+.limits-bar[data-tone="unknown"] .limits-track { background: repeating-linear-gradient(45deg, rgba(127, 127, 127, 0.25) 0 4px, transparent 4px 8px); }
+.limits-pct { text-align: right; font-variant-numeric: tabular-nums; }
+.limits-resets { grid-column: 2 / 4; }
+.limits-refresh { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; font-weight: normal; }
+.limits-refresh button { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer; }
+.limits-spin { animation: limits-spin 1s linear infinite; }
+@keyframes limits-spin { to { transform: rotate(360deg); } }
+/* A card already names its agent. */
+.agent-room-card .limits-agent-head b { display: none; }
+.agent-room-cards-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.limits-home { position: fixed; left: 16px; bottom: 16px; z-index: 900; font-family: var(--mono), "IBM Plex Mono", monospace; color: #f3e6d4; }
+.limits-pill, .limits-home-panel { background: rgba(14, 11, 8, 0.9); border: 1px solid rgba(255, 122, 69, 0.45); border-radius: 6px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); backdrop-filter: blur(12px); }
+.limits-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; color: inherit; font: inherit; font-size: 12px; cursor: pointer; }
+.limits-pill[data-tone="warn"] { border-color: #d9a227; }
+.limits-pill[data-tone="full"] { border-color: #d9534f; }
+.limits-home-panel { width: min(320px, calc(100vw - 32px)); padding: 10px 12px; }
+.limits-home-panel header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.limits-home-panel h2 { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; }
+.limits-close { background: none; border: 0; color: inherit; cursor: pointer; padding: 2px; }
+.limits-home-panel .limits-refresh { margin-top: 10px; }
+.limits-home-panel .limits-refresh button { background: rgba(255, 122, 69, 0.15); border: 1px solid rgba(255, 122, 69, 0.45); color: inherit; border-radius: 4px; padding: 3px 8px; }
+@media (prefers-reduced-motion: reduce) { .limits-spin { animation: none; } .limits-fill { transition: none; } }
