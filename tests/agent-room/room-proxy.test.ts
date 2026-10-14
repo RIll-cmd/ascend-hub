@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import test from "node:test";
-import { forwardToRoom, readCommand, roomConnection } from "../../app/room/room-proxy";
+import { foreignHost, forwardToRoom, readCommand, roomConnection } from "../../app/room/room-proxy";
 
 test("connection comes from the .env.local values workerd exposes", () => {
   assert.equal(roomConnection({}), null);
@@ -52,4 +52,16 @@ test("readCommand enforces same origin, size and object shape", async () => {
   assert.ok("error" in big && big.error.status === 413);
   const arr = await readCommand(req("[1]"));
   assert.ok("error" in arr && arr.error.status === 400);
+});
+
+test("a rebound hostname cannot reach the room even with a matching origin", async () => {
+  const rebound = new Request("http://evil.example:5173/api/room/sessions", {
+    method: "POST", headers: { host: "evil.example:5173", origin: "http://evil.example:5173" }, body: "{}",
+  });
+  assert.equal(foreignHost(rebound)?.status, 403);
+  const command = await readCommand(rebound);
+  assert.ok("error" in command && command.error.status === 403);
+  for (const host of ["127.0.0.1:5173", "localhost:5173", "[::1]:5173", "localhost"]) {
+    assert.equal(foreignHost(new Request(`http://${host}/api/room`, { headers: { host } })), null, host);
+  }
 });

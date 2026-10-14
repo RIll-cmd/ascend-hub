@@ -1,7 +1,7 @@
-import { forwardToRoom } from "@/app/room/room-proxy";
+import { foreignHost, forwardToRoom } from "@/app/room/room-proxy";
 
 export const dynamic = "force-dynamic";
 
-export function GET() {
-  return forwardToRoom("/status");
+export function GET(request: Request) {
+  return foreignHost(request) ?? forwardToRoom("/status");
 }

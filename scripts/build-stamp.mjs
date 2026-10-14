@@ -11,12 +11,18 @@ export function sourceStamp({ head, diff, untracked }) {
   return createHash('sha256').update(`${head}\0${diff}\0${untracked}`).digest('hex');
 }
 
-// The diff catches repeated edits to an already-dirty file; names, sizes and mtimes catch new untracked files.
+// Changed and untracked files are fingerprinted by name, size and mtime, so a second edit to a dirty file still counts
+// without reading large binary diffs into memory. -z keeps non-ASCII names unquoted.
 export function readSourceStamp(root) {
-  const git = (...args) => execFileSync('git', ['-c', 'core.autocrlf=false', ...args], { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
-  const untracked = git('ls-files', '--others', '--exclude-standard', '--', ...IGNORED).split('\n').filter(Boolean)
-    .map(file => { const s = statSync(join(root, file)); return `${file} ${s.size} ${s.mtimeMs}`; }).join('\n');
-  return sourceStamp({ head: git('rev-parse', 'HEAD').trim(), diff: git('diff', 'HEAD', '--binary', '--', ...IGNORED), untracked });
+  const git = (...args) => execFileSync('git', ['-c', 'core.autocrlf=false', ...args], { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const fingerprint = (...args) => git(...args, '-z', '--', ...IGNORED).split('\0').filter(Boolean).map(file => {
+    try { const s = statSync(join(root, file)); return `${file} ${s.size} ${s.mtimeMs}`; } catch { return `${file} deleted`; }
+  }).join('\n');
+  return sourceStamp({
+    head: git('rev-parse', 'HEAD').trim(),
+    diff: fingerprint('diff', 'HEAD', '--name-only'),
+    untracked: fingerprint('ls-files', '--others', '--exclude-standard'),
+  });
 }
 
 export function isBuildFresh(root, stamp) {

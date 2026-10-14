@@ -25,7 +25,18 @@ export async function forwardToRoom(path: string, init: { method?: string; body?
   }
 }
 
+// The room drives agents that run commands. The production server has no Host check, so a DNS-rebound
+// hostname would pass the origin check; only loopback hostnames may reach it.
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
+export function foreignHost(request: Request): Response | null {
+  const host = request.headers.get("host") ?? new URL(request.url).host;
+  const name = host.startsWith("[") ? host.slice(0, host.indexOf("]") + 1) : host.split(":")[0];
+  return LOOPBACK_HOSTS.has(name.toLowerCase()) ? null : Response.json({ error: "HOST_NOT_ALLOWED" }, { status: 403 });
+}
+
 export async function readCommand(request: Request): Promise<{ body: Record<string, unknown> } | { error: Response }> {
+  const foreign = foreignHost(request);
+  if (foreign) return { error: foreign };
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) return { error: Response.json({ error: "ORIGIN_MISMATCH" }, { status: 403 }) };
   const text = await request.text();

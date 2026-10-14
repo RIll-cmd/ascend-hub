@@ -47,3 +47,20 @@ test('notes, docs and tests never force a rebuild, source edits do', () => {
   writeFileSync(join(root, 'app', 'page.tsx'), 'ab');
   assert.notEqual(readSourceStamp(root), stamp);
 });
+
+test('non-ASCII untracked names and repeated edits to a tracked dirty file are handled', () => {
+  const root = mkdtempSync(join(tmpdir(), 'stamp-git2-'));
+  const git = (...args) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], { cwd: root, stdio: 'ignore' });
+  git('init', '-q');
+  mkdirSync(join(root, 'app'));
+  writeFileSync(join(root, 'app', 'page.tsx'), 'one');
+  git('add', '.');
+  git('commit', '-q', '-m', 'init');
+  writeFileSync(join(root, 'app', 'café.ts'), 'x');
+  const first = readSourceStamp(root);
+  writeFileSync(join(root, 'app', 'page.tsx'), 'two');
+  const second = readSourceStamp(root);
+  writeFileSync(join(root, 'app', 'page.tsx'), 'three!');
+  assert.notEqual(second, first);
+  assert.notEqual(readSourceStamp(root), second);
+});
