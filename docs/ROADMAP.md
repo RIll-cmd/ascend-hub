@@ -34,7 +34,7 @@ Updated 2026-10-14.
 | M3 | Workflow view | A timeline graph of the session: stages, task nodes with agent, time, diff and test results, and a loop view counting coder ↔ reviewer rounds. | Done (2026-10-14); test results arrive with M4 |
 | M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Done (2026-10-14); PRs via `gh` not yet |
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
-| M6 | Harness extras | Session templates (feature, bug fix, refactor, debate); per-role model choice; time and token budgets; parallel tasks in worktrees with a merge queue; a quota meter; decision memory per project; a lighter Vision voice model (owner to decide). | Later |
+| M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Planned (2026-10-14) |
 
 **Reliability work alongside:**
 - Room sessions keep a pending gate across restarts.
@@ -55,6 +55,114 @@ Updated 2026-10-14.
   - The Room records "Owner asked for changes: …" in the transcript and sends the session back to the `roles` or `plan` step. The agents see the note in the conversation.
   - The result gate stays accept/reject.
 - The Hub gate bar shows the spoken summary, the suggested changes as buttons, a free-text field and a **Request changes** button.
+
+## M6 — Harness extras: plan (2026-10-14)
+
+Research covered parallel-agent worktree guides, cost and budget write-ups, AGENTS.md memory practices, spec-driven tools, best-of-N tools, and YouTube demos (Indy Dev Dan and Builder Methods on parallel worktrees and comparing agents). Sources are at the end of this section.
+
+Each slice ships on its own, with tests and a live run, in this order.
+
+### M6a — Budgets and loop guard (safety first)
+
+- **Problem:** cost per task varies widely (one write-up reports about 30× across tasks), and a coder ↔ reviewer loop can run until the retry rules give up.
+- **Per-session limits**, set in the start form with sensible defaults:
+  - maximum wall-clock time;
+  - maximum agent turns;
+  - maximum rounds per task (default 3).
+  - Hitting a limit pauses the session with a plain reason. Vision already announces pauses, so it says "The agent room is paused: task 2 reached 3 rounds. Say retry, or stop."
+- **Usage per turn:** record tokens and cost from what the CLIs already print.
+  - Claude: the `stream-json` `result` event (`usage`, `total_cost_usd`).
+  - Codex: the `--json` token-count events.
+  - Antigravity: unknown until tested; show "n/a" rather than guessing.
+- **Where it shows:** the Workflow summary gets tokens per agent and per task.
+- **Tests:** limit triggers, with fake usage events through the existing fake `runTurn`.
+
+### M6b — Quota meter
+
+- **Problem:** Claude and Codex subscriptions have a rolling 5-hour window plus a weekly cap. A session that starts near either limit dies halfway.
+- **Read limits passively** from the events turns already emit: Codex token-count events carry rate-limit percentages, and Claude emits rate-limit notices. No extra polling, and no scraping of web pages.
+- **Where it shows:** a small meter per agent on the deck nameplates and in `/status`, for example "Codex 72% of 5-hour window, resets 14:20".
+- **Before a session:** if an agent is above about 90%, the start form warns and suggests giving that agent fewer roles.
+
+### M6c — Session templates and per-role models
+
+- **Templates** in the start form preset roles, prompts, checks and gates:
+  - **Feature:** today's flow (discuss → plan → build). Discussion works as a short spec interview: open questions become owner questions at the plan gate.
+  - **Bug fix (reproduce first):** task 1 must add a failing test, and the check must fail before the fix and pass after (RED → fix → green). The cycle has an iteration cap from M6a.
+  - **Refactor:** checks run on the base branch first to record a baseline, and every task must keep them green. "Behaviour must not change" goes into every coder prompt.
+  - **Review only:** agents read a repo or branch and produce prioritised findings, with no edits. This reuses debate mode's read-only path.
+- **Per-role models:** choose a model per agent (for example a cheaper reviewer, which cost guides call the biggest lever). Stored in the session and passed through the existing `settings.agents.*.model` and Claude `--model`.
+
+### M6d — Decision memory per project
+
+- **Problem:** each session starts cold.
+- **At the result gate**, the orchestrator proposes 0–5 short entries: decisions, gotchas, commands that work. The owner approves or edits them, and only approved entries are kept.
+- **Where entries live:**
+  - `.sites-runtime/agent-room/memory/<repo>.md`, outside the repo, in the owner's runtime data;
+  - optionally offered as a PR to the repo's `AGENTS.md` (M4 follow-up).
+- **Following the research,** entries:
+  - must change behaviour (prevent a mistake, or override a default);
+  - are capped at about 60 lines;
+  - are shown and editable in Hub;
+  - are pruned when stale.
+- **Use:** they go into every prompt for that repo, ahead of the transcript.
+
+### M6e — Best-of-N
+
+- **Option:** for one hard task, 2–3 coders each attempt it in their own worktree, with the same prompt (guidance: start with 2–3).
+- **Gates:** the checks are the automatic gate.
+- **Choosing:** the reviewer judges the survivors' diffs (the Agent S3 best-of-N idea: summarise each attempt, then a one-shot judge), and the owner can override in the Workflow tab, which shows the diffs side by side.
+- **After:** the winner's branch is kept; the others are deleted.
+
+### M6f — Parallel tasks with a merge queue
+
+- **Problem:** independent tasks still run one at a time.
+- **Planning:** the orchestrator marks dependencies, and independent tasks run at once, each in its own worktree off the session branch.
+- **Merge queue:** finished task branches merge into the session branch one at a time, and checks run after each merge. A conflict or red check sends that task back to its coder. Guides agree merging is still the weak spot, so this ships last, behind a setting.
+- **Workflow tab:** the swim lanes already show overlap.
+
+### Small follow-ups
+
+- **Pull request:** a **Open pull request** choice at the repo result gate (push the branch, then `gh pr create`), always confirmed by the owner.
+- **Worktree clean-up:** remove stopped sessions' worktrees from Hub (they're kept today for inspection).
+- **Voice model:** a lighter Vision voice model, when the owner decides (see M5).
+
+### Order and size
+
+M6a and M6b come first because they protect your quotas and wallet before more parallelism. Then M6c, which gives the most day-to-day value. M6d, M6e and M6f follow.
+
+Rough size, judged against the earlier milestones:
+- M6a, M6b and M6c are each about one M3-sized slice.
+- M6d is small.
+- M6e and M6f are each larger than M4.
+
+### Sources
+
+- Parallel agents and worktrees:
+  - [git worktrees for parallel AI agents (augmentcode)](https://augmentcode.com/guides/git-worktrees-parallel-ai-agent-execution)
+  - [open-source agent orchestrators (augmentcode)](https://augmentcode.com/tools/open-source-agent-orchestrators)
+  - [parallel multi-CLI orchestration with Codex, Claude Code and Gemini CLI](https://codex.danielvaughan.com/2026/04/11/agentmaxxing-parallel-multi-cli-orchestration/)
+  - [parallel coding agents guide (superset)](https://superset.sh/blog/parallel-coding-agents-guide)
+  - [how to parallelize AI coding agents (tessl)](https://tessl.io/blog/how-to-parallelize-ai-coding-agents)
+- YouTube:
+  - [Builder Methods: comparing multiple agents with worktrees](https://buildermethods.com/library/multipe-agents-worktrees-review-comparison)
+  - [Claude Code multitasking made easy](https://yt.chop.dev/vi/v/Bz5fyyCa2-0)
+  - [Codex multi-agent workflow with worktrees (transcript)](https://sozai.app/transcript/codex-multi-agent-workflow-git-worktrees/)
+- Budgets:
+  - [where do your tokens go (Codex CLI budget control)](https://codex.danielvaughan.com/2026/07/03/where-do-your-tokens-go-empirical-token-consumption-coding-agents-codex-cli-budget-control/)
+  - [AI agent cost per task](https://www.kunalganglani.com/blog/ai-agent-cost-per-task-2026)
+  - [budget guide (PwC coding agents)](https://idi-coding-agents-dev.pwc.it/guide/budget)
+- Quotas:
+  - [Codex CLI usage limits](https://inventivehq.com/blog/codex-cli-usage-rate-limits)
+  - [Claude 5-hour limit explained](https://usagebar.com/blog/how-does-claude-5-hour-limit-work)
+- Memory:
+  - [agents project memory](https://skills.cat/skills/vasilyu1983/ai-agents-public/agents-project-memory)
+  - [scoring CLAUDE.md files of large projects](https://blume.codes/blog/we-scored-the-claudemd-files-of-the-biggest-open-source-projects-the-best-ones-break-the-rules)
+- Templates and best-of-N:
+  - [GitHub Spec Kit](https://developer.microsoft.com/blog/spec-driven-development-spec-kit/)
+  - [Pilot Shell spec and fix workflows](https://pilot-shell.com/docs/workflows/spec)
+  - [emdash best-of-N](https://docs.emdash.sh/best-of-n)
+  - [Agent S3 behavior best-of-N](https://academy.dair.ai/papers/agent-s3)
 
 ## M5 — Light Vision
 
