@@ -145,3 +145,21 @@
 .agent-room .agent-room-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .agent-room .agent-room-change textarea { width: 100%; box-sizing: border-box; margin: 6px 0; }
 .agent-room .agent-room-summary { margin: 0 0 8px; padding: 8px 10px; border-left: 3px solid var(--room-accent); background: rgba(240, 162, 59, 0.08); line-height: 1.45; }
+
+/* Workflow tab: step durations, then one node per task with its coder <-> reviewer loop. */
+.agent-room .agent-room-workflow { background: var(--room-card); color: var(--room-ink); border-radius: 8px; padding: 12px; min-height: 320px; overflow: auto; }
+.agent-room .agent-room-wf-stages { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; margin: 0 0 12px; padding: 0; }
+.agent-room .agent-room-wf-stages li { display: flex; flex-direction: column; padding: 6px 10px; border-radius: 6px; background: #efe3cc; min-width: 70px; }
+.agent-room .agent-room-wf-stages li.is-current { background: var(--room-accent); font-weight: 600; }
+.agent-room .agent-room-wf-stages li.is-todo { opacity: 0.55; }
+.agent-room .agent-room-wf-stages small { font-size: 11px; opacity: 0.8; }
+.agent-room .agent-room-wf-tasks { list-style: none; margin: 0; padding: 0 0 0 10px; border-left: 2px dashed #d8c7a6; display: grid; gap: 8px; }
+.agent-room .agent-room-wf-task { border-left: 4px solid; background: #fff; border-radius: 6px; padding: 6px 10px; }
+.agent-room .agent-room-wf-task.is-pending { opacity: 0.6; }
+.agent-room .agent-room-wf-task.is-looping { box-shadow: 0 0 0 2px #e06c3b inset; }
+.agent-room .agent-room-wf-task summary { cursor: pointer; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; }
+.agent-room .agent-room-wf-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; }
+.agent-room .agent-room-wf-loop { margin: 8px 0; padding-left: 18px; font-size: 12px; display: grid; gap: 4px; }
+.agent-room .agent-room-diff { max-height: 360px; overflow: auto; font-size: 11px; background: #1d1813; color: #efe3cc; padding: 8px; border-radius: 6px; white-space: pre; }
+.agent-room .agent-room-diff .is-add { color: #8fd18f; }
+.agent-room .agent-room-diff .is-del { color: #f08a7a; }

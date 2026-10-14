@@ -99,6 +99,10 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         return send(201, { session: session.summary() });
       }
       if (route === 'GET /sessions/current') return send(200, { session: session?.view() ?? null });
+      if (route === 'GET /sessions/current/diff') {
+        if (!session) return send(404, { error: 'NO_SESSION' });
+        return send(200, session.diff(new URL(req.url, 'http://room').searchParams.get('commit')));
+      }
       if (!['POST /sessions/current/gate', 'POST /sessions/current/resume', 'POST /sessions/current/stop'].includes(route)) return send(404, { error: 'NOT_FOUND' });
       if (!session) return send(404, { error: 'NO_SESSION' });
       if (route === 'POST /sessions/current/gate') session.gate(body);

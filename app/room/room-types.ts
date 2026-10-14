@@ -38,6 +38,7 @@ export type SessionView = {
     waiting?: boolean;
   } | null;
   transcript: Message[];
+  stageLog?: { stage: Stage; at: string }[];
   attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "result"; summary: string; options: string[]; decisions: string[] } | null;
 };
 

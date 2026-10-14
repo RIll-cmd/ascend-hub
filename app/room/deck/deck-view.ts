@@ -49,7 +49,7 @@ export function deckView(session: SessionView | null, status: RoomStatus | null)
   return { sessionId: session?.id ?? null, mode, status: statusText(session), agents, delegation };
 }
 
-const BUILD_STEPS: { label: string; stages: string[] }[] = [
+export const BUILD_STEPS: { label: string; stages: string[] }[] = [
   { label: "Discuss", stages: ["discuss", "roles"] },
   { label: "Roles", stages: ["gate-roles"] },
   { label: "Plan", stages: ["plan", "gate-plan"] },
@@ -57,7 +57,7 @@ const BUILD_STEPS: { label: string; stages: string[] }[] = [
   { label: "Finish", stages: ["finish", "gate-result"] },
   { label: "Done", stages: ["done", "rejected", "stopped"] },
 ];
-const DEBATE_STEPS: { label: string; stages: string[] }[] = [
+export const DEBATE_STEPS: { label: string; stages: string[] }[] = [
   { label: "Opening", stages: ["opening"] },
   { label: "Critique", stages: ["critique"] },
   { label: "Verdict", stages: ["verdict"] },

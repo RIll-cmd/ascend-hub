@@ -31,7 +31,7 @@ Updated 2026-10-14.
 | --- | --- | --- | --- |
 | M1 | Room attention and change requests | Each waiting gate carries a plain summary and 2–4 suggested changes. Roles and plan gates accept "revise" with a note, so the agents redo that step. The Hub gate bar offers the options. | Done (2026-10-14) |
 | M2 | Vision agent announcer with voice gates | Vision says when the agents finish or need a reply. It reads the gate summary and takes "approve", "change" (lists the options or takes dictation, then confirms) or "reject" by voice. | Done (2026-10-14) |
-| M3 | Workflow view | A timeline graph of the session: stages, task nodes with agent, time, diff and test results, and a loop view counting coder ↔ reviewer rounds. | Next |
+| M3 | Workflow view | A timeline graph of the session: stages, task nodes with agent, time, diff and test results, and a loop view counting coder ↔ reviewer rounds. | Done (2026-10-14); test results arrive with M4 |
 | M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Planned |
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Planned |
 | M6 | Harness extras | Session templates (feature, bug fix, refactor, debate); per-role model choice; time and token budgets; parallel tasks in worktrees with a merge queue; a quota meter; decision memory per project. | Later |
@@ -55,6 +55,21 @@ Updated 2026-10-14.
   - The Room records "Owner asked for changes: …" in the transcript and sends the session back to the `roles` or `plan` step. The agents see the note in the conversation.
   - The result gate stays accept/reject.
 - The Hub gate bar shows the spoken summary, the suggested changes as buttons, a free-text field and a **Request changes** button.
+
+## M3 — Workflow view (Hub)
+
+- The Room records `stageLog`, one `{ stage, at }` entry for each stage entered (written in `save()`).
+- `GET /api/room/sessions/current/diff?commit=` returns one task's commit as a stat plus a patch.
+  - It is limited to the session's own task commits.
+  - The output is capped at 100,000 characters.
+  - It refuses non-loopback hosts.
+- `app/room/workflow-view.ts` (pure) builds two things:
+  - **Steps:** each step's duration. The current one counts up live.
+  - **Tasks:** one node per task, with its coder rounds (assignments), reviewer replies, time, last note and its own messages.
+- The Room page has a **Workflow** tab next to **Deck** (and **Debate**):
+  - a step rail with durations;
+  - a task timeline where each node opens to show the coder ↔ reviewer exchange and a **Show changes** button that loads the coloured diff;
+  - three or more rounds on one task are marked "looping?".
 
 ## M2 — Vision agent announcer and voice gates
 

@@ -5,7 +5,7 @@ import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { subagentEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { resolveDebateFolder, resolveProjectDir, roomError } from './paths.mjs';
-import { commitAll, createProject, headCommit, lastCommitDiff, renderPlan, rollback } from './project.mjs';
+import { commitAll, commitDiff, createProject, headCommit, lastCommitDiff, renderPlan, rollback } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
@@ -85,7 +85,18 @@ export class RoomSession {
     return session;
   }
 
-  save() { writeJsonAtomic(join(this.dir, 'state.json'), this.state); }
+  save() {
+    // Every stage change is saved, so this is where its start time is recorded for the workflow view.
+    const log = (this.state.stageLog ??= []);
+    if (log.at(-1)?.stage !== this.state.stage) log.push({ stage: this.state.stage, at: new Date().toISOString() });
+    writeJsonAtomic(join(this.dir, 'state.json'), this.state);
+  }
+
+  diff(commit) {
+    const own = this.state.plan?.tasks.some(t => t.commit && t.commit === commit);
+    if (typeof commit !== 'string' || !/^[0-9a-f]{7,40}$/.test(commit) || !own) throw roomError('DIFF_INVALID');
+    return { commit, text: commitDiff(this.state.projectDir, commit) };
+  }
 
   // Every message gets a seq (for "what is new"); routing fields tell the deck where to draw it.
   say(from, text, { to, kind, by, sub } = {}) {

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { DebateView } from "./debate-view";
+import { WorkflowPanel } from "./workflow-panel";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, Ticker, TopBar, TranscriptDrawer } from "./room-frame";
@@ -94,7 +95,7 @@ export default function RoomPage() {
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<AgentId | null>(null);
   const [drawer, setDrawer] = useState(false);
-  const [tab, setTab] = useState<"debate" | "deck">("debate");
+  const [tab, setTab] = useState<"debate" | "deck" | "workflow">("debate");
   const act = useCallback(async (path: string, body?: unknown) => setError(await send(path, body)), [send]);
   const closeDrawer = useCallback(() => setDrawer(false), []);
   const view = useMemo(() => deckView(session, status), [session, status]);
@@ -104,6 +105,8 @@ export default function RoomPage() {
   const focus = view.agents.find(a => a.id === (selected ?? session?.active?.agent)) ?? null;
   const showBoard = Boolean(session?.plan && BOARD_STAGES.includes(session.stage));
   const messages = session?.transcript ?? [];
+  // "debate" is the default tab; a build session has no debate view, so it falls back to the deck.
+  const shown = tab === "debate" && !debate ? "deck" : tab;
 
   return (
     <main className="agent-room">
@@ -111,20 +114,21 @@ export default function RoomPage() {
       {offline ? (
         <div className="agent-room-offline" role="status">
           <p>Room offline: {offline}</p>
-          <p>It starts with <code>npm run dev</code>. To start it alone, run <code>node scripts/agent-room/server.mjs</code> in the Hub folder.</p>
+          <p>It starts with Hub (<code>npm run serve</code> or the desktop shortcut). To start it alone, run <code>node scripts/agent-room/server.mjs</code> in the Hub folder.</p>
         </div>
       ) : (
         <div className="agent-room-layout">
           <section className="agent-room-stage" aria-label="Room">
-            {debate && (
+            {session && (
               <div className="agent-room-tabs" role="tablist" aria-label="View">
-                <button role="tab" aria-selected={tab === "debate"} onClick={() => setTab("debate")}>Debate</button>
-                <button role="tab" aria-selected={tab === "deck"} onClick={() => setTab("deck")}>Deck</button>
+                {debate && <button role="tab" aria-selected={shown === "debate"} onClick={() => setTab("debate")}>Debate</button>}
+                <button role="tab" aria-selected={shown === "deck"} onClick={() => setTab("deck")}>Deck</button>
+                <button role="tab" aria-selected={shown === "workflow"} onClick={() => setTab("workflow")}>Workflow</button>
               </div>
             )}
-            {debate && tab === "debate" && session
-              ? <DebateView session={session} />
-              : <DeckCanvas view={view} pulses={pulses} selected={selected} onSelect={setSelected} />}
+            {shown === "debate" && session ? <DebateView session={session} />
+              : shown === "workflow" && session ? <WorkflowPanel session={session} />
+                : <DeckCanvas view={view} pulses={pulses} selected={selected} onSelect={setSelected} />}
             <Ticker messages={messages} onOpen={() => setDrawer(true)} />
             {session && <Transcript messages={messages.slice(-80)} />}
           </section>

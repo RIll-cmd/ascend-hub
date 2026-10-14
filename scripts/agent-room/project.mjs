@@ -43,6 +43,12 @@ export function lastCommitDiff(dir) {
   return git(dir, ['show', '--stat', '--patch', '--format=%s', 'HEAD']);
 }
 
+// One task's commit as stat plus patch; capped so a huge generated file cannot flood the page.
+export function commitDiff(dir, commit, maxChars = 100_000) {
+  const text = git(dir, ['show', '--stat', '--patch', '--no-color', '--format=%s', commit, '--']);
+  return text.length > maxChars ? `${text.slice(0, maxChars)}\n... diff cut at ${maxChars} characters` : text;
+}
+
 export function renderPlan(tasks) {
   return ['# Plan', '', ...tasks.map(t => `${t.id}. **${t.title}** (${t.assignee})\n   ${t.description.replace(/\n/g, '\n   ')}`), ''].join('\n');
 }
