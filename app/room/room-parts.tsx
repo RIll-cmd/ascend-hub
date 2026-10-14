@@ -236,15 +236,18 @@ function ChangeRequest({ gate, options, act }: { gate: "roles" | "plan"; options
 export function GateBar({ session, act }: { session: SessionView; act: Act }) {
   if (session.pause) return <PausePanel session={session} act={act} />;
   const options = session.attention?.options ?? [];
+  // The same words Vision speaks, so the page and the voice assistant agree.
+  const summary = session.attention?.summary ? <p className="agent-room-summary">{session.attention.summary}</p> : null;
   if (session.stage === "gate-roles" && session.roles) {
-    return <><RolesGate key={session.id} initial={session.roles} act={act} /><ChangeRequest key={`${session.id}-roles`} gate="roles" options={options} act={act} /></>;
+    return <>{summary}<RolesGate key={session.id} initial={session.roles} act={act} /><ChangeRequest key={`${session.id}-roles`} gate="roles" options={options} act={act} /></>;
   }
   if (session.stage === "gate-plan" && session.plan) {
-    return <><PlanGate key={session.id} tasks={session.plan.tasks} coders={session.roles?.coders ?? []} act={act} /><ChangeRequest key={`${session.id}-plan`} gate="plan" options={options} act={act} /></>;
+    return <>{summary}<PlanGate key={session.id} tasks={session.plan.tasks} coders={session.roles?.coders ?? []} act={act} /><ChangeRequest key={`${session.id}-plan`} gate="plan" options={options} act={act} /></>;
   }
   if (session.stage === "gate-result") {
     return (
       <div className="agent-room-gate">
+        {summary}
         <p>Work finished in <code>{session.projectDir}</code>. See SUMMARY.md there.</p>
         <button onClick={() => act(GATE, { gate: "result", decision: "accept" })}>Accept</button>
         <button onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject</button>

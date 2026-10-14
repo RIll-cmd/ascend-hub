@@ -54,7 +54,7 @@ Updated 2026-10-14.
 - The roles and plan gates accept `decision: 'revise'` with `note` (1–2000 characters).
   - The Room records "Owner asked for changes: …" in the transcript and sends the session back to the `roles` or `plan` step. The agents see the note in the conversation.
   - The result gate stays accept/reject.
-- The Hub gate bar shows the suggested changes as buttons, plus a free-text field and a **Request changes** button.
+- The Hub gate bar shows the spoken summary, the suggested changes as buttons, a free-text field and a **Request changes** button.
 
 ## M2 — Vision agent announcer and voice gates
 
@@ -65,5 +65,9 @@ Updated 2026-10-14.
   - **Approve or reject:** asks for a yes before sending.
   - **Change:** lists "Option 1: … Option 2: …" or takes "change: <words>", then confirms ("Send option 2 to the room? Say yes.") before sending `revise` with that note.
   - **Cancel:** "never mind" drops the dialog. A gate that closes elsewhere ends the dialog.
+  - **Natural replies:** "I approve", "yes, send it", "option number two" and "the first one" all work. Any negation ("I don't approve") never counts. "Repeat" and "what are the options" work at any point.
+  - **Reminder:** a gate still waiting after 10 minutes is mentioned once more.
+  - **Restarts:** an unreachable Hub keeps the dialog without re-announcing. "No session" ends it.
+  - **Chat:** replies also appear in the Fairy chat, like other Vision notices.
 - `main.py` runs a watcher thread every 3 seconds when `agent_room.enabled` is on (the default; a missing Hub just means silence). The dialog gets first look at unmatched speech while it's active.
 - Every decision is written to the Room transcript by Hub, so the Hub page shows what Vision sent.

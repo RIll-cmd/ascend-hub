@@ -144,3 +144,4 @@
 
 .agent-room .agent-room-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .agent-room .agent-room-change textarea { width: 100%; box-sizing: border-box; margin: 6px 0; }
+.agent-room .agent-room-summary { margin: 0 0 8px; padding: 8px 10px; border-left: 3px solid var(--room-accent); background: rgba(240, 162, 59, 0.08); line-height: 1.45; }
