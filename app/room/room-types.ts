@@ -55,7 +55,7 @@ export type SessionView = {
   stageLog?: { stage: Stage; at: string }[];
   repo?: { dir: string; branch: string; base: string; baseBranch: string } | null;
   check?: string | null;
-  attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "result"; summary: string; options: string[]; decisions: string[] } | null;
+  attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "result"; summary: string; options: string[]; decisions: string[]; memory?: string[] } | null;
 };
 
 export function rolesOf(agent: AgentId, roles: Roles | null): string[] {

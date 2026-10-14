@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { subagentEvent, usageEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
@@ -9,6 +9,7 @@ import { branchDiff, commitAll, commitDiff, createProject, createWorktree, finis
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
+import { addNotes, memoryKey, readMemory, splitProposal } from './memory.mjs';
 import { claudeQuota, latestCodexQuota } from './quota.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
@@ -265,7 +266,15 @@ export class RoomSession {
     return buildPrompt({
       stage, agent, roles: this.state.roles, task: this.state.task,
       planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript, extra: { template: this.state.template, ...extra },
+      memory: this.projectMemory(),
     });
+  }
+
+  // Sessions live in <dataDir>/sessions/<id>; project memory sits beside them.
+  get dataDir() { return dirname(dirname(this.dir)); }
+
+  projectMemory() {
+    try { return this.state.mode === 'debate' ? [] : readMemory(this.dataDir, memoryKey(this.state)); } catch { return []; }
   }
 
   async turn(agent, mode, prompt, activity, to = []) {
@@ -498,10 +507,12 @@ export class RoomSession {
     const orchestrator = this.state.roles.orchestrator;
     const text = await this.turn(orchestrator, 'read', this.prompt('finish', orchestrator), 'summarizing', []);
     if (text === null) return;
+    const { summary, notes } = splitProposal(text);
+    this.state.memoryProposal = notes;
     if (this.state.repo) {
-      writeFileSync(join(this.dir, 'SUMMARY.md'), `${text}\n`, 'utf8');
+      writeFileSync(join(this.dir, 'SUMMARY.md'), `${summary}\n`, 'utf8');
     } else {
-      writeFileSync(join(this.state.projectDir, 'SUMMARY.md'), `${text}\n`, 'utf8');
+      writeFileSync(join(this.state.projectDir, 'SUMMARY.md'), `${summary}\n`, 'utf8');
       const hash = commitAll(this.state.projectDir, 'docs: summary');
       if (hash) this.say('room', `Committed ${hash} "docs: summary".`);
     }
@@ -536,7 +547,7 @@ export class RoomSession {
     this.say('room', 'Verdict saved.');
   }
 
-  gate({ gate, decision, roles, plan, note } = {}) {
+  gate({ gate, decision, roles, plan, note, memory } = {}) {
     const state = this.state;
     if (GATES[state.stage] !== gate || state.pause) throw roomError('GATE_NOT_OPEN');
     if (decision === 'revise' && gate !== 'result') {
@@ -572,15 +583,24 @@ export class RoomSession {
       // A refused merge throws here, before the stage changes, so the gate stays open.
       finishWorktree(dir, state.projectDir, branch, baseBranch, decision === 'accept' ? 'keep' : decision);
       state.stage = decision === 'reject' ? 'rejected' : 'done';
+      this.keepNotes(decision, memory);
       this.say('room', decision === 'merge' ? `Owner merged ${branch} into ${baseBranch}.`
         : decision === 'accept' ? `Owner kept branch ${branch}; merge it when ready.` : `Owner rejected the result; branch ${branch} was deleted.`);
     } else {
       if (decision !== 'accept' && decision !== 'reject') throw roomError('DECISION_INVALID');
       state.stage = decision === 'accept' ? 'done' : 'rejected';
+      this.keepNotes(decision, memory);
       this.say('room', `Owner ${decision === 'accept' ? 'accepted' : 'rejected'} the result.`);
     }
     this.save();
     return this.kick();
+  }
+
+  // Only notes the owner approved at a kept result are stored; a rejected result teaches nothing.
+  keepNotes(decision, memory) {
+    if (decision === 'reject' || !Array.isArray(memory) || !memory.length) return;
+    const kept = addNotes(this.dataDir, memoryKey(this.state), memory);
+    this.say('room', `Saved ${memory.length} note${memory.length === 1 ? '' : 's'} to project memory (${kept.length} in total).`);
   }
 
   resume({ action, agent } = {}) {

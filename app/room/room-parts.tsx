@@ -91,6 +91,33 @@ export function RolesEditor({ value, onChange }: { value: Roles; onChange: (role
   );
 }
 
+// The repo's project memory: what earlier sessions learned and the owner approved. Edit or prune it here.
+function MemoryEditor({ dir }: { dir: string }) {
+  const key = dir.split(/[\\/]/).filter(Boolean).at(-1) ?? "";
+  const [text, setText] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/room/memory?key=${encodeURIComponent(key)}`, { cache: "no-store" })
+      .then(r => r.json() as Promise<{ notes?: string[] }>)
+      .then(data => { if (alive) setText((data.notes ?? []).join("\n")); })
+      .catch(() => { if (alive) setText(""); });
+    return () => { alive = false; };
+  }, [key]);
+  const save = async () => {
+    const res = await fetch("/api/room/memory", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key, notes: (text ?? "").split("\n") }) });
+    setStatus(res.ok ? "Saved." : "Could not save.");
+  };
+  if (text === null) return null;
+  return (
+    <details className="agent-room-memory">
+      <summary>Project memory for {key} ({text ? text.split("\n").filter(Boolean).length : 0} notes)</summary>
+      <textarea value={text} rows={5} onChange={e => { setText(e.target.value); setStatus(""); }} aria-label={`Project memory for ${key}`} placeholder="One note per line. Agents read these at the start of every session in this repo." />
+      <button type="button" onClick={() => void save()}>Save memory</button> <small>{status}</small>
+    </details>
+  );
+}
+
 export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act }: {
   agents?: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[]; quotaWarning?: string | null; act: Act;
 }) {
@@ -156,6 +183,7 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
           <small>{inRepo
             ? `Works on branch room/${project || "<name>"}-… in its own worktree. Your checkout of ${chosenRepo?.dir} is not touched until you merge.`
             : `Built in D:\\ascend-builds\\${project || "<name>"} as its own git repository.`}</small>
+          {inRepo && chosenRepo && <MemoryEditor key={chosenRepo.dir} dir={chosenRepo.dir} />}
           <label>Checks after every task (optional)
             <input value={checkCommand} onChange={e => setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
           </label>
@@ -274,6 +302,24 @@ function PausePanel({ session, act }: { session: SessionView; act: Act }) {
   );
 }
 
+// Notes the orchestrator proposes for project memory; only the ticked (and possibly edited) ones are kept.
+function MemoryPicker({ proposal, onChange }: { proposal: string[]; onChange: (notes: string[]) => void }) {
+  const [notes, setNotes] = useState(() => proposal.map(text => ({ text, keep: true })));
+  const update = (next: { text: string; keep: boolean }[]) => { setNotes(next); onChange(next.filter(n => n.keep && n.text.trim()).map(n => n.text.trim())); };
+  if (proposal.length === 0) return null;
+  return (
+    <fieldset className="agent-room-memory">
+      <legend>Remember for next time (ticked notes are saved when you keep the result)</legend>
+      {notes.map((note, i) => (
+        <label key={i} className="agent-room-check">
+          <input type="checkbox" checked={note.keep} onChange={e => update(notes.map((n, j) => (j === i ? { ...n, keep: e.target.checked } : n)))} />
+          <input value={note.text} maxLength={200} onChange={e => update(notes.map((n, j) => (j === i ? { ...n, text: e.target.value } : n)))} aria-label={`Note ${i + 1}`} />
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
 // Sends the step back to the agents with the owner's note; a suggested option fills the note.
 function ChangeRequest({ gate, options, act }: { gate: "roles" | "plan"; options: string[]; act: Act }) {
   const [note, setNote] = useState("");
@@ -292,6 +338,13 @@ function ChangeRequest({ gate, options, act }: { gate: "roles" | "plan"; options
 }
 
 export function GateBar({ session, act }: { session: SessionView; act: Act }) {
+  return <GateBarInner key={`${session.id}-${session.stage}`} session={session} act={act} />;
+}
+
+function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
+  // Seeded once per gate (GateBar keys this by stage), so polling cannot undo the owner's edits.
+  const [proposal] = useState(() => session.attention?.memory ?? []);
+  const [memory, setMemory] = useState(proposal);
   if (session.pause) return <PausePanel session={session} act={act} />;
   const options = session.attention?.options ?? [];
   // The same words Vision speaks, so the page and the voice assistant agree.
@@ -309,8 +362,9 @@ export function GateBar({ session, act }: { session: SessionView; act: Act }) {
         {summary}
         <p>Branch <code>{branch}</code> of <code>{dir}</code>.</p>
         <DiffView commit="all" label="Show all changes on the branch" />
-        <button onClick={() => act(GATE, { gate: "result", decision: "merge" })}>Merge into {baseBranch}</button>
-        <button onClick={() => act(GATE, { gate: "result", decision: "accept" })}>Keep branch</button>
+        <MemoryPicker proposal={proposal} onChange={setMemory} />
+        <button onClick={() => act(GATE, { gate: "result", decision: "merge", memory })}>Merge into {baseBranch}</button>
+        <button onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Keep branch</button>
         <button onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject and delete branch</button>
         <small>Merge only fast-forwards {baseBranch} while your checkout is on it; otherwise keep the branch and merge it yourself.</small>
       </div>
@@ -322,7 +376,8 @@ export function GateBar({ session, act }: { session: SessionView; act: Act }) {
         {summary}
         <p>Work finished in <code>{session.projectDir}</code>. See SUMMARY.md there.</p>
         <DiffView commit="all" label="Show all changes" />
-        <button onClick={() => act(GATE, { gate: "result", decision: "accept" })}>Accept</button>
+        <MemoryPicker proposal={proposal} onChange={setMemory} />
+        <button onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Accept</button>
         <button onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject</button>
       </div>
     );

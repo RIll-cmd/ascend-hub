@@ -125,6 +125,14 @@ Each slice ships on its own, with tests and a live run, in this order.
 
 ### M6d — Decision memory per project
 
+**Done (2026-10-14):**
+- The finish turn ends the summary with a json block `{"memory": [...]}` holding 0–5 one-line notes. The block is cut from `SUMMARY.md` and from the gate summary.
+- The result gate shows the notes as ticked, editable lines. Merge, Keep branch or Accept saves only the ticked notes. Reject saves none.
+- Notes live in `<room data>/memory/<repo folder or project>.md`, never in the repo. They are deduplicated and capped at 60 lines, and the newest notes win.
+- Every later build session for that repo or project gets them as a "PROJECT MEMORY" prompt section, capped at 3,000 characters. Debates do not.
+- The start form shows the chosen repo's memory and lets the owner edit or prune it (`GET`/`POST /api/room/memory`).
+- Not done: the offer to copy notes into the repo's `AGENTS.md` as a PR.
+
 - **Problem:** each session starts cold.
 - **At the result gate**, the orchestrator proposes 0–5 short entries: decisions, gotchas, commands that work. The owner approves or edits them, and only approved entries are kept.
 - **Where entries live:**

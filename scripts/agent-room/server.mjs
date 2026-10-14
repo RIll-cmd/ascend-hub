@@ -9,6 +9,7 @@ import { AGENT_IDS } from './parse.mjs';
 import { listDebateFolders, listRepos, roomDataDir, roomError } from './paths.mjs';
 import { suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
+import { readMemory, writeMemory } from './memory.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
 import { readJson, writeJsonAtomic } from './store.mjs';
 import { ensureRoomToken } from './token.mjs';
@@ -122,6 +123,11 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         return send(201, { session: session.summary() });
       }
       if (route === 'GET /sessions/current') return send(200, { session: session?.view() ?? null });
+      if (route === 'GET /memory') {
+        const key = new URL(req.url, 'http://room').searchParams.get('key');
+        return send(200, { key, notes: readMemory(dataDir, key) });
+      }
+      if (route === 'POST /memory') return send(200, { key: body?.key, notes: writeMemory(dataDir, body?.key, body?.notes) });
       if (route === 'GET /sessions/current/diff') {
         if (!session) return send(404, { error: 'NO_SESSION' });
         return send(200, session.diff(new URL(req.url, 'http://room').searchParams.get('commit')));

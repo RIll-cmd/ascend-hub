@@ -67,7 +67,9 @@ function stageRules(stage, agent, roles, extra) {
     case 'reassign':
       return `You are the orchestrator. Task ${extra.task.id} (${extra.task.title}) failed twice with ${AGENT_NAMES[extra.task.assignee]}. Last reason: ${cap(extra.reason, 2000)}\nThe coders are:\n${team}\nReply with one fenced json block, either {"action": "reassign", "to": "<coder id>"} with a different coder, or {"action": "skip"}.`;
     case 'finish':
-      return 'You are the orchestrator. All tasks are finished or skipped. Write the project summary in Markdown: what was built, how to run it, and what was skipped. Reply with the Markdown only. Do not edit files.';
+      return 'You are the orchestrator. All tasks are finished or skipped. Write the project summary in Markdown: what was built, how to run it, and what was skipped. Do not edit files.\n'
+        + 'Then add one fenced json block {"memory": ["..."]} with 0 to 5 short notes for future sessions in this project: decisions, gotchas or commands that work. '
+        + 'Only include a note if it would change how an agent works here; the owner approves each one.';
     case 'opening':
       return [
         "This is a debate between three AI agents: Codex (codex), Claude (claude) and Antigravity (agy). Answer the owner's question on your own, without seeing the other agents' answers.",
@@ -107,7 +109,7 @@ function templateRules(stage, extra) {
   return '';
 }
 
-export function buildPrompt({ stage, agent, roles, task, planText = '', transcript = [], extra = {} }) {
+export function buildPrompt({ stage, agent, roles, task, planText = '', transcript = [], extra = {}, memory = [] }) {
   const mine = rolesOf(agent, roles);
   const fixed = [
     `Room stage: ${stage}`,
@@ -115,6 +117,7 @@ export function buildPrompt({ stage, agent, roles, task, planText = '', transcri
     '',
     stageRules(stage, agent, roles, extra),
     templateRules(stage, extra),
+    memory.length ? `\nPROJECT MEMORY (owner-approved notes from earlier sessions):\n${cap(memory.map(n => `- ${n}`).join('\n'), 3000)}` : '',
     '',
     DEBATE_STAGES.has(stage) ? 'QUESTION:' : 'OWNER TASK:',
     cap(task, 4000),
