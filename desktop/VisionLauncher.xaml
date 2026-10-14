@@ -77,15 +77,6 @@
                 <Canvas Width="400" Height="400">
                   <Canvas.Effect><DropShadowEffect Color="#3D4BFF" BlurRadius="46" ShadowDepth="0" Opacity="0.9"/></Canvas.Effect>
                   <Ellipse Canvas.Left="67" Canvas.Top="67" Width="266" Height="266" Fill="#0B1535" Stroke="#3D4BFF" StrokeThickness="4"/>
-                  <!-- The spiked shell turns slowly, like the eye in the app. -->
-                  <Path Fill="#03070F" Data="M117,86 Q200,116 283,86 L314,117 Q284,200 314,283 L283,314 Q200,284 117,314 L86,283 Q116,200 86,117 Z" RenderTransformOrigin="0.5,0.5">
-                    <Path.RenderTransform><RotateTransform Angle="0"/></Path.RenderTransform>
-                    <Path.Triggers>
-                      <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                        <BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)" From="0" To="360" Duration="0:0:12" RepeatBehavior="Forever"/></Storyboard></BeginStoryboard>
-                      </EventTrigger>
-                    </Path.Triggers>
-                  </Path>
                   <!-- The iris glances around in quick darts and holds, like Fairy watching the room. -->
                   <Canvas Width="400" Height="400">
                     <Canvas.RenderTransform><TranslateTransform X="0" Y="0"/></Canvas.RenderTransform>
