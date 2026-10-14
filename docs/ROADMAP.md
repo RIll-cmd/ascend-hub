@@ -33,7 +33,7 @@ Updated 2026-10-14.
 | M2 | Vision agent announcer with voice gates | Vision says when the agents finish or need a reply. It reads the gate summary and takes "approve", "change" (lists the options or takes dictation, then confirms) or "reject" by voice. | Done (2026-10-14) |
 | M3 | Workflow view | A timeline graph of the session: stages, task nodes with agent, time, diff and test results, and a loop view counting coder ↔ reviewer rounds. | Done (2026-10-14); test results arrive with M4 |
 | M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Done (2026-10-14); PRs via `gh` not yet |
-| M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Planned |
+| M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
 | M6 | Harness extras | Session templates (feature, bug fix, refactor, debate); per-role model choice; time and token budgets; parallel tasks in worktrees with a merge queue; a quota meter; decision memory per project. | Later |
 
 **Reliability work alongside:**
@@ -55,6 +55,16 @@ Updated 2026-10-14.
   - The Room records "Owner asked for changes: …" in the transcript and sends the session back to the `roles` or `plan` step. The agents see the note in the conversation.
   - The result gate stays accept/reject.
 - The Hub gate bar shows the spoken summary, the suggested changes as buttons, a free-text field and a **Request changes** button.
+
+## M5 — Light Vision
+
+- `runtime.mode: assistant` in `config.yaml`, or `--assistant`, makes `run()` pass `assistant_mode` stand-ins: an idle capture that ticks four times a second, and models that see nothing.
+  - torch, Ultralytics and MediaPipe never load. A test runs it in a fresh process to prove it.
+  - Voice commands, Kokoro speech, chat, the coaches and the agent room keep working.
+- The Fairy window and the launcher show the camera as Disabled. Away mode stays off without a camera.
+- Measured with the owner's config: 622 MB in use and 733 MB reserved, 0.08 cores, 32 threads. Watch mode: 1,104 MB, 1,255 MB, 2.05 cores and 122 threads.
+- The owner chose to keep the fp32 Kokoro voice (about 385 MB). An int8 model would save about 250 MB.
+- Switching modes stays a config setting, with no launcher change (owner's choice).
 
 ## M4 — Room on real repositories (Hub)
 
