@@ -55,7 +55,62 @@ function Resolve-EdgePath([string[]]$candidates) {
     }
     $null
 }
+# The supervisor's step names are written for diagnostics; the Hub window shows them in plain words.
+function Get-HubStepText([string]$stage) {
+    switch -Wildcard ($stage) {
+        'Checking runtime and imports*' { 'Checking Node.js'; break }
+        'Waiting for authenticated health' { 'Waiting for Hub to answer'; break }
+        'Optimizing Hub dependencies' { 'Preparing Hub (the first start can take a minute)'; break }
+        'Starting Hub local server' { 'Starting Hub'; break }
+        'Stopping previous Hub session' { 'Stopping the other copy'; break }
+        default { $stage }
+    }
+}
+# Hub's compact window: plain headings, one primary action, status lines only while Hub is open.
+$script:HubAgentSummary = 'Offline'
+function Set-HubDot($window, [string]$name, [string]$tone) {
+    $window.FindName($name).Fill = $window.Resources[$(switch ($tone) { 'good' { 'Good' } 'warn' { 'Warn' } default { 'Edge' } })]
+}
+function Set-HubSnapshot($window, $snapshot, [string]$agents) {
+    $state = $snapshot.State
+    $starting = $state -in @('checking','starting')
+    $running = $state -in @('ready','degraded')
+    $open = $running -and -not [string]::IsNullOrWhiteSpace($snapshot.Url)
+    $window.FindName('State').Text = switch ($state) {
+        'stopped' { 'Hub is stopped' } 'checking' { 'Waking up Hub' } 'starting' { 'Waking up Hub' }
+        'ready' { 'Hub is open' } 'degraded' { 'Hub is open, with limits' } 'failed' { Get-HubFailureText $snapshot.FailureCode }
+        'stopping' { 'Stopping Hub' } 'stop_failed' { "Hub didn't stop" } default { 'Hub is stopped' }
+    }
+    $window.FindName('Kicker').Text = if ($starting) { 'STARTING' } elseif ($running) { 'RUNNING' } elseif ($state -in @('failed','stop_failed')) { 'NEEDS ATTENTION' } else { 'ASCEND HUB' }
+    $window.FindName('Stage').Text = if ($starting) { Get-HubStepText $snapshot.Stage } elseif ($state -eq 'failed' -and $snapshot.FailureCode -eq 'port-in-use') { 'Stop the other copy, then Hub starts here.' } elseif ($state -eq 'failed') { 'Press Retry. If it keeps failing, open Details.' } else { '' }
+    $window.FindName('Progress').Visibility = if ($starting) { 'Visible' } else { 'Collapsed' }
+    $window.FindName('StatusLines').Visibility = if ($running) { 'Visible' } else { 'Collapsed' }
+    $ui = if ($snapshot.Ui -eq 'ready') { 'Running' } else { Get-CapabilityLabel $snapshot.Ui }
+    $core = Get-CapabilityLabel $snapshot.Core
+    $window.FindName('UiStatus').Text = $ui
+    $window.FindName('AgentStatus').Text = $agents
+    $window.FindName('CoreStatus').Text = $core
+    Set-HubDot $window 'UiDot' $(if ($ui -eq 'Running') { 'good' } else { 'warn' })
+    Set-HubDot $window 'AgentDot' $(if ($agents -match '^[1-9]\d* of ') { 'good' } elseif ($agents -eq 'Starting') { 'warn' } else { 'off' })
+    Set-HubDot $window 'CoreDot' $(if ($core -eq 'Available') { 'good' } elseif ($core -eq 'Not checked') { 'off' } else { 'warn' })
+    $primary = $window.FindName('Primary')
+    $primary.Content = if ($open) { '_Open Hub' } elseif ($starting) { 'Starting...' } elseif ($state -eq 'failed') { '_Retry' } elseif ($state -in @('stopping','stop_failed')) { 'Stopping...' } else { '_Start Hub' }
+    $primary.IsEnabled = $open -or $state -in @('stopped','failed')
+    [Windows.Automation.AutomationProperties]::SetName($primary, ($primary.Content -replace '_',''))
+    foreach ($spec in @(@('Cancel',$starting), @('Stop',$running), @('Force',($state -in @('stopping','stop_failed'))))) {
+        $button = $window.FindName($spec[0]); $button.Visibility = if ($spec[1]) { 'Visible' } else { 'Collapsed' }; $button.IsEnabled = [bool]$spec[1]
+    }
+    $replacement = $window.FindName('ReplaceSession')
+    $show = $state -eq 'failed' -and $snapshot.FailureCode -eq 'port-in-use'
+    $replacement.Visibility = if ($show) { 'Visible' } else { 'Collapsed' }
+    $replacement.IsEnabled = $show -and [bool]$snapshot.CanReplaceSession
+    $replacement.ToolTip = if ($snapshot.CanReplaceSession) { "Stop the other Hub (PID $($snapshot.ConflictPid)) and start here" } else { "That copy couldn't be verified as yours. Close it yourself, then press Retry." }
+    $seconds = [math]::Floor($snapshot.ElapsedSeconds)
+    $window.FindName('Timing').Text = if ($running) { "Started in $([math]::Floor($snapshot.StartupSeconds))s, running for ${seconds}s" } elseif ($starting) { "Starting for ${seconds}s" } else { '' }
+    $window.FindName('Failure').Text = if ($snapshot.FailureCode) { "Code: $($snapshot.FailureCode). Step: $($snapshot.FailureStage). $($snapshot.Stage)" } else { 'Startup details appear here if something goes wrong.' }
+}
 function Set-LauncherSnapshot($window, $snapshot, [string]$product) {
+    if ($product -eq 'Hub') { Set-HubSnapshot $window $snapshot $script:HubAgentSummary; return }
     $state = $snapshot.State
     $canStart = $state -in @('stopped', 'failed')
     $starting = $state -in @('checking', 'starting')

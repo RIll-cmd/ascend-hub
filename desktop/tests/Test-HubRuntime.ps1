@@ -41,5 +41,9 @@ try {
   $edge=Join-Path $root 'msedge.exe';[IO.File]::WriteAllText($edge,'')
   Assert ((Resolve-EdgePath @($null,'','relative\msedge.exe',(Join-Path $root 'nope\msedge.exe'),"`"$edge`"")) -eq $edge) 'first existing rooted msedge, quotes trimmed'
   Assert ($null -eq (Resolve-EdgePath @((Join-Path $env:WINDIR 'System32\cmd.exe')))) 'only msedge.exe accepted'
+  Assert ((Get-HubStepText 'Checking runtime and imports (20 second limit)') -eq 'Checking Node.js') 'runtime step'
+  Assert ((Get-HubStepText 'Waiting for authenticated health') -eq 'Waiting for Hub to answer') 'health step'
+  Assert ((Get-HubStepText 'Optimizing Hub dependencies') -eq 'Preparing Hub (the first start can take a minute)') 'dev step'
+  Assert ((Get-HubStepText 'Building Hub (first start after an update)') -eq 'Building Hub (first start after an update)') 'plain steps pass through'
   'hub runtime checks passed'
 } finally { Remove-Item -Recurse -Force $root -ErrorAction SilentlyContinue }

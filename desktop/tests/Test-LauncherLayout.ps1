@@ -22,37 +22,45 @@ foreach($product in @('Vision','Hub')) {
         Assert ($null -ne $window.Icon) "$product needs a native window icon"
         Assert ($window.Title -eq "Ascend $product") "$product title"
         if ($product -eq 'Hub') {
-            Assert ($window.Width -ge 760 -and $window.Height -le 560) 'Hub uses the approved landscape console window'
+            Assert ($window.Width -le 360 -and $window.Height -le 440) 'Hub launcher is a compact mini console'
             Assert ($window.Resources['Base'].Color.ToString() -eq '#FF141513') 'Hub uses the specified charcoal base'
             Assert ($window.Resources['Surface'].Color.ToString() -eq '#FF222321') 'Hub uses the specified raised-charcoal surface'
             Assert ($window.Resources['Ink'].Color.ToString() -eq '#FFF5E8CF') 'Hub uses the specified ivory text'
             Assert ($window.Resources['Secondary'].Color.ToString() -eq '#FFAAA596') 'Hub uses the specified warm-gray secondary text'
             Assert ($window.Resources['Accent'].Color.ToString() -eq '#FFF0A23B') 'Hub uses the charcoal-console orange accent'
-            Assert ($window.FindName('Monitor').ActualWidth -gt $window.FindName('Monitor').ActualHeight) 'Hub monitor is landscape-shaped'
             Assert ($window.Resources['HubArtwork'] -is [Windows.Media.Imaging.BitmapSource]) 'Hub uses the shelf TV image asset in its monitor'
             Assert ($window.Resources['HubArtwork'].PixelWidth -eq 500 -and $window.Resources['HubArtwork'].PixelHeight -eq 500) 'Hub TV asset is fully loaded'
         }
         foreach($scale in @(1,1.5,2)) {
-            foreach($width in @(420,520)) {
-                $window.Width=$width*$scale;$window.Height=if($product -eq 'Vision'){820*$scale}else{660*$scale}
+            foreach($width in $(if($product -eq 'Hub'){@(300,360)}else{@(420,520)})) {
+                $window.Width=$width*$scale;$window.Height=if($product -eq 'Vision'){820*$scale}else{420*$scale}
                 $window.Content.LayoutTransform=[Windows.Media.ScaleTransform]::new($scale,$scale)
                 foreach($state in $states) {
                     $snapshot=[pscustomobject]@{State=if($state -eq 'profile-missing'){'failed'}else{$state};Stage='Waiting for authenticated local health. This longer stage description verifies text wrapping at minimum window size.';ElapsedSeconds=15;StageElapsedSeconds=3;StartupSeconds=8;RetryCount=1;Recovery=($state -eq 'degraded');FailureCode=if($state -eq 'profile-missing'){'profile-missing'}elseif($state -in @('failed','stop_failed')){'startup-timeout'}else{''};Url=if($state -in @('ready','degraded')){'http://127.0.0.1:12345/'}else{$null};Ui=if($state -in @('ready','degraded')){'ready'}else{$null};Chat=if($state -in @('ready','degraded')){'ready'}else{$null};Camera=if($state -in @('ready','degraded')){'unavailable'}else{$null};Microphone=if($state -in @('ready','degraded')){'disabled'}else{$null};Core=if($state -in @('ready','degraded')){'reauth-required'}else{$null}}
                     Set-LauncherSnapshot $window $snapshot $product
                     $window.UpdateLayout()
+                    if($product -eq 'Hub'){
+                        $heading=$window.FindName('State').Text
+                        $expected=@{stopped='Hub is stopped';checking='Waking up Hub';starting='Waking up Hub';ready='Hub is open';degraded='Hub is open, with limits';stopping='Stopping Hub';stop_failed="Hub didn't stop"}
+                        if($expected.ContainsKey($state)){Assert ($heading -eq $expected[$state]) "Hub heading for $state (got $heading)"}
+                        if($state -eq 'profile-missing'){Assert ($heading -eq "Hub isn't set up yet.") 'setup failure sentence'}
+                        Assert (($window.FindName('Progress').Visibility -eq 'Visible') -eq ($state -in @('checking','starting'))) "Hub progress only while starting ($state)"
+                        Assert (($window.FindName('StatusLines').Visibility -eq 'Visible') -eq ($state -in @('ready','degraded'))) "Hub status lines only when open ($state)"
+                        Assert ($window.FindName('Timing').Text -notmatch 'Stage') 'no stage counters in Hub copy'
+                    }
                     $primary=$window.FindName('Primary')
                     Assert ($primary.IsEnabled -eq ($state -in @('stopped','failed','profile-missing','ready','degraded'))) "$product $state primary availability"
                     Assert ($window.FindName('Diagnostics').IsEnabled) "$product $state diagnostics remain responsive"
                     Assert (($window.FindName('Cancel').Visibility -eq 'Visible') -eq ($state -in @('checking','starting'))) "$product $state cancel availability"
                     Assert (($window.FindName('Force').Visibility -eq 'Visible') -eq ($state -in @('stopping','stop_failed'))) "$product $state force availability"
                     if($state -eq 'ready'){Assert ($primary.Content -eq "_Open $product") "$product open action"}
-                    if($state -eq 'starting'){Assert ($window.FindName('Timing').Text -eq 'Stage 3s / startup 15s') "$product stage and startup duration"}
+                    if($state -eq 'starting' -and $product -eq 'Vision'){Assert ($window.FindName('Timing').Text -eq 'Stage 3s / startup 15s') "$product stage and startup duration"}
                     if($state -in @('ready','degraded')) {
                     if($product -eq 'Vision') {
                         Assert ($window.FindName('ChatStatus').Text -eq 'Available') 'verified chat field'
                         Assert ($window.FindName('CameraStatus').Text -eq 'Unavailable') 'camera must not inherit UI readiness'
                         Assert ($window.FindName('MicrophoneStatus').Text -eq 'Disabled') 'microphone capability preserved'
-                    } else {Assert ($window.FindName('UiStatus').Text -eq 'Available') 'Hub UI availability separate'}
+                    } else {Assert ($window.FindName('UiStatus').Text -eq 'Running') 'Hub UI availability separate'}
                     Assert ($window.FindName('CoreStatus').Text -eq 'Sign-in required') 'Core verified status'
                     }
                     $composition=$window.FindName('Composition')
@@ -72,9 +80,9 @@ foreach($product in @('Vision','Hub')) {
                             Assert ($control.ActualHeight+$control.Margin.Top+$control.Margin.Bottom+1 -ge $control.DesiredSize.Height) "$product text vertically clipped"
                         }
                     }
-                    if($AuditDirectory -and $width -eq 520 -and ($scale -eq 1 -or $state -eq 'ready')) {
+                    if($AuditDirectory -and $width -eq $(if($product -eq 'Hub'){360}else{520}) -and ($scale -eq 1 -or $state -eq 'ready')) {
                         [void][IO.Directory]::CreateDirectory($AuditDirectory)
-                        $window.FindName('Stage').Text = switch($state) {
+                        if($product -eq 'Vision'){$window.FindName('Stage').Text = switch($state) {
                             'stopped' {'Start your local app when you are ready.'}
                             'checking' {'Checking runtime and configuration'}
                             'starting' {'Waiting for authenticated health'}
@@ -86,7 +94,7 @@ foreach($product in @('Vision','Hub')) {
                             default {'Startup deadline reached. Check prerequisites, then Retry.'}
                         }
                         $window.FindName('ProfileStatus').Text='Uses your existing local profile and configuration.'
-                        if($state -in @('ready','degraded')){$window.FindName('CoreStatus').Text='Not checked'}
+                        if($state -in @('ready','degraded')){$window.FindName('CoreStatus').Text='Not checked'}}
                         $window.UpdateLayout()
                         # Render the full scroll extent, independent of the monitor's native window-size cap.
                         $visual=New-Object Windows.Media.DrawingVisual
