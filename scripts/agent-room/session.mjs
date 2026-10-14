@@ -4,8 +4,8 @@ import { basename, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { subagentEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
-import { resolveDebateFolder, resolveProjectDir, roomError } from './paths.mjs';
-import { commitAll, commitDiff, createProject, headCommit, lastCommitDiff, renderPlan, rollback } from './project.mjs';
+import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
+import { branchDiff, commitAll, commitDiff, createProject, createWorktree, finishWorktree, headCommit, lastCommitDiff, linkDependencies, renderPlan, rollback, rootCommit, runCheck } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
@@ -37,26 +37,43 @@ export class RoomSession {
 
   static create({ dataDir, settings, runTurn }, body = {}) {
     if (body.mode === 'debate') return RoomSession.createDebate({ dataDir, settings, runTurn }, body);
-    const { project, task, roles } = body;
+    const { project, task, roles, repo, check } = body;
+    if (check !== undefined && check !== null && (typeof check !== 'string' || check.length > 500)) throw roomError('CHECK_INVALID');
     const subagents = subagentChoice(body.subagents);
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
     let presetRoles = null;
     if (roles !== undefined && roles !== null) {
       const checked = validateRoles(roles);
       if (!checked.ok) throw roomError('ROLES_INVALID', checked.error);
-      presetRoles = checked.value;
+      const { orchestrator, coders, reviewer } = checked.value;
+      presetRoles = { orchestrator, coders, reviewer };
     }
-    const projectDir = resolveProjectDir(settings.buildsRoot, project);
-    mkdirSync(settings.buildsRoot, { recursive: true });
-    createProject(projectDir);
     const id = `${Date.now()}-${randomBytes(3).toString('hex')}`;
+    let projectDir;
+    let repoInfo = null;
+    if (repo !== undefined && repo !== null && repo !== '') {
+      if (typeof project !== 'string' || !PROJECT_NAME.test(project)) throw roomError('PROJECT_NAME_INVALID');
+      const repoDir = resolveRepo(repo, settings);
+      const branch = `room/${project}-${id.slice(-6)}`;
+      projectDir = join(settings.buildsRoot, 'worktrees', `${basename(repoDir)}-${id}`);
+      const { base, baseBranch } = createWorktree(repoDir, projectDir, branch);
+      linkDependencies(repoDir, projectDir);
+      repoInfo = { dir: repoDir, branch, base, baseBranch };
+    } else {
+      projectDir = resolveProjectDir(settings.buildsRoot, project);
+      mkdirSync(settings.buildsRoot, { recursive: true });
+      createProject(projectDir);
+    }
     const state = {
       id, mode: 'build', subagents, project, projectDir, task: task.trim(), stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
+      repo: repoInfo, check: check?.trim() || null,
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
-    session.say('room', `Session started for project "${project}" in ${projectDir}.`);
+    session.say('room', repoInfo
+      ? `Session started on branch ${repoInfo.branch} of ${repoInfo.dir} (worktree ${projectDir}).`
+      : `Session started for project "${project}" in ${projectDir}.`);
     return session;
   }
 
@@ -93,6 +110,10 @@ export class RoomSession {
   }
 
   diff(commit) {
+    if (commit === 'all') {
+      const base = this.state.repo?.base ?? rootCommit(this.state.projectDir);
+      return { commit, text: branchDiff(this.state.projectDir, base) };
+    }
     const own = this.state.plan?.tasks.some(t => t.commit && t.commit === commit);
     if (typeof commit !== 'string' || !/^[0-9a-f]{7,40}$/.test(commit) || !own) throw roomError('DIFF_INVALID');
     return { commit, text: commitDiff(this.state.projectDir, commit) };
@@ -284,6 +305,8 @@ export class RoomSession {
 
   setPlan(tasks, message, options = []) {
     this.state.plan = { tasks: tasks.map(t => ({ ...t, status: 'pending', attempts: 0, reassigned: false, commit: null, notes: '' })), options };
+    // A repo session's branch carries only the owner's code; the room's own notes stay with the session.
+    if (this.state.repo) return writeFileSync(join(this.dir, 'PLAN.md'), renderPlan(this.state.plan.tasks), 'utf8');
     writeFileSync(join(this.state.projectDir, 'PLAN.md'), renderPlan(this.state.plan.tasks), 'utf8');
     const hash = commitAll(this.state.projectDir, message);
     if (hash) this.say('room', `Committed ${hash} "${message}".`);
@@ -312,6 +335,14 @@ export class RoomSession {
       if (!hash) return this.taskFailed(task, 'no changes were made');
       task.commit = hash;
       this.say('room', `Committed ${hash} "${message}".`);
+      if (state.check) {
+        const result = await this.runChecks();
+        if (result === null) return;
+        task.check = result;
+        const last = result.output.split('\n').filter(Boolean).at(-1) ?? '';
+        this.say('room', result.ok ? `Checks passed (${Math.round(result.ms / 1000)}s).` : `Checks failed (exit ${result.code ?? 'none'}): ${last.slice(0, 300)}`);
+        if (!result.ok) return this.taskFailed(task, `the checks failed (${state.check}):\n${result.output.slice(-3000)}`);
+      }
       if (!state.roles.reviewer) {
         task.status = 'done';
         this.save();
@@ -321,7 +352,7 @@ export class RoomSession {
       this.save();
     }
     const reviewer = state.roles.reviewer;
-    const verdict = await this.jsonTurn(reviewer, this.prompt('review', reviewer, { task, diff: lastCommitDiff(state.projectDir) }), 'reviewing', validateVerdict, [task.assignee]);
+    const verdict = await this.jsonTurn(reviewer, this.prompt('review', reviewer, { task, diff: lastCommitDiff(state.projectDir), check: state.check }), 'reviewing', validateVerdict, [task.assignee]);
     if (!verdict) return;
     if (verdict.verdict === 'ok') {
       task.status = 'done';
@@ -329,6 +360,15 @@ export class RoomSession {
       return;
     }
     return this.taskFailed(task, verdict.notes || 'the reviewer requested changes');
+  }
+
+  // The owner's check command, stoppable like an agent turn; null means the session stopped meanwhile.
+  async runChecks() {
+    this.controller = new AbortController();
+    this.say('room', `Running checks: ${this.state.check}`);
+    const result = await runCheck(this.state.projectDir, this.state.check, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: this.controller.signal });
+    this.controller = null;
+    return this.state.stage === 'stopped' ? null : result;
   }
 
   async taskFailed(task, reason) {
@@ -372,9 +412,13 @@ export class RoomSession {
     const orchestrator = this.state.roles.orchestrator;
     const text = await this.turn(orchestrator, 'read', this.prompt('finish', orchestrator), 'summarizing', []);
     if (text === null) return;
-    writeFileSync(join(this.state.projectDir, 'SUMMARY.md'), `${text}\n`, 'utf8');
-    const hash = commitAll(this.state.projectDir, 'docs: summary');
-    if (hash) this.say('room', `Committed ${hash} "docs: summary".`);
+    if (this.state.repo) {
+      writeFileSync(join(this.dir, 'SUMMARY.md'), `${text}\n`, 'utf8');
+    } else {
+      writeFileSync(join(this.state.projectDir, 'SUMMARY.md'), `${text}\n`, 'utf8');
+      const hash = commitAll(this.state.projectDir, 'docs: summary');
+      if (hash) this.say('room', `Committed ${hash} "docs: summary".`);
+    }
     this.state.stage = 'gate-result';
     this.save();
     this.say('room', 'Work finished. Waiting for the owner to accept or reject.');
@@ -422,8 +466,8 @@ export class RoomSession {
       if (roles !== undefined) {
         const checked = validateRoles(roles);
         if (!checked.ok) throw roomError('ROLES_INVALID', checked.error);
-        const { options, ...chosen } = checked.value;
-        state.roles = chosen;
+        const { orchestrator, coders, reviewer } = checked.value;
+        state.roles = { orchestrator, coders, reviewer };
       }
       state.stage = 'plan';
       this.say('room', 'Owner approved the roles.');
@@ -436,6 +480,14 @@ export class RoomSession {
       }
       state.stage = 'build';
       this.say('room', 'Owner approved the plan. Building.');
+    } else if (state.repo) {
+      if (!['merge', 'accept', 'reject'].includes(decision)) throw roomError('DECISION_INVALID');
+      const { dir, branch, baseBranch } = state.repo;
+      // A refused merge throws here, before the stage changes, so the gate stays open.
+      finishWorktree(dir, state.projectDir, branch, baseBranch, decision === 'accept' ? 'keep' : decision);
+      state.stage = decision === 'reject' ? 'rejected' : 'done';
+      this.say('room', decision === 'merge' ? `Owner merged ${branch} into ${baseBranch}.`
+        : decision === 'accept' ? `Owner kept branch ${branch}; merge it when ready.` : `Owner rejected the result; branch ${branch} was deleted.`);
     } else {
       if (decision !== 'accept' && decision !== 'reject') throw roomError('DECISION_INVALID');
       state.stage = decision === 'accept' ? 'done' : 'rejected';

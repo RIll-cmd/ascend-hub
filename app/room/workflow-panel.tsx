@@ -5,7 +5,7 @@ import { AGENT_COLORS, messageLine } from "./deck/deck-view";
 import { AGENT_IDS, AGENT_NAMES, type SessionView } from "./room-types";
 import { formatMs, LOOPING, workflowView, type Lanes, type RunSummary, type WorkflowTask } from "./workflow-view";
 
-function DiffView({ commit }: { commit: string }) {
+export function DiffView({ commit, label }: { commit: string; label?: string }) {
   const [state, setState] = useState<{ text?: string; error?: string; loading?: boolean }>({});
   const load = async () => {
     setState({ loading: true });
@@ -28,7 +28,7 @@ function DiffView({ commit }: { commit: string }) {
   }
   return (
     <p>
-      <button type="button" className="agent-room-link" onClick={() => void load()} disabled={state.loading}>{state.loading ? "Loading changes…" : `Show changes (${commit})`}</button>
+      <button type="button" className="agent-room-link" onClick={() => void load()} disabled={state.loading}>{state.loading ? "Loading changes…" : label ?? `Show changes (${commit})`}</button>
       {state.error && <span role="alert" className="agent-room-error"> {state.error}</span>}
     </p>
   );
@@ -46,9 +46,16 @@ function TaskNode({ task }: { task: WorkflowTask }) {
             <span className="agent-room-badge">{task.status}</span>
             {task.rounds > 0 && <span className="agent-room-badge" title="Coder rounds on this task">{task.rounds} round{task.rounds === 1 ? "" : "s"}{looping ? " · looping?" : ""}</span>}
             {task.reviews > 0 && <span className="agent-room-badge" title="Reviewer replies">{task.reviews} review{task.reviews === 1 ? "" : "s"}</span>}
+            {task.check && <span className={`agent-room-badge${task.check.ok ? "" : " is-problem"}`}>{task.check.ok ? "checks ✓" : "checks ✗"}</span>}
             {task.ms !== null && <span>{formatMs(task.ms)}</span>}
           </span>
         </summary>
+        {task.check && (
+          <p className={task.check.ok ? "agent-room-hint" : "agent-room-hint is-problem"}>
+            Checks {task.check.ok ? "passed" : `failed (exit ${task.check.code ?? "none"})`} in {formatMs(task.check.ms)}
+          </p>
+        )}
+        {task.check && !task.check.ok && task.check.output && <pre className="agent-room-diff">{task.check.output.slice(-2000)}</pre>}
         {task.notes && <p className="agent-room-hint">Last note: {task.notes}</p>}
         {task.roundGroups.length > 0 ? task.roundGroups.map((round, i) => (
           <div key={i} className="agent-room-wf-round">

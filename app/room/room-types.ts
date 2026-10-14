@@ -12,13 +12,15 @@ export const TERMINAL_STAGES: Stage[] = ["done", "rejected", "stopped"];
 export const BOARD_STAGES: Stage[] = ["build", "finish", "gate-result", "done", "rejected", "stopped"];
 
 export type TaskStatus = "pending" | "running" | "review" | "done" | "skipped";
-export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string };
+export type CheckResult = { ok: boolean; code: number | null; ms: number; output: string };
+export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult };
 export type Message = {
   at: string; from: AgentId | "room"; text: string;
   seq?: number; to?: AgentId[]; kind?: "assign" | "subagent"; by?: AgentId; sub?: string;
 };
 export type Availability = { state: "checking" | "ready" | "offline"; detail?: string };
-export type RoomStatus = { online: true; agents: Record<AgentId, Availability>; folders?: string[] };
+export type RepoChoice = { dir: string; check: string };
+export type RoomStatus = { online: true; agents: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[] };
 
 export type SessionView = {
   id: string;
@@ -39,6 +41,8 @@ export type SessionView = {
   } | null;
   transcript: Message[];
   stageLog?: { stage: Stage; at: string }[];
+  repo?: { dir: string; branch: string; base: string; baseBranch: string } | null;
+  check?: string | null;
   attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "result"; summary: string; options: string[]; decisions: string[] } | null;
 };
 

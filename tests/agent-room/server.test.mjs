@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -124,7 +124,13 @@ test('status lists debate folders and a debate session starts through the API', 
   const call = (method, path, body) => fetch(`http://127.0.0.1:${room.port}${path}`, {
     method, headers: { authorization: `Bearer ${room.token}` }, body: body && JSON.stringify(body),
   });
-  assert.deepEqual((await (await call('GET', '/status')).json()).folders, [folder]);
+  const status = await (await call('GET', '/status')).json();
+  assert.deepEqual(status.folders, [folder]);
+  assert.deepEqual(status.repos, [], 'a folder without .git is not offered for repo sessions');
+  mkdirSync(join(folder, '.git'));
+  writeFileSync(join(folder, 'package.json'), JSON.stringify({ scripts: { test: 'node --test' } }));
+  const withRepo = await (await call('GET', '/status')).json();
+  assert.deepEqual(withRepo.repos, [{ dir: folder, check: 'npm test' }]);
   const created = await call('POST', '/sessions', { mode: 'debate', question: 'q', folder, judge: 'agy' });
   assert.equal(created.status, 201);
   assert.equal((await created.json()).session.mode, 'debate');

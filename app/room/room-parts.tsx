@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES,
   type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
+  type RepoChoice,
 } from "./room-types";
 import { messageLine, nearBottom, stepStates } from "./deck/deck-view";
+import { DiffView } from "./workflow-panel";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
 
@@ -89,7 +91,7 @@ export function RolesEditor({ value, onChange }: { value: Roles; onChange: (role
   );
 }
 
-export function BriefForm({ agents, folders = [], act }: { agents?: Record<AgentId, Availability>; folders?: string[]; act: Act }) {
+export function BriefForm({ agents, folders = [], repos = [], act }: { agents?: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[]; act: Act }) {
   const [kind, setKind] = useState<SessionMode>("build");
   const [project, setProject] = useState("");
   const [task, setTask] = useState("");
@@ -99,11 +101,18 @@ export function BriefForm({ agents, folders = [], act }: { agents?: Record<Agent
   const [folder, setFolder] = useState("");
   const [judge, setJudge] = useState<AgentId>("codex");
   const [claudeSubagents, setClaudeSubagents] = useState(true);
+  const [where, setWhere] = useState<"new" | "repo">("new");
+  const [repoDir, setRepoDir] = useState("");
+  const [check, setCheck] = useState<string | null>(null);
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
   const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
+  const inRepo = where === "repo" && repos.length > 0;
+  const chosenRepo = repos.find(r => r.dir === repoDir) ?? repos[0];
+  // The suggested command follows the chosen repo until the owner edits it.
+  const checkCommand = check ?? (inRepo ? chosenRepo?.check ?? "" : "");
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : { project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents } };
+    : { project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}) };
   return (
     <form className="agent-room-brief" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", body); }}>
       <div className="agent-room-kind" role="radiogroup" aria-label="Session type">
@@ -112,10 +121,27 @@ export function BriefForm({ agents, folders = [], act }: { agents?: Record<Agent
       </div>
       {kind === "build" ? (
         <>
-          <label>Project name
-            <input value={project} onChange={e => setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder="todo-system" />
+          <div className="agent-room-kind" role="radiogroup" aria-label="Where">
+            <label><input type="radio" name="room-where" checked={!inRepo} onChange={() => { setWhere("new"); setCheck(null); }} /> New project</label>
+            <label><input type="radio" name="room-where" checked={inRepo} disabled={repos.length === 0} onChange={() => { setWhere("repo"); setCheck(null); }} /> Existing repo</label>
+          </div>
+          {inRepo && (
+            <label>Repository
+              <select value={chosenRepo?.dir ?? ""} onChange={e => { setRepoDir(e.target.value); setCheck(null); }}>
+                {repos.map(r => <option key={r.dir} value={r.dir}>{r.dir}</option>)}
+              </select>
+            </label>
+          )}
+          <label>{inRepo ? "Branch name" : "Project name"}
+            <input value={project} onChange={e => setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder={inRepo ? "fix-login" : "todo-system"} />
           </label>
-          <small>Built in D:\ascend-builds\{project || "<name>"} as its own git repository.</small>
+          <small>{inRepo
+            ? `Works on branch room/${project || "<name>"}-… in its own worktree. Your checkout of ${chosenRepo?.dir} is not touched until you merge.`
+            : `Built in D:\\ascend-builds\\${project || "<name>"} as its own git repository.`}</small>
+          <label>Checks after every task (optional)
+            <input value={checkCommand} onChange={e => setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
+          </label>
+          <small>Runs in the project folder after each task. A failing check sends the task back to the coder with the output.</small>
           <label>What should they build?
             <textarea value={task} onChange={e => setTask(e.target.value)} maxLength={4000} required rows={4} />
           </label>
@@ -244,11 +270,26 @@ export function GateBar({ session, act }: { session: SessionView; act: Act }) {
   if (session.stage === "gate-plan" && session.plan) {
     return <>{summary}<PlanGate key={session.id} tasks={session.plan.tasks} coders={session.roles?.coders ?? []} act={act} /><ChangeRequest key={`${session.id}-plan`} gate="plan" options={options} act={act} /></>;
   }
+  if (session.stage === "gate-result" && session.repo) {
+    const { branch, baseBranch, dir } = session.repo;
+    return (
+      <div className="agent-room-gate">
+        {summary}
+        <p>Branch <code>{branch}</code> of <code>{dir}</code>.</p>
+        <DiffView commit="all" label="Show all changes on the branch" />
+        <button onClick={() => act(GATE, { gate: "result", decision: "merge" })}>Merge into {baseBranch}</button>
+        <button onClick={() => act(GATE, { gate: "result", decision: "accept" })}>Keep branch</button>
+        <button onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject and delete branch</button>
+        <small>Merge only fast-forwards {baseBranch} while your checkout is on it; otherwise keep the branch and merge it yourself.</small>
+      </div>
+    );
+  }
   if (session.stage === "gate-result") {
     return (
       <div className="agent-room-gate">
         {summary}
         <p>Work finished in <code>{session.projectDir}</code>. See SUMMARY.md there.</p>
+        <DiffView commit="all" label="Show all changes" />
         <button onClick={() => act(GATE, { gate: "result", decision: "accept" })}>Accept</button>
         <button onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject</button>
       </div>

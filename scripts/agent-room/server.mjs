@@ -6,7 +6,8 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildInvocation, defaultSettings, mergeSettings, runTurn as realRunTurn } from './agents.mjs';
 import { AGENT_IDS } from './parse.mjs';
-import { listDebateFolders, roomDataDir, roomError } from './paths.mjs';
+import { listDebateFolders, listRepos, roomDataDir, roomError } from './paths.mjs';
+import { suggestCheck } from './project.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
 import { readJson, writeJsonAtomic } from './store.mjs';
 import { ensureRoomToken } from './token.mjs';
@@ -88,7 +89,8 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       const route = `${req.method} ${new URL(req.url, 'http://room').pathname}`;
       if (route === 'GET /status') {
         if (Date.now() - probedAt > PROBE_TTL_MS && !busy()) refreshProbes();
-        return send(200, { online: true, agents, folders: listDebateFolders(settings), session: session?.summary() ?? null });
+        const repos = listRepos(settings).map(dir => ({ dir, check: suggestCheck(dir, settings.checks) }));
+        return send(200, { online: true, agents, folders: listDebateFolders(settings), repos, session: session?.summary() ?? null });
       }
       if (route === 'POST /sessions') {
         if (busy()) return send(409, { error: 'SESSION_ACTIVE', message: 'A session is already running.' });

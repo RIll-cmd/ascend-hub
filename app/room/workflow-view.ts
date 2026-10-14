@@ -3,7 +3,7 @@ import { AGENT_IDS, type AgentId, type Message, type PlanTask, type SessionView 
 
 export type WorkflowStage = { label: string; state: "done" | "current" | "todo"; ms: number | null };
 export type WorkflowTask = {
-  id: number; title: string; assignee: AgentId; status: PlanTask["status"]; commit: string | null; notes: string;
+  id: number; title: string; assignee: AgentId; status: PlanTask["status"]; commit: string | null; notes: string; check?: PlanTask["check"];
   rounds: number; reviews: number; ms: number | null; messages: Message[];
   roundGroups: Message[][]; needsAttention: boolean;
 };
@@ -61,9 +61,9 @@ export function workflowView(session: SessionView, now: number): WorkflowView {
     }
     const rounds = messages.filter(m => m.kind === "assign").length;
     return {
-      id: task.id, title: task.title, assignee: task.assignee, status: task.status, commit: task.commit, notes: task.notes,
+      id: task.id, title: task.title, assignee: task.assignee, status: task.status, commit: task.commit, notes: task.notes, check: task.check,
       rounds, roundGroups,
-      needsAttention: task.status === "skipped" || rounds >= LOOPING || messages.some(isProblem),
+      needsAttention: task.status === "skipped" || rounds >= LOOPING || messages.some(isProblem) || task.check?.ok === false,
       reviews: session.roles?.reviewer ? messages.filter(m => m.from === session.roles!.reviewer).length : 0,
       ms: start !== undefined && end !== undefined ? end - start : null,
       messages,

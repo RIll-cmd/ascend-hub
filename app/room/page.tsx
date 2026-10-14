@@ -137,7 +137,7 @@ export default function RoomPage() {
             {session && <GateBar session={session} act={act} />}
             {session && <VerdictPanel session={session} />}
             {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
-            {!running && <BriefForm agents={status?.agents} folders={status?.folders} act={act} />}
+            {!running && <BriefForm agents={status?.agents} folders={status?.folders} repos={status?.repos} act={act} />}
             {error && <p role="alert" className="agent-room-error">{error}</p>}
           </aside>
         </div>

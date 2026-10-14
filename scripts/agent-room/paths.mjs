@@ -39,6 +39,19 @@ export function resolveDebateFolder(folder, { debateFolders = [], buildsRoot }) 
   throw roomError('FOLDER_NOT_ALLOWED', folder);
 }
 
+// Repo sessions may only branch off the configured Ascend repos, and only real git checkouts.
+export function resolveRepo(folder, { debateFolders = [] }) {
+  if (typeof folder !== 'string' || !folder.trim()) throw roomError('REPO_INVALID');
+  const wanted = resolve(folder);
+  const allowed = debateFolders.map(f => resolve(f)).find(f => samePath(f, wanted) && isRealDir(f) && existsSync(join(f, '.git')));
+  if (!allowed) throw roomError('REPO_INVALID', folder);
+  return allowed;
+}
+
+export function listRepos({ debateFolders = [] }) {
+  return debateFolders.map(f => resolve(f)).filter(f => isRealDir(f) && existsSync(join(f, '.git')));
+}
+
 export function listDebateFolders({ debateFolders = [], buildsRoot }) {
   const repos = debateFolders.map(f => resolve(f)).filter(isRealDir);
   const root = resolve(buildsRoot);

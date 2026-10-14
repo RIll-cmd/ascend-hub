@@ -32,7 +32,7 @@ Updated 2026-10-14.
 | M1 | Room attention and change requests | Each waiting gate carries a plain summary and 2–4 suggested changes. Roles and plan gates accept "revise" with a note, so the agents redo that step. The Hub gate bar offers the options. | Done (2026-10-14) |
 | M2 | Vision agent announcer with voice gates | Vision says when the agents finish or need a reply. It reads the gate summary and takes "approve", "change" (lists the options or takes dictation, then confirms) or "reject" by voice. | Done (2026-10-14) |
 | M3 | Workflow view | A timeline graph of the session: stages, task nodes with agent, time, diff and test results, and a loop view counting coder ↔ reviewer rounds. | Done (2026-10-14); test results arrive with M4 |
-| M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Planned |
+| M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Done (2026-10-14); PRs via `gh` not yet |
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Planned |
 | M6 | Harness extras | Session templates (feature, bug fix, refactor, debate); per-role model choice; time and token budgets; parallel tasks in worktrees with a merge queue; a quota meter; decision memory per project. | Later |
 
@@ -55,6 +55,25 @@ Updated 2026-10-14.
   - The Room records "Owner asked for changes: …" in the transcript and sends the session back to the `roles` or `plan` step. The agents see the note in the conversation.
   - The result gate stays accept/reject.
 - The Hub gate bar shows the spoken summary, the suggested changes as buttons, a free-text field and a **Request changes** button.
+
+## M4 — Room on real repositories (Hub)
+
+- **Starting:** the start form offers **New project** or **Existing repo**. The repo comes from the allowlist (Hub, Core, Vision), and only real git checkouts are offered.
+- **Where the work happens:** a repo session creates branch `room/<name>-<id>` in its own worktree under `D:\ascend-builds\worktrees`.
+  - It links the repo's `node_modules` (root and one level down) so checks can run.
+  - Your own checkout is never edited.
+- **Checks:** after each task the room runs the check command, in the background, stoppable, with a 15-minute limit.
+  - The command comes from `settings.checks`, the repo's `package.json` test script, or pytest, and you can edit it in the form.
+  - A failure sends the task back to the coder with the output. The reviewer only sees work that passes.
+- **Room notes:** repo sessions keep `PLAN.md` and `SUMMARY.md` with the session data, never on the branch.
+- **Finishing:**
+  - The result gate shows the branch, whether checks passed, and the whole branch diff.
+  - **Merge** fast-forwards the base branch, and only while your checkout is still on it; otherwise it's refused and the gate stays open.
+  - **Keep branch** leaves the branch for you.
+  - **Reject** deletes the branch.
+  - Every choice removes the worktree.
+- **Workflow tab:** task nodes show the check result, with failed output.
+- **Vision:** at a repo result it says "merge, accept, or reject", and understands "merge it".
 
 ## M3 — Workflow view (Hub)
 

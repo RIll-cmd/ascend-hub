@@ -63,7 +63,7 @@ function stageRules(stage, agent, roles, extra) {
         'When you are done, reply with a short summary of what you changed.',
       ].filter(Boolean).join('\n');
     case 'review':
-      return `You are the reviewer. Review task ${extra.task.id}: ${extra.task.title}\n${cap(extra.task.description, 2000)}\nDo not edit files. Reply with one fenced json block:\n\`\`\`json\n{"verdict": "ok", "notes": ""}\n\`\`\`\nUse "changes" with clear notes if the task is not done correctly.\n\nDIFF:\n${cap(extra.diff, 8000)}`;
+      return `You are the reviewer. Review task ${extra.task.id}: ${extra.task.title}\n${cap(extra.task.description, 2000)}\n${extra.check ? `Checks passed: ${extra.check}\n` : ''}Do not edit files. Reply with one fenced json block:\n\`\`\`json\n{"verdict": "ok", "notes": ""}\n\`\`\`\nUse "changes" with clear notes if the task is not done correctly.\n\nDIFF:\n${cap(extra.diff, 8000)}`;
     case 'reassign':
       return `You are the orchestrator. Task ${extra.task.id} (${extra.task.title}) failed twice with ${AGENT_NAMES[extra.task.assignee]}. Last reason: ${cap(extra.reason, 2000)}\nThe coders are:\n${team}\nReply with one fenced json block, either {"action": "reassign", "to": "<coder id>"} with a different coder, or {"action": "skip"}.`;
     case 'finish':

@@ -25,5 +25,8 @@ export function attention(state, transcript = []) {
   }
   const final = transcript.findLast(m => m.from === state.roles?.orchestrator);
   const text = (final?.text ?? 'The work is finished.').replace(/\s+/g, ' ').trim();
-  return { kind: 'gate', gate, summary: text.length > 400 ? `${text.slice(0, 397).trimEnd()}...` : text, options: [], decisions: ['accept', 'reject'] };
+  const cut = text.length > 400 ? `${text.slice(0, 397).trimEnd()}...` : text;
+  if (!state.repo) return { kind: 'gate', gate, summary: cut, options: [], decisions: ['accept', 'reject'] };
+  const checks = state.check ? (state.plan?.tasks.every(t => t.status !== 'done' || t.check?.ok) ? ' Checks passed.' : ' Some checks failed.') : '';
+  return { kind: 'gate', gate, summary: `The work is on branch ${state.repo.branch}.${checks} ${cut}`, options: [], decisions: ['merge', 'accept', 'reject'] };
 }
