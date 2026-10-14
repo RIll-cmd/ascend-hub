@@ -51,7 +51,8 @@ function Resolve-EdgePath([string[]]$candidates) {
     foreach ($candidate in $candidates) {
         if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
         $path = $candidate.Trim().Trim('"')
-        if ([IO.Path]::IsPathRooted($path) -and [IO.Path]::GetFileName($path) -ieq 'msedge.exe' -and (Test-Path -LiteralPath $path -PathType Leaf)) { return $path }
+        # A value with arguments or illegal characters is skipped so later candidates still get a chance.
+        try { if ([IO.Path]::IsPathRooted($path) -and [IO.Path]::GetFileName($path) -ieq 'msedge.exe' -and (Test-Path -LiteralPath $path -PathType Leaf)) { return $path } } catch { continue }
     }
     $null
 }

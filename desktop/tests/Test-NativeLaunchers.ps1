@@ -74,13 +74,11 @@ try {
     $hubWindow=Wait-For {$h=Get-Window $hub.Id; if($null -ne $h -and -not $h.Current.IsOffscreen){$h}} 'second shortcut shows the launcher in fixture mode'
     Assert ((Find-Control $hubWindow 'Primary').Current.Name -eq 'Open Hub') 'Hub still running after reopening'
     Invoke-Control $hubWindow 'Stop'
-    [void](Wait-For {if((Find-Control $hubWindow 'Force').Current.IsEnabled){$true}} 'force available during stop')
-    Assert (-not (Find-Control $hubWindow 'Primary').Current.IsEnabled) 'stopping cannot open or start'
+    # Headless Hub cannot close gracefully, so Stop goes straight to the owned-tree stop: no 15 s wait, no Force click.
+    [void](Wait-For {if((Find-Control $hubWindow 'Primary').Current.Name -eq 'Start Hub'){$true}} 'Hub stops without a Force click' 8)
     $details=Find-Control $hubWindow 'Details';$details.GetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
-    Assert ((Find-Control $hubWindow 'Diagnostics').Current.IsEnabled) 'diagnostics stay responsive during stop'
-    Assert ((Find-Control $visionWindow 'Primary').Current.Name -eq 'Open Vision') 'closing Hub preserves Vision'
-    Invoke-Control $hubWindow 'Force'
-    [void](Wait-For {if((Find-Control $hubWindow 'Primary').Current.Name -eq 'Start Hub'){$true}} 'Hub owned tree stopped')
+    Assert ((Find-Control $hubWindow 'Diagnostics').Current.IsEnabled) 'diagnostics stay responsive after stop'
+    Assert ((Find-Control $visionWindow 'Primary').Current.Name -eq 'Open Vision') 'stopping Hub preserves Vision'
     $hubWindow.GetCurrentPattern([Windows.Automation.WindowPattern]::Pattern).Close()
     [void](Wait-For {$hub.Refresh();$hub.HasExited} 'closing a stopped Hub exits the launcher')
     Assert ((Find-Control $visionWindow 'Primary').Current.Name -eq 'Open Vision') 'Hub disposed without stopping Vision'

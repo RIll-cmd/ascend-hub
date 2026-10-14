@@ -76,7 +76,7 @@ try {
         $script:quitting=$true
         $snapshot=$supervisor.Get($component)
         if($snapshot.State -in @('stopped','failed') -and -not $snapshot.Owned){$window.Close();return}
-        if($snapshot.State -in @('checking','starting')){$supervisor.Cancel($component)}else{$supervisor.Stop($component)}
+        $supervisor.ForceStop($component)
         Show-Launcher
     }
     $ui['Primary'].Add_Click({
@@ -87,7 +87,8 @@ try {
         }
     })
     $ui['Cancel'].Add_Click({$supervisor.Cancel($component)})
-    $ui['Stop'].Add_Click({$supervisor.Stop($component)})
+    # Hub runs headless (no window to close), so a graceful Stop could only time out; Hub stops its owned tree directly.
+    $ui['Stop'].Add_Click({if($product -eq 'Hub'){$supervisor.ForceStop($component)}else{$supervisor.Stop($component)}})
     $ui['Force'].Add_Click({$supervisor.ForceStop($component)})
     if($product -eq 'Vision'){$ui['ChatRecovery'].Add_Click({[void]$supervisor.Start('vision',$true)})}
     $ui['Diagnostics'].Add_Click({
@@ -155,7 +156,7 @@ try {
         $menu=New-Object Windows.Forms.ContextMenuStrip
         $menu.Items.Add('Open Hub').Add_Click({try{Open-AscendUrl}catch{Show-Launcher}})
         $menu.Items.Add('Show launcher').Add_Click({Show-Launcher})
-        $menu.Items.Add('Stop Hub').Add_Click({$supervisor.Stop($component)})
+        $menu.Items.Add('Stop Hub').Add_Click({try{$supervisor.ForceStop($component)}catch{Show-Launcher}})
         [void]$menu.Items.Add((New-Object Windows.Forms.ToolStripSeparator))
         $menu.Items.Add('Quit').Add_Click({Invoke-Quit})
         $tray.ContextMenuStrip=$menu
