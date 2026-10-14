@@ -14,9 +14,8 @@ Hub is the presentation layer—not the status authority. Ascend Core stores nor
 - Four-second polling, reduced polling in hidden tabs, and visible stale/error handling.
 - A focused-TV auxiliary console with privacy-safe lifecycle details and local status-copy controls; transcripts and browser message sending are intentionally excluded.
 - Generic TV cards for unknown services, without frontend changes.
-- Reduced-motion support and non-color-only status cues.
 - Separate, instance-bound local-agent adapters with durable operation tracking.
-- Cassette player with dynamic background.
+- Cassette player with dynamic background depending on what music is playing.
 - A media shelf with a Spotify account setup screen, configurable Visual Crossing weather, and a YouTube tuner with curated recommendations and search.
 
 Media integrations are configured from their TV screens. Spotify needs a Spotify developer app ID and secret; playback uses the account authorization flow. Weather needs a Visual Crossing API key and location. YouTube search and playback availability depend on YouTube and the selected stream. Secrets are stored by the local Hub runtime under the ignored `.sites-runtime/` directory and are not returned by the setup APIs. Keep that directory private and do not commit it.
