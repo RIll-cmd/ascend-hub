@@ -79,6 +79,7 @@ import {
 } from "../components/status/vision-eye-navigation";
 import { findCrtConfigByCollectibleId, getCrtProfile } from "../components/crt-tv-config";
 import { useStatusShelf } from "./status/use-status-shelf";
+import { shelfNowMs, statusClockMs, useNow } from "./status/use-now";
 
 const chapters = [
   { id: "core", number: "01", title: "Core Engine", eyebrow: "BUILD YOUR FOUNDATION", tag: "FOUNDATION", color: "#e9aa63", description: "A clear direction. A stronger operating system.", specs: ["Define your personal mission and values", "Create a focused progression roadmap", "Choose the principles that guide your work"], art: "engine" },
@@ -369,6 +370,7 @@ export default function Home() {
     collectibleId: string;
     open: boolean;
   } | null>(null);
+  const nowMs = shelfNowMs(useNow(statusClockMs(focusedStatusTv !== null)), shelfStatus.lastSuccessfulAt);
   const [selectedStatusInstances, setSelectedStatusInstances] = useState<Record<string, string>>({});
   const [statusMediaIssues, setStatusMediaIssues] = useState<Record<string, Record<string, StatusMediaIssue>>>({});
   const [tvSignalTransition, setTvSignalTransition] = useState(() =>
@@ -767,15 +769,15 @@ export default function Home() {
   const statusTvSlots = useMemo(() => {
     return ["slot-1-1-t", "slot-1-3-t", "slot-1-1-b", "slot-1-3-b"].map(slotId => {
       const service = resolveShelfTvService(slotId, shelfStatus.current?.services ?? [],
-        selectedStatusInstances[slotId], shelfStatus.nowMs);
+        selectedStatusInstances[slotId], nowMs);
       const presentation = deriveShelfTvPresentation({
         service, loading: Boolean(shelfStatus.loading && !shelfStatus.current), error: shelfStatus.error,
-        stale: Boolean(shelfStatus.stale), nowMs: shelfStatus.nowMs,
+        stale: Boolean(shelfStatus.stale), nowMs: nowMs,
         selectedInstanceId: selectedStatusInstances[slotId],
       });
       return { slotId, service, presentation };
     });
-  }, [shelfStatus.current, shelfStatus.loading, shelfStatus.error, shelfStatus.stale, shelfStatus.nowMs, selectedStatusInstances]);
+  }, [shelfStatus.current, shelfStatus.loading, shelfStatus.error, shelfStatus.stale, nowMs, selectedStatusInstances]);
 
   // Initialize identity before children commit, so a poll cannot display a replacement first.
   const unrememberedSlots = statusTvSlots.filter(slot => slot.service && selectedStatusInstances[slot.slotId] === undefined);
@@ -803,7 +805,7 @@ export default function Home() {
         loading: Boolean(shelfStatus.loading && !shelfStatus.current),
         error: shelfStatus.error,
         stale: Boolean(shelfStatus.stale),
-        nowMs: shelfStatus.nowMs,
+        nowMs: nowMs,
         selectedInstanceId: selectedStatusInstances[focusedStatusTv.slotId],
       })
     : null;
@@ -822,15 +824,15 @@ export default function Home() {
     if (!slotId || !collectibleId) return;
     // Explicit reopen may choose a replacement. Refresh inside the dialog never changes identity.
     const retained = resolveShelfTvService(slotId, shelfStatus.current?.services ?? [],
-      selectedStatusInstances[slotId], shelfStatus.nowMs);
-    const selected = retained ?? resolveShelfTvService(slotId, shelfStatus.current?.services ?? [], undefined, shelfStatus.nowMs);
+      selectedStatusInstances[slotId], nowMs);
+    const selected = retained ?? resolveShelfTvService(slotId, shelfStatus.current?.services ?? [], undefined, nowMs);
     if (selected) setSelectedStatusInstances(current => ({ ...current, [slotId]: selected.instanceId }));
     setTvSignalTransition(createTvSignalState(assignment.serviceId));
     if (visionEyeActivationTimerRef.current) clearTimeout(visionEyeActivationTimerRef.current);
     cameraTriggerRef.current = trigger;
     setFocusedStatusTv({ assignment, slotId, collectibleId, open: true });
     setVisionEyeActivating(false);
-  }, [focusedStatusTv, shelfStatus, selectedStatusInstances]);
+  }, [focusedStatusTv, shelfStatus, selectedStatusInstances, nowMs]);
   useEffect(() => {
     if (!cameraMounted) return;
 

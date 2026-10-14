@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import {
   getPollingDelay,
   INITIAL_STATUS_SHELF_STATE,
@@ -10,7 +10,6 @@ import {
 
 export function useStatusShelf() {
   const [state, dispatch] = useReducer(statusShelfReducer, INITIAL_STATUS_SHELF_STATE);
-  const [nowMs, setNowMs] = useState(() => Date.now());
   const mounted = useRef(false);
   const inFlight = useRef<{ controller: AbortController; promise: Promise<void> } | null>(null);
 
@@ -24,7 +23,6 @@ export function useStatusShelf() {
         const snapshot = await requestStatusShelf({ signal: controller.signal });
         if (mounted.current && !controller.signal.aborted) {
           const receivedAt = Date.now();
-          setNowMs(receivedAt);
           dispatch({ type: "success", snapshot, receivedAt });
         }
       } catch (error) {
@@ -48,8 +46,6 @@ export function useStatusShelf() {
     mounted.current = true;
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const updateClock = () => setNowMs(Date.now());
-    const clock = setInterval(updateClock, 1_000);
 
     const clearTimer = () => {
       if (timer) clearTimeout(timer);
@@ -69,7 +65,6 @@ export function useStatusShelf() {
     };
 
     const refreshWhenVisible = () => {
-      updateClock();
       if (document.hidden) {
         schedule(getPollingDelay(true));
         return;
@@ -86,7 +81,6 @@ export function useStatusShelf() {
       disposed = true;
       mounted.current = false;
       clearTimer();
-      clearInterval(clock);
       inFlight.current?.controller.abort();
       inFlight.current = null;
       document.removeEventListener("visibilitychange", refreshWhenVisible);
@@ -94,5 +88,5 @@ export function useStatusShelf() {
     };
   }, [poll]);
 
-  return { ...state, nowMs, refresh: poll };
+  return { ...state, refresh: poll };
 }
