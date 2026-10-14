@@ -1,0 +1,67 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Ascend Hub" Width="320" Height="400" MinWidth="300" MinHeight="360" Background="{DynamicResource Base}" Foreground="{DynamicResource Ink}" FontFamily="Segoe UI" FontSize="13" WindowStartupLocation="CenterScreen">
+  <Window.Resources>
+    <ResourceDictionary>
+      <SolidColorBrush x:Key="Base" Color="#141513"/>
+      <SolidColorBrush x:Key="Surface" Color="#222321"/>
+      <SolidColorBrush x:Key="Ink" Color="#F5E8CF"/>
+      <SolidColorBrush x:Key="Secondary" Color="#AAA596"/>
+      <SolidColorBrush x:Key="Accent" Color="#F0A23B"/>
+      <SolidColorBrush x:Key="Edge" Color="#56534A"/>
+      <SolidColorBrush x:Key="ActionInk" Color="#141513"/>
+      <SolidColorBrush x:Key="Good" Color="#7FCB8A"/>
+      <SolidColorBrush x:Key="Warn" Color="#E6B450"/>
+      <Style x:Key="Line" TargetType="Grid"><Setter Property="Margin" Value="0,3,0,3"/></Style>
+    </ResourceDictionary>
+  </Window.Resources>
+  <ScrollViewer Background="{DynamicResource Base}" x:Name="Scroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel x:Name="Composition" Margin="18,16,18,12">
+      <Border x:Name="Monitor" Background="Transparent">
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Image Source="{DynamicResource HubArtwork}" Width="58" Height="58" Margin="0,0,12,0" VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center">
+            <TextBlock x:Name="Kicker" Text="ASCEND HUB" Foreground="{DynamicResource Accent}" FontFamily="Consolas" FontSize="10"/>
+            <TextBlock x:Name="State" Text="Hub is stopped" FontSize="18" FontWeight="SemiBold" Margin="0,2,0,0" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <TextBlock x:Name="Stage" Foreground="{DynamicResource Secondary}" FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
+      <ProgressBar x:Name="Progress" IsIndeterminate="True" Height="6" Margin="0,10,0,0" Foreground="{DynamicResource Accent}" Background="{DynamicResource Surface}" BorderThickness="0" Visibility="Collapsed"/>
+      <StackPanel x:Name="StatusLines" Margin="0,12,0,0" Visibility="Collapsed">
+        <Grid Style="{StaticResource Line}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <Ellipse x:Name="UiDot" Width="8" Height="8" Fill="{DynamicResource Good}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="Hub" Foreground="{DynamicResource Secondary}"/>
+          <TextBlock x:Name="UiStatus" Grid.Column="2" Text="Not checked"/>
+        </Grid>
+        <Grid Style="{StaticResource Line}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <Ellipse x:Name="AgentDot" Width="8" Height="8" Fill="{DynamicResource Good}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="Agent room" Foreground="{DynamicResource Secondary}"/>
+          <TextBlock x:Name="AgentStatus" Grid.Column="2" Text="Offline"/>
+        </Grid>
+        <Grid Style="{StaticResource Line}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <Ellipse x:Name="CoreDot" Width="8" Height="8" Fill="{DynamicResource Warn}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="Core status" Foreground="{DynamicResource Secondary}"/>
+          <TextBlock x:Name="CoreStatus" Grid.Column="2" Text="Not checked"/>
+        </Grid>
+      </StackPanel>
+      <Button x:Name="Primary" Style="{DynamicResource PrimaryAction}" Content="_Start Hub" AutomationProperties.Name="Start Hub" Margin="0,14,0,8"/>
+      <WrapPanel>
+        <Button x:Name="Stop" Content="S_top Hub" Visibility="Collapsed"/>
+        <Button x:Name="Cancel" Content="_Cancel" Visibility="Collapsed"/>
+        <Button x:Name="Force" Content="_Force stop" Visibility="Collapsed"/>
+        <Button x:Name="ReplaceSession" Content="Stop the other copy and _retry" AutomationProperties.Name="Stop the other copy and retry" Visibility="Collapsed"/>
+      </WrapPanel>
+      <Expander x:Name="Details" Header="_Details" Margin="0,4,0,0" Foreground="{DynamicResource Secondary}">
+        <StackPanel Margin="0,6,0,0">
+          <TextBlock x:Name="Timing" Foreground="{DynamicResource Secondary}" FontFamily="Consolas" FontSize="11" TextWrapping="Wrap"/>
+          <TextBlock x:Name="Failure" Text="Startup details appear here if something goes wrong." Foreground="{DynamicResource Secondary}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"/>
+          <TextBlock x:Name="ProfileStatus" Foreground="{DynamicResource Secondary}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"/>
+          <Button x:Name="Diagnostics" Content="Open _diagnostics folder" HorizontalAlignment="Left" Margin="0,8,0,0"/>
+        </StackPanel>
+      </Expander>
+      <Border x:Name="CloseActions" Visibility="Collapsed">
+        <WrapPanel><Button x:Name="CloseCancel" Content="Cancel c_losing"/><Button x:Name="CloseStop" Content="Stop this app and c_lose"/></WrapPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</Window>

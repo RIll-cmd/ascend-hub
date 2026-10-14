@@ -4,6 +4,9 @@ export class YouTubePlayer {
     this.youtubePlayer = null;
     this.youtubePlayerReady = false;
     this.onErrorCallback = null;
+    this.pendingSelection = null;
+    this.currentSelection = null;
+    this.apiFailed = false;
 
     this.initializeYouTubePlayer();
   }
@@ -24,43 +27,35 @@ export class YouTubePlayer {
       this.initYouTubePlayer();
     }).catch((error) => {
       console.error("Error loading YouTube IFrame API:", error);
+      this.apiFailed = true;
+      this.onErrorCallback?.("api-unavailable");
     });
   }
 
   loadYouTubeAPI() {
     return new Promise((resolve, reject) => {
-      // Check if the YT object is already present
-      if (window.YT && window.YT.Player) {
-        resolve();
-      } else {
-        // Check if the script is already being loaded
-        if (document.getElementById("youtube-iframe-api")) {
-          // If script is already loading, poll until it's ready
-          const interval = setInterval(() => {
-            if (window.YT && window.YT.Player) {
-              clearInterval(interval);
-              resolve();
-            }
-          }, 100);
-        } else {
-          // Load the YouTube IFrame API script
-          const tag = document.createElement("script");
-          tag.src = "https://www.youtube.com/iframe_api";
-          tag.id = "youtube-iframe-api";
-          const firstScriptTag = document.getElementsByTagName("script")[0];
-          firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-          // Set up the API ready callback
-          window.onYouTubeIframeAPIReady = () => {
-            resolve();
-          };
-        }
-
-        // Set a timeout to reject the promise if API fails to load
-        setTimeout(() => {
-          reject(new Error("YouTube IFrame API failed to load."));
-        }, 10000); // 10 seconds timeout
+      if (window.YT?.Player) return resolve();
+      let tag = document.getElementById("youtube-iframe-api");
+      if (!tag) {
+        tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        tag.id = "youtube-iframe-api";
+        document.head.appendChild(tag);
       }
+      const clean = () => { clearInterval(interval); clearTimeout(timeout); tag.removeEventListener("error", failed); };
+      const failed = () => { clean(); tag.remove(); reject(new Error("YouTube API unavailable")); };
+      const interval = setInterval(() => { if (window.YT?.Player) { clean(); resolve(); } }, 100);
+      const timeout = setTimeout(failed, 10000);
+      tag.addEventListener("error", failed);
+    });
+  }
+
+  retryConnection() {
+    if (!this.apiFailed) return;
+    this.apiFailed = false;
+    this.loadYouTubeAPI().then(() => this.initYouTubePlayer()).catch(() => {
+      this.apiFailed = true;
+      this.onErrorCallback?.("api-unavailable");
     });
   }
 
@@ -84,10 +79,16 @@ export class YouTubePlayer {
         events: {
           onReady: (event) => {
             this.youtubePlayerReady = true;
+            if (this.pendingSelection) {
+              const selection = this.pendingSelection;
+              this.pendingSelection = null;
+              this.updateYouTubePlayer(selection.videoId, selection.isPlaylist, selection.isLive);
+            }
             console.log("YouTube player ready");
           },
           onStateChange: (event) => {
             console.log(`YouTube player state change: ${event.data}`);
+            if (event.data === YT.PlayerState.PLAYING) window.dispatchEvent(new CustomEvent("yt-playing"));
             if (event.data === YT.PlayerState.ENDED) {
               event.target.playVideo(); // Loop the video
             }
@@ -127,12 +128,16 @@ export class YouTubePlayer {
       });
     } catch (error) {
       console.error("Error initializing YouTube player:", error);
+      this.apiFailed = true;
+      this.onErrorCallback?.("api-unavailable");
     }
   }
 
   updateYouTubePlayer(videoId, isPlaylist = false, isLive = false) {
+    this.currentSelection = { videoId, isPlaylist, isLive };
     if (!this.youtubePlayerReady) {
-      console.error("YouTube player not ready, cannot update");
+      this.pendingSelection = this.currentSelection;
+      if (this.apiFailed) this.onErrorCallback?.("api-unavailable");
       return;
     }
 

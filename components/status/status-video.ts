@@ -32,3 +32,8 @@ const STATUS_VIDEOS: Record<ServiceState, StatusVideoPresentation> = {
 export function getStatusVideo(state: ServiceState | "unavailable"): StatusVideoPresentation | null {
   return state === "unavailable" ? null : STATUS_VIDEOS[state];
 }
+
+/** Signal loss is a media fallback, not a reported offline lifecycle. */
+export function getSignalLossVideo(): StatusVideoPresentation {
+  return STATUS_VIDEOS.offline;
+}

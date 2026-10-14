@@ -1,4 +1,5 @@
 import type { ShelfServiceStatus } from "../../app/status/shelf-contract";
+import { validStatusTimestamp } from "./status-presentation";
 
 export interface ShelfTvAssignment {
   channel: "CH 01" | "CH 02" | "CH 03" | "CH 04";
@@ -19,8 +20,23 @@ export function getShelfTvAssignment(slotId: string): ShelfTvAssignment | null {
 export function resolveShelfTvService(
   slotId: string,
   services: readonly ShelfServiceStatus[],
+  selectedInstanceId?: string | null,
+  nowMs = Date.now(),
 ): ShelfServiceStatus | null {
   const assignment = getShelfTvAssignment(slotId);
   if (!assignment) return null;
-  return services.find((service) => service.serviceId === assignment.serviceId) ?? null;
+  const matches = services.filter((service) => service.serviceId === assignment.serviceId);
+  if (selectedInstanceId !== undefined && selectedInstanceId !== null) {
+    return matches.find((service) => service.instanceId === selectedInstanceId) ?? null;
+  }
+  const heartbeat = (service: ShelfServiceStatus) => {
+    const timestamp = validStatusTimestamp(service.lastHeartbeatAt);
+    return timestamp !== null && timestamp <= nowMs ? timestamp : -Infinity;
+  };
+  return matches.sort((a, b) => {
+    const aHeartbeat = heartbeat(a);
+    const bHeartbeat = heartbeat(b);
+    if (aHeartbeat !== bHeartbeat) return aHeartbeat > bHeartbeat ? -1 : 1;
+    return a.instanceId < b.instanceId ? -1 : a.instanceId > b.instanceId ? 1 : 0;
+  })[0] ?? null;
 }

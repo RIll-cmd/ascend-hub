@@ -7,12 +7,12 @@ export async function GET() {
   try {
     const data = await getCurrentlyPlaying();
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch {
     return NextResponse.json(
       {
         isPlaying: false,
         title: "Error",
-        artist: error?.message || "Failed to fetch Spotify state",
+        artist: "Failed to fetch Spotify state",
         album: "",
         albumImageUrl: "",
         songUrl: "",
@@ -20,7 +20,7 @@ export async function GET() {
         durationMs: 0,
         connected: false,
       },
-      { status: 200 }
+      { status: 502 }
     );
   }
 }

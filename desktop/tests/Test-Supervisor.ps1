@@ -15,8 +15,29 @@ Add-Type -AssemblyName System.Web.Extensions
 $references = @([object].Assembly.Location, [System.Net.IPAddress].Assembly.Location,
     [System.Linq.Enumerable].Assembly.Location,
     [System.Web.Script.Serialization.JavaScriptSerializer].Assembly.Location)
-Add-Type -Path @((Join-Path $desktopDirectory 'ProcessHost.cs'),
-    (Join-Path $desktopDirectory 'Supervisor.cs')) -ReferencedAssemblies $references
+$ownerFixtureSource = @'
+
+public static class OwnerFixture {
+ public static void Run() {
+  string sid="fixture-"+Guid.NewGuid().ToString("N");
+  using(var hub=new Ascend.Desktop.ProductOwner(sid,"hub"))using(var vision=new Ascend.Desktop.ProductOwner(sid,"vision")) {
+   if(!hub.Acquired||!vision.Acquired)throw new Exception("simultaneous owners");
+   Exception failure=null;
+   var thread=new Thread(()=>{try{using(var repeat=new Ascend.Desktop.ProductOwner(sid,"vision")){if(repeat.Acquired||repeat.Outcome!="activated")throw new Exception("repeat owner");}}catch(Exception e){failure=e;}});
+   thread.Start();thread.Join();if(failure!=null)throw failure;
+   if(!vision.ActivationPending()||hub.ActivationPending())throw new Exception("activation scope");
+  }
+  using(var legacy=new Mutex(true,"Local\\AscendDesktop-"+sid)) {
+   Exception failure=null;var thread=new Thread(()=>{try{using(var next=new Ascend.Desktop.ProductOwner(sid,"hub")){if(next.Acquired||next.Outcome!="legacy-owner")throw new Exception("legacy conflict");}}catch(Exception e){failure=e;}});
+   thread.Start();thread.Join();legacy.ReleaseMutex();if(failure!=null)throw failure;
+  }
+ }
+}
+'@
+$ownerFixturePath=Join-Path $runtimeDirectory 'OwnerFixture.cs'
+[IO.File]::WriteAllText($ownerFixturePath, "using System;using System.Threading;`n" + $ownerFixtureSource)
+Add-Type -Path @((Join-Path $desktopDirectory 'ProcessHost.cs'),(Join-Path $desktopDirectory 'Supervisor.cs'),(Join-Path $desktopDirectory 'ProductOwner.cs'),$ownerFixturePath,(Join-Path $PSScriptRoot 'SupervisorRegression.cs')) -ReferencedAssemblies $references
+
 
 function Assert([bool]$condition, [string]$message) {
     if (-not $condition) { throw "FAILED: $message" }
@@ -78,6 +99,7 @@ try {
     Assert ($supervisor.Get('vision').State -in @('ready', 'degraded')) 'Hub timeout must not stop Vision'
 
     $supervisor.ForceStop('vision')
+    [void](Wait-State $supervisor 'vision' @('stopped'))
     Assert ($supervisor.Get('vision').State -eq 'stopped') 'owned Vision tree must stop'
     Assert ($supervisor.Get('hub').State -eq 'failed') 'Vision stop must not alter Hub result'
 
@@ -102,11 +124,48 @@ try {
         [void](Wait-State $supervisor 'hub' @('ready', 'degraded'))
         [void](Wait-State $supervisor 'vision' @('ready', 'degraded'))
         $supervisor.ForceStop('hub')
+    [void](Wait-State $supervisor 'hub' @('stopped'))
         $supervisor.ForceStop('vision')
+    [void](Wait-State $supervisor 'vision' @('stopped'))
         Assert ($supervisor.Get('hub').State -eq 'stopped') "Hub cycle $cycle should stop"
         Assert ($supervisor.Get('vision').State -eq 'stopped') "Vision cycle $cycle should stop"
     }
 
+    # Actual 15-second deadline, frozen failure time, and late natural exit.
+    $profile.vision.fixtureArguments[-1] = 'stop-late'
+    Save-Profile
+    Assert ($supervisor.Start('vision', $false)) 'late fixture starts'
+    [void](Wait-State $supervisor 'vision' @('ready'))
+    Assert (-not $supervisor.Start('vision', $false)) 'repeat start cannot create a second tree'
+    $supervisor.Stop('vision')
+    $failed = Wait-State $supervisor 'vision' @('stop_failed') 17
+    Assert ($failed.ShutdownSeconds -ge 15 -and $failed.ShutdownSeconds -lt 16.5) 'deadline measured from stop request'
+    Assert (-not $failed.Url -and -not $failed.Capabilities -and -not $failed.Camera) 'stop clears readiness'
+    Assert (-not $supervisor.Start('vision', $false)) 'stop_failed cannot restart'
+    Start-Sleep -Milliseconds 500
+    Assert ([math]::Abs($supervisor.Get('vision').ElapsedSeconds - $failed.ElapsedSeconds) -lt .05) 'failure duration freezes'
+    [void](Wait-State $supervisor 'vision' @('stopped') 6)
+    $frozen=$supervisor.Get('vision').ElapsedSeconds
+    Start-Sleep -Milliseconds 300
+    Assert ($supervisor.Get('vision').ElapsedSeconds -eq $frozen) 'completed stop duration freezes'
+
+    # Scope disposal to one product while another supervisor remains alive.
+    $hubOwner=[Ascend.Desktop.Supervisor]::new($profilePath,$logs,$true,'hub')
+    $visionOwner=[Ascend.Desktop.Supervisor]::new($profilePath,$logs,$true,'vision')
+    try {
+        $profile.vision.fixtureArguments[-1]='descendant';Save-Profile
+        [void]$hubOwner.Start('hub',$false);[void]$visionOwner.Start('vision',$false)
+        [void](Wait-State $hubOwner 'hub' @('ready'));[void](Wait-State $visionOwner 'vision' @('ready'))
+        $visionOwner.ForceStop('vision');[void](Wait-State $visionOwner 'vision' @('stopped'))
+        Assert ($hubOwner.Get('hub').State -eq 'ready') 'force stop and dispose one product keeps the other alive'
+        $visionOwner.Dispose()
+        Assert ($hubOwner.Get('hub').State -eq 'ready') 'scoped dispose cannot stop Hub'
+        $hubOwner.ForceStop('hub');[void](Wait-State $hubOwner 'hub' @('stopped'))
+    } finally {$visionOwner.Dispose();$hubOwner.Dispose()}
+
+    # Per-product owner locks and repeat activation run on distinct CLR threads.
+    [OwnerFixture]::Run()
+    [SupervisorRegression]::Run($profilePath,$logs,$PythonExe,$fixturePath)
     $allLogs = (Get-ChildItem -LiteralPath $logs -File | ForEach-Object {
         [System.IO.File]::ReadAllText($_.FullName)
     }) -join "`n"

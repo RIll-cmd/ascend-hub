@@ -1,0 +1,73 @@
+/* Music account controls inherit the existing vinyl broadcast, inside the glass. */
+.music-player { container-type: size; }
+.music-player .tv-channel-account-trigger {
+  position: absolute; inset: 0 2% 0 21%; z-index: 30;
+  display: flex; align-items: center; gap: 3%; padding: 0;
+  border: 0; border-radius: 0; background: transparent; color: #eee9da;
+  font: 5.4cqw Impact, Miland, sans-serif; text-align: left; cursor: pointer;
+}
+.music-player:not(.tv-channel-spotify-linked) #trackTitle { visibility: hidden; }
+.music-player .tv-channel-account-trigger::after { content: "↗"; color: #a6ff00; font: 5cqw Impact, sans-serif; }
+.music-player.tv-channel-spotify-linked .tv-channel-account-trigger {
+  inset: auto 3% 8% auto; height: 30%; padding: 0 2%;
+  border-left: 1px solid #a6ff00; background: #171b12e8;
+  font-size: 2.8cqw; color: #a6ff00;
+}
+.music-player.tv-channel-spotify-linked #trackTitle { max-width: 60%; }
+.music-player .tv-channel-account-trigger:focus-visible,
+.tv-channel-setup--music :is(button, input, a):focus-visible { outline: 2px solid #c7ff52; outline-offset: 2px; }
+.tv-channel-setup--music[hidden] { display: none !important; }
+.tv-channel-setup--music {
+  position: absolute; inset: 8% 8% 10%; z-index: 40; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 2cqh; overflow-y: auto;
+  padding: 4cqw; border: 1px solid #5b664a; border-top: 1cqh solid #a6ff00;
+  background: linear-gradient(110deg, #141911f5, #111310f5); color: #eee9da;
+  font: 3cqw Arial, sans-serif; scrollbar-width: thin; scrollbar-color: #a6ff00 #151912;
+}
+.tv-channel-setup--music .tv-channel-kicker { font: 3.2cqw Impact, Miland, sans-serif; color: #a6ff00; letter-spacing: .04em; }
+.tv-channel-setup--music .tv-channel-title { margin: 0; font: 6cqw/1 Impact, Miland, sans-serif; }
+.tv-channel-setup--music .tv-channel-form { display: flex; flex-direction: column; gap: 2cqh; }
+.tv-channel-setup--music .tv-channel-field { display: flex; flex-direction: column; gap: 1cqh; color: #d7ddcf; }
+.tv-channel-setup--music input {
+  width: 100%; box-sizing: border-box; min-width: 0; padding: 1.5cqh 2cqw;
+  border: 1px solid #536044; border-radius: 0; background: #060a05; color: #fff;
+  font: 3cqw Arial, sans-serif;
+}
+.tv-channel-setup--music input::placeholder { color: #9aab90; }
+.tv-channel-setup--music .tv-channel-callback { display: flex; flex-wrap: wrap; align-items: center; gap: 1cqw; font-size: 2.7cqw; }
+.tv-channel-setup--music .tv-channel-callback span { width: 100%; color: #a7b39c; }
+.tv-channel-setup--music code { flex: 1; min-width: 0; overflow-wrap: anywhere; font: 2.7cqw Arial, sans-serif; user-select: text; }
+.tv-channel-setup--music .tv-channel-notice { margin: 0; color: #ccd4c3; line-height: 1.3; }
+.tv-channel-setup--music .tv-channel-notice:empty { display: none; }
+.tv-channel-setup--music .tv-channel-actions { display: flex; flex-wrap: wrap; gap: 2cqw; }
+.tv-channel-setup--music button {
+  min-height: 7cqh; padding: 1.5cqh 2.5cqw; border: 1px solid #5c694e; border-radius: 0;
+  background: #20271a; color: #eceee7; font: 3.5cqw Impact, Miland, sans-serif; cursor: pointer;
+}
+.tv-channel-setup--music .tv-channel-primary { background: #a6ff00; border-color: #a6ff00; color: #11160b; }
+.tv-channel-setup--music button:disabled { opacity: .6; cursor: wait; }
+.tv-channel-setup--music a { color: #b0c995; font-size: 2.7cqw; text-underline-offset: 2px; }
+.music-player.tv-channel-account-open :is(#vinyl-record-container, #media-title-container, #media-artist-container, #time-info, #progress-container) { visibility: hidden; }
+.music-player.tv-channel-spotify-stale::after {
+  content: "CONNECTION DELAYED"; position: absolute; top: 16%; right: 9%;
+  color: #e6c85e; font: 3cqw Impact, Miland, sans-serif;
+}
+
+/* Give the lower-third action a physical button silhouette. */
+.music-player:not(.tv-channel-spotify-linked) .tv-channel-account-trigger {
+  inset: auto 5% 20% 26%; min-height: 9cqh; padding: 1.3cqh 3cqw;
+  width: fit-content; max-width: 68%; border: 1px solid #d7ff93;
+  border-bottom: .8cqh solid #698d16; background: #a6ff00; color: #12170c;
+  font-size: 4.7cqw; box-shadow: 0 1cqh 0 #0c0f08;
+}
+.music-player:not(.tv-channel-spotify-linked) .tv-channel-account-trigger::after { content: "→"; color: #12170c; }
+.music-player .tv-channel-account-trigger:hover { filter: brightness(1.12); }
+.tv-channel-setup--music { inset: 0; border: 0; padding: 7cqh 8cqw; background: #141911; border-radius: 9% / 12%; }
+.tv-channel-setup--music .tv-channel-account-copy { margin: 0; color: #ccd4c3; line-height: 1.5; }
+.tv-channel-setup--music .tv-channel-settings-link { align-self: flex-start; padding-left: 0; border: 0; background: none; color: #bac6aa; text-decoration: underline; font: 3cqw Arial, sans-serif; }
+
+/* Keep account controls above room decorations crossing the glass. */
+#tv-container:has(.tv-channel-account-open) { z-index: 310; }
+
+body:has(.tv-channel-account-open) #tv-info-overlay { visibility: hidden; }
+#tv-container:has(.tv-channel-account-open) #starting-video { visibility: hidden; }

@@ -19,13 +19,39 @@ export interface SpotifyPlaybackState {
   demoMode?: boolean;
 }
 
+export interface SpotifySetupState {
+  hasClientId: boolean;
+  hasClientSecret: boolean;
+  hasRefreshToken: boolean;
+  demoMode: boolean;
+  clientId?: string;
+}
+
+interface SpotifyTokenResponse { access_token?: string; refresh_token?: string }
+interface SpotifyTrack {
+  name?: string;
+  artists?: { name?: string }[];
+  album?: { name?: string; images?: { url?: string }[] };
+  external_urls?: { spotify?: string };
+  duration_ms?: number;
+}
+interface SpotifyPlaybackResponse {
+  item?: SpotifyTrack | null;
+  is_playing?: boolean;
+  progress_ms?: number;
+  device?: { name?: string };
+}
+interface SpotifyRecentResponse { items?: { track?: SpotifyTrack }[] }
+
 declare global {
   var __spotifyTokens: {
     clientId?: string;
     clientSecret?: string;
     refreshToken?: string;
     demoMode?: boolean;
+    disconnected?: boolean;
   } | undefined;
+  var __spotifyLastTrack: Partial<SpotifyPlaybackState> | undefined;
 }
 
 export function getStoredSpotifyTokens(): {
@@ -40,18 +66,19 @@ export function getStoredSpotifyTokens(): {
 
   const memoryTokens = globalThis.__spotifyTokens || {};
 
-  let fileTokens: Record<string, any> = {};
+  let fileTokens: NonNullable<typeof globalThis.__spotifyTokens> = {};
   try {
     const tokenFile = join(process.cwd(), ".sites-runtime", "spotify-token.json");
     if (existsSync(tokenFile)) {
       fileTokens = JSON.parse(readFileSync(tokenFile, "utf-8"));
     }
-  } catch (_) {}
+  } catch {}
 
+  const disconnected = memoryTokens.disconnected ?? fileTokens.disconnected;
   return {
-    clientId: envClientId || memoryTokens.clientId || fileTokens.clientId,
-    clientSecret: envClientSecret || memoryTokens.clientSecret || fileTokens.clientSecret,
-    refreshToken: envRefreshToken || memoryTokens.refreshToken || fileTokens.refreshToken,
+    clientId: disconnected ? undefined : memoryTokens.clientId || fileTokens.clientId || envClientId,
+    clientSecret: disconnected ? undefined : memoryTokens.clientSecret || fileTokens.clientSecret || envClientSecret,
+    refreshToken: disconnected ? undefined : memoryTokens.refreshToken || fileTokens.refreshToken || envRefreshToken,
     demoMode:
       memoryTokens.demoMode !== undefined
         ? Boolean(memoryTokens.demoMode)
@@ -71,42 +98,27 @@ export function saveSpotifyTokens(tokens: {
     ...tokens,
   };
 
-  globalThis.__spotifyTokens = merged;
-
-  try {
-    const dir = join(process.cwd(), ".sites-runtime");
-    if (!existsSync(dir)) {
-      try {
-        mkdirSync(dir, { recursive: true });
-      } catch (_) {}
-    }
-    const tokenFile = join(dir, "spotify-token.json");
-    writeFileSync(tokenFile, JSON.stringify(merged, null, 2), "utf-8");
-  } catch (err) {
-    // Memory store succeeded even if disk write has sandbox/permission restrictions
-  }
+  // Persist first: a failed save must not masquerade as a successful account change.
+  const dir = join(process.cwd(), ".sites-runtime");
+  mkdirSync(dir, { recursive: true });
+  const saved = { ...merged, disconnected: false };
+  writeFileSync(join(dir, "spotify-token.json"), JSON.stringify(saved, null, 2), { encoding: "utf-8", mode: 0o600 });
+  globalThis.__spotifyTokens = saved;
   return true;
 }
 
 export function clearSpotifyTokens() {
-  globalThis.__spotifyTokens = {
-    clientId: undefined,
-    clientSecret: undefined,
-    refreshToken: undefined,
-    demoMode: false,
-  };
-
-  try {
-    const dir = join(process.cwd(), ".sites-runtime");
-    const tokenFile = join(dir, "spotify-token.json");
-    if (existsSync(tokenFile)) {
-      writeFileSync(tokenFile, JSON.stringify({}, null, 2), "utf-8");
-    }
-  } catch (_) {}
+  const dir = join(process.cwd(), ".sites-runtime");
+  mkdirSync(dir, { recursive: true });
+  // A persisted disconnect also stops environment credentials from silently reconnecting.
+  const cleared = { demoMode: false, disconnected: true };
+  writeFileSync(join(dir, "spotify-token.json"), JSON.stringify(cleared, null, 2), { encoding: "utf-8", mode: 0o600 });
+  globalThis.__spotifyTokens = cleared;
+  globalThis.__spotifyLastTrack = undefined;
   return true;
 }
 
-export async function getSpotifyAccessToken() {
+export async function getSpotifyAccessToken(): Promise<SpotifyTokenResponse | null> {
   const creds = getStoredSpotifyTokens();
   if (!creds.clientId || !creds.clientSecret || !creds.refreshToken) {
     return null;
@@ -133,7 +145,7 @@ export async function getSpotifyAccessToken() {
     return null;
   }
 
-  return response.json();
+  return (await response.json()) as SpotifyTokenResponse;
 }
 
 export async function getCurrentlyPlaying(): Promise<SpotifyPlaybackState> {
@@ -162,7 +174,7 @@ export async function getCurrentlyPlaying(): Promise<SpotifyPlaybackState> {
     return {
       isPlaying: false,
       title: "Spotify Not Connected",
-      artist: "Enter Client ID & Secret in Hub",
+      artist: "Connect your account on the music TV",
       album: "Ascend Hub",
       albumImageUrl: "",
       songUrl: "",
@@ -187,53 +199,96 @@ export async function getCurrentlyPlaying(): Promise<SpotifyPlaybackState> {
     };
   }
 
-  const response = await fetch(CURRENTLY_PLAYING_ENDPOINT, {
-    headers: {
-      Authorization: `Bearer ${tokenData.access_token}`,
-    },
-    cache: "no-store",
-  });
+  let isPlaying = false;
+  let title = "Spotify Ready";
+  let artist = "Playback Idle";
+  let album = "Spotify";
+  let albumImageUrl = "";
+  let songUrl = "";
+  let progressMs = 0;
+  let durationMs = 0;
+  let device: string | undefined;
 
-  if (response.status === 204 || response.status > 400) {
-    return {
-      isPlaying: false,
-      title: "Nothing Playing",
-      artist: "Spotify Ready",
-      album: "Ascend Hub",
-      albumImageUrl: "",
-      songUrl: "",
-      progressMs: 0,
-      durationMs: 0,
-      connected: true,
-      lastUpdated: new Date().toISOString(),
-    };
+  try {
+    const response = await fetch(CURRENTLY_PLAYING_ENDPOINT, {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (response.ok && response.status !== 204) {
+      const song = (await response.json().catch(() => null)) as SpotifyPlaybackResponse | null;
+      if (song && song.item) {
+        isPlaying = Boolean(song.is_playing);
+        title = song.item.name || "Unknown Track";
+        artist = song.item.artists?.map((a) => a.name).filter(Boolean).join(", ") || "Unknown Artist";
+        album = song.item.album?.name || "";
+        albumImageUrl = song.item.album?.images?.[0]?.url || "";
+        songUrl = song.item.external_urls?.spotify || "";
+        progressMs = song.progress_ms || 0;
+        durationMs = song.item.duration_ms || 0;
+        device = song.device?.name;
+
+        // Cache last played active track so it persists when paused
+        if (albumImageUrl) {
+          globalThis.__spotifyLastTrack = {
+            title,
+            artist,
+            album,
+            albumImageUrl,
+            songUrl,
+            durationMs,
+          };
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error fetching currently playing:", err);
   }
 
-  const song = await response.json();
-  if (!song || !song.item) {
-    return {
-      isPlaying: false,
-      title: "Nothing Playing",
-      artist: "Spotify Ready",
-      album: "Ascend Hub",
-      albumImageUrl: "",
-      songUrl: "",
-      progressMs: 0,
-      durationMs: 0,
-      connected: true,
-      lastUpdated: new Date().toISOString(),
-    };
+  // If no track currently playing or paused with no item, fallback to recently-played or cached last track
+  if (!albumImageUrl) {
+    const cached = globalThis.__spotifyLastTrack;
+    if (cached && cached.albumImageUrl) {
+      title = cached.title || title;
+      artist = cached.artist || artist;
+      album = cached.album || album;
+      albumImageUrl = cached.albumImageUrl;
+      songUrl = cached.songUrl || songUrl;
+      durationMs = cached.durationMs || durationMs;
+    } else {
+      // Try fetching recently played track from Spotify API
+      try {
+        const recentRes = await fetch("https://api.spotify.com/v1/me/player/recently-played?limit=1", {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+          },
+          cache: "no-store",
+        });
+        if (recentRes.ok) {
+          const recentData = (await recentRes.json().catch(() => null)) as SpotifyRecentResponse | null;
+          const recentItem = recentData?.items?.[0]?.track;
+          if (recentItem) {
+            title = recentItem.name || "Recent Track";
+            artist = recentItem.artists?.map((a) => a.name).filter(Boolean).join(", ") || "Unknown Artist";
+            album = recentItem.album?.name || "";
+            albumImageUrl = recentItem.album?.images?.[0]?.url || "";
+            songUrl = recentItem.external_urls?.spotify || "";
+            durationMs = recentItem.duration_ms || 0;
+            globalThis.__spotifyLastTrack = {
+              title,
+              artist,
+              album,
+              albumImageUrl,
+              songUrl,
+              durationMs,
+            };
+          }
+        }
+      } catch {}
+    }
   }
-
-  const isPlaying = Boolean(song.is_playing);
-  const title = song.item.name || "Unknown Track";
-  const artist =
-    song.item.artists?.map((a: { name: string }) => a.name).join(", ") || "Unknown Artist";
-  const album = song.item.album?.name || "";
-  const albumImageUrl = song.item.album?.images?.[0]?.url || "";
-  const songUrl = song.item.external_urls?.spotify || "";
-  const progressMs = song.progress_ms || 0;
-  const durationMs = song.item.duration_ms || 0;
 
   return {
     isPlaying,
@@ -245,7 +300,7 @@ export async function getCurrentlyPlaying(): Promise<SpotifyPlaybackState> {
     progressMs,
     durationMs,
     connected: true,
-    device: song.device?.name,
+    device,
     lastUpdated: new Date().toISOString(),
   };
 }

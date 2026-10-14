@@ -12,6 +12,17 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Ignore local agent tools, throwaway artifacts, worktrees, and vendored code.
+    ".agents/**",
+    ".codex/**",
+    ".cursor/**",
+    ".playwright-cli/**",
+    ".sites-runtime/**",
+    ".superpowers/**",
+    ".worktrees/**",
+    "scratch/**",
+    "outputs/**",
+    "vendor/**",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],

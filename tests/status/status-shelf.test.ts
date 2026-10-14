@@ -6,6 +6,7 @@ import {
   getPollingDelay,
   statusShelfReducer,
 } from "../../app/status/shelf-runtime";
+import * as runtime from "../../app/status/shelf-runtime";
 import { getStatusPresentation } from "../../components/status/status-presentation";
 import {
   getShelfTvAssignment,
@@ -159,4 +160,63 @@ test("CLI shelf TVs use explicit service names instead of the generic fallback",
 
   assert.equal(codex.brand, "Codex CLI");
   assert.equal(antigravity.brand, "Antigravity CLI");
+});
+
+test("multiple instances resolve newest valid heartbeat, then stable instance ID", () => {
+  const base = snapshot.services[0];
+  const services = [
+    { ...base, instanceId: "invalid", lastHeartbeatAt: "invalid" },
+    { ...base, instanceId: "older", lastHeartbeatAt: "2026-09-16T23:59:00Z" },
+    { ...base, instanceId: "b" },
+    { ...base, instanceId: "a" },
+  ];
+  assert.equal(resolveShelfTvService("slot-1-1-t", services)?.instanceId, "a");
+  assert.equal(resolveShelfTvService("slot-1-1-t", [...services].reverse())?.instanceId, "a");
+});
+
+test("selected instance stays selected even when newer evidence arrives, and disappearance returns null", () => {
+  const base = snapshot.services[0];
+  const services = [base, { ...base, instanceId: "core-new", lastHeartbeatAt: "2026-09-17T00:01:00Z" }];
+  assert.equal(resolveShelfTvService("slot-1-1-t", services, "core-local-1"), base);
+  assert.equal(resolveShelfTvService("slot-1-1-t", services.slice(1), "core-local-1"), null);
+});
+
+test("refresh preserves cached state and feed failure until replacement evidence arrives", () => {
+  const result = statusShelfReducer({ current: snapshot, lastSuccessful: snapshot, error: "feed unavailable", stale: true, lastSuccessfulAt: 100 }, { type: "loading" });
+  assert.equal(result.current, snapshot);
+  assert.equal(result.loading, false);
+  assert.equal(result.refreshing, true);
+  assert.equal(result.error, "feed unavailable");
+});
+
+test("client request times out and aborts a fetch that never settles", async () => {
+  let signal: AbortSignal | undefined;
+  await assert.rejects(runtime.requestStatusShelf({
+    timeoutMs: 10,
+    fetchImpl: async (_input, init) => {
+      signal = init?.signal as AbortSignal;
+      return new Promise<Response>(() => {});
+    },
+  }), /timed out/i);
+  assert.equal(signal?.aborted, true);
+});
+
+test("client timeout also bounds a stalled response body", async () => {
+  await assert.rejects(runtime.requestStatusShelf({
+    timeoutMs: 10,
+    fetchImpl: async () => new Response(new ReadableStream({ start() {} })),
+  }), /timed out/i);
+});
+
+test("client cancellation releases the pending request and permits a replacement", async () => {
+  const controller = new AbortController();
+  const cancelled = runtime.requestStatusShelf({ signal: controller.signal, fetchImpl: async () => new Promise<Response>(() => {}) });
+  controller.abort();
+  await assert.rejects(cancelled, { name: "AbortError" });
+  assert.deepEqual(await runtime.requestStatusShelf({ fetchImpl: async () => Response.json(snapshot) }), snapshot);
+});
+
+test("client keeps unsupported snapshots and unsafe error bodies out of status", async () => {
+  await assert.rejects(runtime.requestStatusShelf({ fetchImpl: async () => Response.json({ schemaVersion: 99 }) }), /unsupported snapshot/i);
+  await assert.rejects(runtime.requestStatusShelf({ fetchImpl: async () => new Response("SECRET", { status: 503 }) }), /not configured/i);
 });

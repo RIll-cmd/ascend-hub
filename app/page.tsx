@@ -1,6 +1,7 @@
 "use client";
-import { Fragment, useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
+import type { SpotifyPlaybackState, SpotifySetupState } from "@/lib/spotify";
 import { motion, useReducedMotion } from "framer-motion";
 import { Rnd } from "react-rnd";
 import {
@@ -59,11 +60,11 @@ import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
 import { RetroCdBrowserModal } from "../components/RetroCdBrowserModal";
-import { ShelfStatusTv } from "../components/status/ShelfStatusTv";
+import { getShelfTvAccessibleLabel, ShelfStatusTv, type StatusMediaIssue } from "../components/status/ShelfStatusTv";
 import { AgentAuxiliaryPanel } from "../components/status/AgentAuxiliaryPanel";
 import { VisionEyeNavigator } from "../components/status/VisionEyeNavigator";
 import { buildAgentAuxiliaryModel } from "../components/status/agent-auxiliary-model";
-import { getShelfSceneCameraMotion, type ShelfSceneCameraMotion } from "../components/status/shelf-tv-focus";
+import { deriveShelfTvPresentation } from "../components/status/status-presentation";
 import { getShelfTvAssignment, resolveShelfTvService, type ShelfTvAssignment } from "../components/status/shelf-tv-assignment";
 import {
   advanceTvSignalTransition,
@@ -78,6 +79,7 @@ import {
 } from "../components/status/vision-eye-navigation";
 import { findCrtConfigByCollectibleId, getCrtProfile } from "../components/crt-tv-config";
 import { useStatusShelf } from "./status/use-status-shelf";
+import { shelfNowMs, statusClockMs, useNow } from "./status/use-now";
 
 const chapters = [
   { id: "core", number: "01", title: "Core Engine", eyebrow: "BUILD YOUR FOUNDATION", tag: "FOUNDATION", color: "#e9aa63", description: "A clear direction. A stronger operating system.", specs: ["Define your personal mission and values", "Create a focused progression roadmap", "Choose the principles that guide your work"], art: "engine" },
@@ -333,6 +335,8 @@ export default function Home() {
   const reduceMotion = useReducedMotion();
   const [layout, setLayout] = useState<Layout>(initialLayout);
   const [rows, setRows] = useState<ShelfRow[]>(DEFAULT_SHELF_ROWS);
+  // Keep the unused broadcast tier and its assets available for future restoration.
+  const visibleRows = rows.filter(row => row.id !== "row-2");
   const [ready, setReady] = useState(false);
   const [edit, setEdit] = useState(false);
   const [sound, setSound] = useState(false);
@@ -352,19 +356,23 @@ export default function Home() {
   const [rowTemplateModalOpen, setRowTemplateModalOpen] = useState(false);
   const [tvModalTab, setTvModalTab] = useState<"media-center" | "standard">("media-center");
   const [lightingMode, setLightingMode] = useState<"amber" | "magenta">("amber");
-  const [shelfOffsetY, setShelfOffsetY] = useState<number>(-2);
+  const [shelfOffsetY, setShelfOffsetY] = useState<number>(-23);
   const [wallCoverHeight, setWallCoverHeight] = useState<number>(21);
   const [wallWidth, setWallWidth] = useState<number>(610);
-  const [wallWidthMode, setWallWidthMode] = useState<"full" | "shelf" | "custom">("custom");
+  const [wallWidthMode, setWallWidthMode] = useState<"full" | "shelf" | "custom">("full");
   const [wallOffsetX, setWallOffsetX] = useState<number>(-870);
   const [shelfTopCrop, setShelfTopCrop] = useState<number>(0);
   const [shelfCalibratorOpen, setShelfCalibratorOpen] = useState<boolean>(false);
   const [showTrimGuides, setShowTrimGuides] = useState<boolean>(false);
   const [focusedStatusTv, setFocusedStatusTv] = useState<{
     assignment: ShelfTvAssignment;
-    motion: ShelfSceneCameraMotion;
+    slotId: string;
+    collectibleId: string;
     open: boolean;
   } | null>(null);
+  const nowMs = shelfNowMs(useNow(statusClockMs(focusedStatusTv !== null)), shelfStatus.lastSuccessfulAt);
+  const [selectedStatusInstances, setSelectedStatusInstances] = useState<Record<string, string>>({});
+  const [statusMediaIssues, setStatusMediaIssues] = useState<Record<string, Record<string, StatusMediaIssue>>>({});
   const [tvSignalTransition, setTvSignalTransition] = useState(() =>
     createTvSignalState("ascend-core"),
   );
@@ -372,30 +380,15 @@ export default function Home() {
   const [visionEyeTargets, setVisionEyeTargets] = useState<readonly VisionEyeTarget[]>([]);
   const [visionEyeActivating, setVisionEyeActivating] = useState(false);
   const [cameraSceneElement, setCameraSceneElement] = useState<HTMLDivElement | null>(null);
-  const [spotifyData, setSpotifyData] = useState<{
-    isPlaying?: boolean;
-    title?: string;
-    artist?: string;
-    album?: string;
-    albumImageUrl?: string;
-    songUrl?: string;
-    progressMs?: number;
-    durationMs?: number;
-    connected?: boolean;
-    device?: string;
-    demoMode?: boolean;
-  } | null>(null);
+  const [spotifyData, setSpotifyData] = useState<Partial<SpotifyPlaybackState> | null>(null);
   const [spotifyModalOpen, setSpotifyModalOpen] = useState(false);
   const [spotifyNotice, setSpotifyNotice] = useState<string | null>(null);
   const [spotifyClientIdInput, setSpotifyClientIdInput] = useState("");
   const [spotifyClientSecretInput, setSpotifyClientSecretInput] = useState("");
   const [spotifySetupLoading, setSpotifySetupLoading] = useState(false);
-  const [spotifyHasCreds, setSpotifyHasCreds] = useState<{
-    hasClientId: boolean;
-    hasClientSecret: boolean;
-    demoMode: boolean;
-    clientId?: string;
-  }>({ hasClientId: false, hasClientSecret: false, demoMode: false });
+  const [spotifyHasCreds, setSpotifyHasCreds] = useState<SpotifySetupState>({
+    hasClientId: false, hasClientSecret: false, hasRefreshToken: false, demoMode: false,
+  });
   const [copiedRedirect, setCopiedRedirect] = useState(false);
   const [showManualInputs, setShowManualInputs] = useState(false);
 
@@ -422,16 +415,56 @@ export default function Home() {
   const [youtubeSearchLoaded, setYoutubeSearchLoaded] = useState(false);
   const [cdPlayerModalOpen, setCdPlayerModalOpen] = useState(false);
 
+  const zzzFrameRef = useRef<HTMLIFrameElement>(null);
+  const spotifyTvReadyRef = useRef(false);
+  const spotifyTvOutcomeRef = useRef<string | null>(null);
+  const restoreSpotifyTv = useCallback(() => {
+    const frame = zzzFrameRef.current?.contentWindow;
+    const outcome = spotifyTvOutcomeRef.current;
+    if (!frame || !spotifyTvReadyRef.current || !outcome) return;
+    frame.postMessage({ type: "SELECT_INPUT", input: "music" }, window.location.origin);
+    frame.postMessage({ type: "SPOTIFY_AUTH_RESULT", outcome }, window.location.origin);
+    spotifyTvOutcomeRef.current = null;
+  }, []);
+  useEffect(() => {
+    const returnParams = new URLSearchParams(window.location.search);
+    if (returnParams.get("spotify_tv_connect") === "1") {
+      sessionStorage.setItem("tv-spotify-return", "music");
+      window.history.replaceState({}, "", window.location.pathname);
+      window.location.assign("/api/spotify/login");
+      return;
+    }
+    const onTvMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.source !== zzzFrameRef.current?.contentWindow) return;
+      if (event.data?.type === "TV_READY") {
+        spotifyTvReadyRef.current = true;
+        restoreSpotifyTv();
+      } else if (event.data?.type === "SPOTIFY_AUTHORIZE" && event.data.returnInput === "music") {
+        if (window.location.hostname === "localhost") {
+          const canonical = new URL(window.location.href);
+          canonical.hostname = "127.0.0.1";
+          canonical.search = "?spotify_tv_connect=1";
+          window.location.assign(canonical.href);
+        } else {
+          sessionStorage.setItem("tv-spotify-return", "music");
+          window.location.assign("/api/spotify/login");
+        }
+      }
+    };
+    window.addEventListener("message", onTvMessage);
+    return () => window.removeEventListener("message", onTvMessage);
+  }, [restoreSpotifyTv]);
+
   const refreshSpotifyStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/spotify/currently-playing");
       if (!res.ok) return;
-      const data = await res.json();
+      const data = (await res.json()) as SpotifyPlaybackState;
       setSpotifyData(data);
       if (zzzFrameRef.current?.contentWindow) {
         zzzFrameRef.current.contentWindow.postMessage(
           { type: "SPOTIFY_UPDATE", data },
-          "*"
+          window.location.origin
         );
       }
     } catch (_) {}
@@ -441,7 +474,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/spotify/setup");
       if (!res.ok) return;
-      const data = await res.json();
+      const data = (await res.json()) as SpotifySetupState;
       setSpotifyHasCreds(data);
     } catch (_) {}
   }, []);
@@ -452,13 +485,13 @@ export default function Home() {
       try {
         const res = await fetch("/api/spotify/currently-playing");
         if (!res.ok) return;
-        const data = await res.json();
+        const data = (await res.json()) as SpotifyPlaybackState;
         if (active) {
           setSpotifyData(data);
           if (zzzFrameRef.current?.contentWindow) {
             zzzFrameRef.current.contentWindow.postMessage(
               { type: "SPOTIFY_UPDATE", data },
-              "*"
+              window.location.origin
             );
           }
         }
@@ -472,22 +505,21 @@ export default function Home() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const spotifyParam = params.get("spotify");
-      const msg = params.get("message");
-      if (spotifyParam) {
-        if (spotifyParam === "missing_client_id") {
-          setSpotifyNotice(
-            "Spotify Client ID is required to use Spotify's OAuth API. You can enter your credentials below, or toggle Instant Demo Mode to test right away without an account!"
-          );
-          setSpotifyModalOpen(true);
-        } else if (spotifyParam === "error") {
-          setSpotifyNotice(`Spotify login error: ${msg || "Authentication was cancelled or failed."}`);
-          setSpotifyModalOpen(true);
-        } else if (spotifyParam === "connected") {
-          setSpotifyNotice("✓ Spotify account connected successfully! Playback is now syncing live to the CRT TV.");
+      if (spotifyParam && ["connected", "error", "missing_client_id"].includes(spotifyParam)) {
+        if (sessionStorage.getItem("tv-spotify-return") === "music") {
+          spotifyTvOutcomeRef.current = spotifyParam;
+          sessionStorage.removeItem("tv-spotify-return");
+          restoreSpotifyTv();
+        } else {
+          setSpotifyNotice(spotifyParam === "connected"
+            ? "Spotify account connected successfully."
+            : "Spotify authorization did not finish. Please reconnect.");
           setSpotifyModalOpen(true);
         }
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
+        params.delete("spotify");
+        params.delete("message");
+        const query = params.toString();
+        window.history.replaceState({}, document.title, `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
       }
     }
 
@@ -495,7 +527,7 @@ export default function Home() {
       active = false;
       clearInterval(interval);
     };
-  }, [refreshSpotifySetup]);
+  }, [refreshSpotifySetup, restoreSpotifyTv]);
 
   const handleToggleDemo = async (enable: boolean) => {
     setSpotifySetupLoading(true);
@@ -536,7 +568,7 @@ export default function Home() {
       });
       if (res.ok) {
         notify("Credentials saved! Redirecting to Spotify authorization...");
-        window.location.href = `/api/spotify/login?client_id=${encodeURIComponent(spotifyClientIdInput.trim())}`;
+        window.location.href = "/api/spotify/login";
       } else {
         notify("Failed to save credentials");
         setSpotifySetupLoading(false);
@@ -582,7 +614,7 @@ export default function Home() {
     try {
       const res = await fetch(`/api/youtube/search?q=${encodeURIComponent(query)}`);
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as { results?: YouTubeVideoResult[] };
         setYoutubeSearchResults(data.results || []);
         setYoutubeSearchLoaded(true);
       }
@@ -728,25 +760,53 @@ export default function Home() {
   const uploadTarget = useRef("tv");
   const urls = useRef<Record<string, string>>({});
   const notify = (s: string) => setToast(s);
-  const zzzFrameRef = useRef<HTMLIFrameElement>(null);
+
   const setCameraSceneNode = useCallback((node: HTMLDivElement | null) => {
     cameraSceneRef.current = node;
     setCameraSceneElement(node);
   }, []);
   const cameraMounted = focusedStatusTv !== null;
-  const focusedService = focusedStatusTv
-    ? shelfStatus.current?.services.find(
-        service => service.serviceId === focusedStatusTv.assignment.serviceId,
-      ) ?? null
-    : null;
-  const focusedAgentModel = focusedStatusTv
+  const statusTvSlots = useMemo(() => {
+    return ["slot-1-1-t", "slot-1-3-t", "slot-1-1-b", "slot-1-3-b"].map(slotId => {
+      const service = resolveShelfTvService(slotId, shelfStatus.current?.services ?? [],
+        selectedStatusInstances[slotId], nowMs);
+      const presentation = deriveShelfTvPresentation({
+        service, loading: Boolean(shelfStatus.loading && !shelfStatus.current), error: shelfStatus.error,
+        stale: Boolean(shelfStatus.stale), nowMs: nowMs,
+        selectedInstanceId: selectedStatusInstances[slotId],
+      });
+      return { slotId, service, presentation };
+    });
+  }, [shelfStatus.current, shelfStatus.loading, shelfStatus.error, shelfStatus.stale, nowMs, selectedStatusInstances]);
+
+  // Initialize identity before children commit, so a poll cannot display a replacement first.
+  const unrememberedSlots = statusTvSlots.filter(slot => slot.service && selectedStatusInstances[slot.slotId] === undefined);
+  if (unrememberedSlots.length > 0) {
+    const next = { ...selectedStatusInstances };
+    for (const slot of unrememberedSlots) next[slot.slotId] = slot.service!.instanceId;
+    setSelectedStatusInstances(next);
+  }
+
+  const onStatusMediaChange = useCallback((serviceId: ShelfTvAssignment["serviceId"], issue: StatusMediaIssue, mediaId: string) => {
+    setStatusMediaIssues(current => current[serviceId]?.[mediaId] === issue ? current : {
+      ...current, [serviceId]: { ...current[serviceId], [mediaId]: issue },
+    });
+  }, []);
+  const focusedSlot = focusedStatusTv ? statusTvSlots.find(slot => slot.slotId === focusedStatusTv.slotId) : null;
+  const focusedService = focusedSlot?.service ?? null;
+  const focusedMediaIssues = Object.values(statusMediaIssues[focusedStatusTv?.assignment.serviceId ?? ""] ?? {});
+  const focusedMediaIssue: StatusMediaIssue = focusedMediaIssues.includes("unavailable") ? "unavailable"
+    : focusedMediaIssues.includes("autoplay") ? "autoplay" : null;
+  const focusedAgentModel = focusedStatusTv && focusedSlot
     ? buildAgentAuxiliaryModel({
         assignment: focusedStatusTv.assignment,
         service: focusedService,
-        loading: shelfStatus.loading && !shelfStatus.current,
+        presentation: focusedSlot.presentation,
+        loading: Boolean(shelfStatus.loading && !shelfStatus.current),
         error: shelfStatus.error,
         stale: Boolean(shelfStatus.stale),
-        nowMs: shelfStatus.current ? Date.parse(shelfStatus.current.generatedAt) : 0,
+        nowMs: nowMs,
+        selectedInstanceId: selectedStatusInstances[focusedStatusTv.slotId],
       })
     : null;
   const selectedVisionEyeTarget = visionEyeTargets.find(
@@ -756,48 +816,23 @@ export default function Home() {
   const activateStatusTv = useCallback((
     assignment: ShelfTvAssignment,
     trigger: HTMLButtonElement,
-    withEyeTransition: boolean,
+    _withEyeTransition: boolean,
   ) => {
-    const scene = cameraSceneRef.current;
-    const screen = trigger.querySelector<HTMLElement>(".shelf-status-tv__screen");
-    if (!scene || !screen || focusedStatusTv) return;
-
+    if (focusedStatusTv) return;
+    const slotId = trigger.dataset.statusSlotId;
+    const collectibleId = trigger.dataset.statusCollectibleId;
+    if (!slotId || !collectibleId) return;
+    // Explicit reopen may choose a replacement. Refresh inside the dialog never changes identity.
+    const retained = resolveShelfTvService(slotId, shelfStatus.current?.services ?? [],
+      selectedStatusInstances[slotId], nowMs);
+    const selected = retained ?? resolveShelfTvService(slotId, shelfStatus.current?.services ?? [], undefined, nowMs);
+    if (selected) setSelectedStatusInstances(current => ({ ...current, [slotId]: selected.instanceId }));
     setTvSignalTransition(createTvSignalState(assignment.serviceId));
-    if (visionEyeActivationTimerRef.current) {
-      clearTimeout(visionEyeActivationTimerRef.current);
-    }
-
-    const openCamera = () => {
-      const targetBounds = screen.getBoundingClientRect();
-      const sceneBounds = scene.getBoundingClientRect();
-      const focusArea = window.innerWidth > 860
-        ? { left: 0, top: 0, width: window.innerWidth * 0.64, height: window.innerHeight }
-        : undefined;
-
-      cameraTriggerRef.current = trigger;
-      setFocusedStatusTv({
-        assignment,
-        open: true,
-        motion: getShelfSceneCameraMotion(
-          { left: targetBounds.left, top: targetBounds.top, width: targetBounds.width, height: targetBounds.height },
-          { left: sceneBounds.left, top: sceneBounds.top, width: sceneBounds.width, height: sceneBounds.height },
-          { width: window.innerWidth, height: window.innerHeight },
-          focusArea,
-        ),
-      });
-      setVisionEyeActivating(false);
-      visionEyeActivationTimerRef.current = null;
-    };
-
-    if (!withEyeTransition || reduceMotion) {
-      openCamera();
-      return;
-    }
-
-    setVisionEyeActivating(true);
-    visionEyeActivationTimerRef.current = setTimeout(openCamera, 220);
-  }, [focusedStatusTv, reduceMotion]);
-
+    if (visionEyeActivationTimerRef.current) clearTimeout(visionEyeActivationTimerRef.current);
+    cameraTriggerRef.current = trigger;
+    setFocusedStatusTv({ assignment, slotId, collectibleId, open: true });
+    setVisionEyeActivating(false);
+  }, [focusedStatusTv, shelfStatus, selectedStatusInstances, nowMs]);
   useEffect(() => {
     if (!cameraMounted) return;
 
@@ -809,15 +844,15 @@ export default function Home() {
         setFocusedStatusTv(current => current ? { ...current, open: false } : null);
       } else if (event.key === "Tab") {
         const focusables = Array.from(
-          cameraControlsRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? [],
+          cameraControlsRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled), a[href], summary, input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])") ?? [],
         );
         if (focusables.length === 0) return;
         const first = focusables[0];
         const last = focusables[focusables.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
+        if (event.shiftKey && (document.activeElement === first || !cameraControlsRef.current?.contains(document.activeElement))) {
           event.preventDefault();
           last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
+        } else if (!event.shiftKey && (document.activeElement === last || !cameraControlsRef.current?.contains(document.activeElement))) {
           event.preventDefault();
           first.focus();
         }
@@ -867,7 +902,7 @@ export default function Home() {
     const savedShelfOffset = typeof window !== "undefined" ? localStorage.getItem("ascend_shelf_offset_y") : null;
     if (savedShelfOffset !== null) {
       const parsed = parseInt(savedShelfOffset, 10);
-      if (!isNaN(parsed)) setShelfOffsetY(parsed);
+      if (!isNaN(parsed)) setShelfOffsetY(parsed === -2 ? -23 : parsed);
     }
     const savedWallCover = typeof window !== "undefined" ? localStorage.getItem("ascend_wall_cover_height") : null;
     if (savedWallCover !== null) {
@@ -890,6 +925,11 @@ export default function Home() {
     if (savedWallOffsetX !== null) {
       const parsed = parseInt(savedWallOffsetX, 10);
       if (!isNaN(parsed)) setWallOffsetX(parsed);
+    }
+    // Replace the old partial-width cover that exposed a strip beside the room.
+    if (savedWallWidthMode === "custom" && Number(savedWallWidth ?? 610) === 610 && Number(savedWallOffsetX ?? -870) === -870) {
+      setWallWidthMode("full");
+      localStorage.setItem("ascend_wall_width_mode", "full");
     }
     const params = new URLSearchParams(window.location.search);
     if (params.get("trim") === "true" || params.get("trim") === "1" || params.get("dev") === "true") {
@@ -1453,97 +1493,16 @@ export default function Home() {
   const completed = chapters.filter(c => layout.items[c.id].completed).length;
 
   const dynamicStageHeight = presetMode === "reference"
-    ? Math.max(728, rows.length * 644 + (edit ? 180 : 80))
+    ? Math.max(728, visibleRows.length * 644 + (edit ? 180 : 80))
     : 728;
 
   return (
     <div className={`os zzz-workspace-shell ${edit ? "edit-mode" : ""} ${presetMode === "reference" ? "full-bleed-mode" : ""} lighting-${lightingMode}`} onPointerDown={e => { if ((e.target as HTMLElement).closest("button")) synth.play("click"); }}>
-      <header className="topbar">
-        <a
-          href="#"
-          className="wordmark"
-          aria-label="Ascend OS home"
-          onClick={e => {
-            e.preventDefault();
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          }}
-        >
-          <span className="logo-mark">⏣</span> ASCEND <span>OS</span>
-        </a>
-        <div className="top-status"><i /> SYSTEM ONLINE <span className="top-divider" /> V.1.0.26</div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div className="lighting-choice-toggle" role="radiogroup" aria-label="Shelf compartment lighting choice">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={lightingMode === "amber"}
-              className={`lighting-choice-btn ${lightingMode === "amber" ? "active amber" : ""}`}
-              onClick={() => handleToggleLighting("amber")}
-              title="Option A: Cozy Amber (Warm Incandescent)"
-            >
-              <span className="choice-dot amber" />
-              COZY AMBER
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={lightingMode === "magenta"}
-              className={`lighting-choice-btn ${lightingMode === "magenta" ? "active magenta" : ""}`}
-              onClick={() => handleToggleLighting("magenta")}
-              title="Option B: CRT Magenta (Ambient Spill)"
-            >
-              <span className="choice-dot magenta" />
-              CRT MAGENTA
-            </button>
-          </div>
-          <button
-            className={`view-switch ${presetMode === "reference" ? "active" : ""}`}
-            onClick={() => {
-              const cab = document.querySelector("#ascend-cabinet-section");
-              if (cab) {
-                cab.scrollIntoView({ behavior: "smooth", block: "start" });
-              } else {
-                setPresetMode(m => m === "workspace" ? "reference" : "workspace");
-              }
-            }}
-          >
-            {presetMode === "reference" ? "▣ WORKOS CABINET" : "⏣ WORKSTATION"}
-          </button>
-          <Link href="/design-system" className="view-switch" style={{ textDecoration: "none" }}>
-            📐 DESIGN SYSTEM
-          </Link>
-          <button className="view-switch" onClick={() => setRowTemplateModalOpen(true)}>
-            <Plus size={11} /> ADD SHELF ROW
-          </button>
-          <button
-            className={`view-switch ${spotifyData?.isPlaying ? "spotify-playing" : ""}`}
-            onClick={() => setSpotifyModalOpen(true)}
-            title={spotifyData?.connected ? (spotifyData.isPlaying ? `Spotify: ${spotifyData.title} by ${spotifyData.artist}` : "Spotify Connected (Idle)") : "Setup Spotify Sync"}
-            style={spotifyData?.isPlaying ? { borderColor: "rgba(16, 185, 129, 0.6)", color: "#34d399" } : undefined}
-          >
-            <Disc size={11} className={spotifyData?.isPlaying ? "animate-spin" : ""} />
-            {spotifyData?.isPlaying ? `SPOTIFY: ${(spotifyData.title || "").slice(0, 14)}` : (spotifyData?.connected ? "SPOTIFY IDLE" : "SPOTIFY SYNC")}
-          </button>
-          <button
-            className={`view-switch ${currentPlayingYouTube ? "youtube-playing" : ""}`}
-            onClick={() => {
-              setYoutubeModalOpen(true);
-              if (!youtubeSearchLoaded) searchYouTube("");
-            }}
-            title={currentPlayingYouTube ? `YouTube: ${currentPlayingYouTube.title}` : "Search & Broadcast YouTube on CRT TV"}
-            style={currentPlayingYouTube ? { borderColor: "rgba(239, 68, 68, 0.7)", color: "#f87171" } : undefined}
-          >
-            <Video size={11} className={currentPlayingYouTube ? "animate-pulse" : ""} />
-            {currentPlayingYouTube ? `YT: ${(currentPlayingYouTube.title || "").slice(0, 14)}` : "YOUTUBE CRT"}
-          </button>
-        </div>
-        <button className="sound-switch" onClick={() => { setSound(v => !v); if (!sound) synth.unlock(); }} aria-pressed={sound}>
-          {sound ? <Volume2 size={15} /> : <VolumeX size={15} />} SOUND {sound ? "ON" : "OFF"}
-        </button>
-      </header>
+
 
       {/* Main clean workspace running the authentic Zenless Zone Zero TV web project */}
-      <section className="zzz-tv-workspace" id="zzz-tv-workspace">
+      <section className="zzz-tv-workspace" id="zzz-tv-workspace"
+        style={{ height: `calc(100dvh + ${Math.max(0, -shelfOffsetY)}px)` }}>
         <iframe
           ref={zzzFrameRef}
           id="zzz-tv-frame"
@@ -1579,70 +1538,52 @@ export default function Home() {
         )}
       </section>
 
-      {focusedStatusTv && (
+      {focusedStatusTv && focusedSlot && focusedAgentModel && (
         <>
-          <motion.button
-            type="button"
-            tabIndex={-1}
-            className="shelf-camera-backdrop fixed inset-0"
-            aria-label="Zoom out to the full status shelf"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: focusedStatusTv.open ? 1 : 0 }}
-            transition={{ duration: reduceMotion ? 0.01 : 1.4, ease: [0.77, 0, 0.175, 1] }}
-            onClick={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
-          />
-          <motion.div
-            ref={cameraControlsRef}
-            className="shelf-camera-controls fixed inset-0"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${focusedStatusTv.assignment.channel} ${focusedStatusTv.assignment.serviceId.replaceAll("-", " ")} camera view`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: focusedStatusTv.open ? 1 : 0 }}
-            transition={{ duration: reduceMotion ? 0.01 : 0.7, delay: focusedStatusTv.open && !reduceMotion ? 0.7 : 0 }}
-          >
-            <div className="shelf-camera-readout" aria-hidden="true">
-              <span>CAMERA LOCK</span>
-              <strong>{focusedStatusTv.assignment.channel} · {focusedStatusTv.assignment.serviceId.replaceAll("-", " ")}</strong>
-            </div>
-            <button
-              ref={cameraExitRef}
-              type="button"
-              className="shelf-camera-exit absolute right-6 top-6"
-              onClick={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
-            >
-              <X size={18} /> ZOOM OUT
-            </button>
-            {focusedAgentModel ? (
-              <AgentAuxiliaryPanel
-                model={focusedAgentModel}
-                open={focusedStatusTv.open}
-                reduceMotion={Boolean(reduceMotion)}
+          <motion.button type="button" tabIndex={-1} className="shelf-camera-backdrop fixed inset-0"
+            aria-label="Dismiss status details" aria-hidden="true"
+            initial={{ opacity: 0 }} animate={{ opacity: focusedStatusTv.open ? 1 : 0 }}
+            transition={{ duration: reduceMotion ? 0.01 : 0.26 }}
+            onClick={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)} />
+          <motion.div ref={cameraControlsRef} className="shelf-camera-controls fixed inset-0"
+            role="dialog" aria-modal="true" aria-labelledby={focusedAgentModel.headingId}
+            initial={{ opacity: 0, y: reduceMotion ? 0 : 20, scale: reduceMotion ? 1 : 0.94 }}
+            animate={{ opacity: focusedStatusTv.open ? 1 : 0,
+              y: focusedStatusTv.open || reduceMotion ? 0 : 16,
+              scale: focusedStatusTv.open || reduceMotion ? 1 : 0.96 }}
+            transition={{ duration: reduceMotion ? 0.14 : focusedStatusTv.open ? 0.42 : 0.2,
+              ease: focusedStatusTv.open ? [0.16, 1, 0.3, 1] : [0.4, 0, 1, 1] }}
+            onAnimationComplete={() => {
+              if (!focusedStatusTv.open) setFocusedStatusTv(null);
+            }}>
+            <div className="shelf-camera-detail-layout">
+              <AgentAuxiliaryPanel model={focusedAgentModel} open={focusedStatusTv.open}
+                reduceMotion={Boolean(reduceMotion)} closeRef={cameraExitRef}
                 onClose={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
+                onRefresh={shelfStatus.refresh} refreshing={shelfStatus.refreshing} refreshError={shelfStatus.error}
+                mediaIssue={focusedMediaIssue}
+                compactTv={<ShelfStatusTv assignment={focusedStatusTv.assignment}
+                  profile={getCrtProfile(focusedStatusTv.collectibleId)!} service={focusedService}
+                  presentation={focusedSlot.presentation} loading={Boolean(shelfStatus.loading && !shelfStatus.current)}
+                  error={shelfStatus.error} stale={Boolean(shelfStatus.stale)} reduceMotion={Boolean(reduceMotion)}
+                  mediaId={`focused-${focusedStatusTv.slotId}`}
+                  onMediaStatusChange={onStatusMediaChange} />}
               />
-            ) : null}
+            </div>
           </motion.div>
         </>
       )}
-
       {/* Scrollable WorkOS Multi-Tier Shelves Stack (100% Uncovered & Clean) */}
       <motion.div
         ref={setCameraSceneNode}
         className={`cabinet-shell shelf-camera-scene lighting-${lightingMode} ${presetMode === "reference" ? "launch-cabinet-stack" : ""}`}
         id="ascend-cabinet-section"
-        animate={focusedStatusTv?.open ? {
-          x: focusedStatusTv.motion.translateX,
-          y: focusedStatusTv.motion.translateY,
-          scale: focusedStatusTv.motion.scale,
-        } : { x: 0, y: 0, scale: 1 }}
-        transition={{ duration: reduceMotion ? 0.01 : 1.4, ease: [0.77, 0, 0.175, 1] }}
-        onAnimationComplete={() => {
-          if (focusedStatusTv && !focusedStatusTv.open) setFocusedStatusTv(null);
-        }}
+        aria-hidden={cameraMounted || undefined}
+        inert={cameraMounted || undefined}
         style={{
           marginTop: `${shelfOffsetY}px`,
           position: "relative",
-          zIndex: focusedStatusTv ? 95 : 15,
+          zIndex: 15,
           transformOrigin: "0 0",
         }}
       >
@@ -1663,9 +1604,6 @@ export default function Home() {
               layoutVersion={JSON.stringify(rows)}
               onTargetsChange={setVisionEyeTargets}
             />
-            <div className="vision-eye-controls" aria-hidden="true" style={{ visibility: focusedStatusTv ? "hidden" : "visible" }}>
-              WASD / ARROWS MOVE <span>·</span> SPACE OPEN
-            </div>
             <p className="sr-only" aria-live={focusedStatusTv ? "off" : "polite"}>
               {selectedVisionEyeTarget
                 ? `${selectedVisionEyeTarget.channel}, ${selectedVisionEyeTarget.serviceId.replaceAll("-", " ")} selected. Press Space to open.`
@@ -1677,7 +1615,7 @@ export default function Home() {
           <div className="stage" style={{ transform: `scale(${scale})` }}>
             {presetMode === "reference" ? (
               <div className="cabinet-multi-rows">
-                {rows.map((row, rIdx) => (
+                {visibleRows.map((row, rIdx) => (
                   <div key={row.id} className="shelf-row-wrapper">
                     {edit && (
                       <div className="shelf-row-bar">
@@ -1693,7 +1631,7 @@ export default function Home() {
                           </button>
                           <button
                             className="shelf-row-btn"
-                            disabled={rIdx === rows.length - 1}
+                            disabled={rIdx === visibleRows.length - 1}
                             onClick={() => handleMoveRow(row.id, 1)}
                             title="Move tier down"
                           >
@@ -1756,9 +1694,8 @@ export default function Home() {
                                   ? COLLECTIBLES.find(c => c.id === slot.collectibleId)
                                   : null;
                                 const statusAssignment = getShelfTvAssignment(slot.id);
-                                const statusService = statusAssignment
-                                  ? resolveShelfTvService(slot.id, shelfStatus.current?.services ?? [])
-                                  : null;
+                                const statusSlot = statusAssignment ? statusTvSlots.find(status => status.slotId === slot.id) : null;
+                                const statusService = statusSlot?.service ?? null;
                                 const statusSignalMode = statusAssignment
                                   ? getTvSignalScreenMode(statusAssignment.serviceId, tvSignalTransition)
                                   : "default";
@@ -1820,23 +1757,29 @@ export default function Home() {
                                                      : ""
                                                 }`}
                                                 data-status-service-id={statusAssignment.serviceId}
+                                                data-status-slot-id={slot.id}
+                                                data-status-collectible-id={def.id}
                                                 data-status-channel={statusAssignment.channel}
                                                 disabled={Boolean(focusedStatusTv)}
-                                                aria-label={`Focus ${statusAssignment.channel} ${statusAssignment.serviceId.replaceAll("-", " ")} status TV`}
+                                                aria-label={getShelfTvAccessibleLabel(statusAssignment, statusSlot?.presentation,
+                                                  statusMediaIssues[statusAssignment.serviceId]?.[`shelf-${slot.id}`])}
                                                 onClick={(event) => activateStatusTv(statusAssignment, event.currentTarget, false)}
                                               >
                                                 <ShelfStatusTv
                                                   assignment={statusAssignment}
                                                   profile={getCrtProfile(def.id)!}
                                                   service={statusService}
-                                                  loading={shelfStatus.loading && !shelfStatus.current}
+                                                  presentation={statusSlot?.presentation}
+                                                  reduceMotion={Boolean(reduceMotion)}
+                                                  mediaId={`shelf-${slot.id}`}
+                                                  onMediaStatusChange={onStatusMediaChange}
+                                                  loading={Boolean(shelfStatus.loading && !shelfStatus.current)}
                                                   error={shelfStatus.error}
                                                   stale={Boolean(shelfStatus.stale)}
                                                   signalMode={statusSignalMode}
                                                   signalDirection={tvSignalTransition.direction}
                                                   signalActivating={visionEyeActivating && statusSignalMode === "active"}
                                                 />
-                                                <span className="shelf-status-tv-trigger__hint" aria-hidden="true">FOCUS</span>
                                               </button>
                                             ) : (
                                               <CrtTvDisplay
@@ -1854,18 +1797,19 @@ export default function Home() {
                                             aria-label="Open CD Player Spring 2026 launch week experience"
                                             onClick={() => setCdPlayerModalOpen(true)}
                                           >
-                                            <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`}>
-                                              <img className="prop-off" src={def.offSrc} alt={def.label} draggable={false} />
-                                              {def.onSrc !== def.offSrc && (
-                                                <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
-                                              )}
+                                            <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`} data-collectible-id={def.id}>
+                                              {["body", "cases"].map(part => (
+                                                <div key={part} className={`cd-player-layer cd-player-layer--${part}`} aria-hidden={part === "cases" || undefined}>
+                                                  <img className="prop-off" src={def.offSrc} alt={part === "body" ? def.label : ""} draggable={false} />
+                                                  {def.onSrc !== def.offSrc && (
+                                                    <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
+                                                  )}
+                                                </div>
+                                              ))}
                                             </div>
-                                            <span className="cubby-cd-player-trigger__badge" aria-hidden="true">
-                                              PLAY CD · SPRING 2026
-                                            </span>
                                           </button>
                                         ) : (
-                                          <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`}>
+                                          <div className={`cubby-prop ${def.offSrc === def.onSrc ? "single-prop-img" : ""}`} data-collectible-id={def.id}>
                                             <img className="prop-off" src={def.offSrc} alt={def.label} draggable={false} />
                                             {def.onSrc !== def.offSrc && (
                                               <img className="prop-on" src={def.onSrc} alt="" draggable={false} aria-hidden />
@@ -1873,22 +1817,26 @@ export default function Home() {
                                           </div>
                                         )
                                       ) : slot.isPoster ? (
-                                        <div className="framed-poster">
+                                        <Link
+                                          href="/room"
+                                          aria-label="Enter the agent room"
+                                          className="framed-poster"
+                                          draggable={false}
+                                          onClick={event => { if (edit) event.preventDefault(); }}
+                                          onPointerMove={event => {
+                                            if (event.pointerType === "touch") return;
+                                            const bounds = event.currentTarget.getBoundingClientRect();
+                                            const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+                                            const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+                                            event.currentTarget.style.transform = `perspective(1000px) rotateX(${y * -5}deg) rotateY(${x * 5}deg) scale(1.025)`;
+                                          }}
+                                          onPointerLeave={event => { event.currentTarget.style.transform = ""; }}
+                                        >
                                           <div className="framed-poster-art">
-                                            <div className="poster-galaxy" />
-                                            <div className="framed-poster-tagline">
-                                              EVERY ENVIRONMENT<br />TELLS A DIFFERENT STORY
-                                            </div>
-                                            <div className="framed-poster-bottom">
-                                              <p className="framed-poster-desc">
-                                                MANAGE DEVELOPMENT, STAGING, AND PRODUCTION UNDER ONE PROJECT, WITH UNIQUE BRANDING FOR EACH.
-                                              </p>
-                                              <div className="framed-poster-logos">
-                                                <span>П</span><span>◇</span><span>▲</span><span>◎</span><span>◈</span><span>⏣</span><span>▼</span><span>H</span>
-                                              </div>
-                                            </div>
+                                            <img src="/ascend-hub-staircase.webp" alt="Ascend Hub — One level at a time" draggable={false} />
+                                            <span className="framed-poster-glass" aria-hidden="true" />
                                           </div>
-                                        </div>
+                                        </Link>
                                       ) : (
                                         <div
                                           className="empty-cubby-prompt"
@@ -1999,51 +1947,7 @@ export default function Home() {
             )}
           </div>
         </div>
-        <div className="cabinet-bottom">
-          <span><i /> ALL SYSTEMS OPERATIONAL</span>
-          <div className="lighting-choice-toggle" role="radiogroup" aria-label="Cabinet lighting ambiance">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={lightingMode === "amber"}
-              className={`lighting-choice-btn ${lightingMode === "amber" ? "active amber" : ""}`}
-              onClick={() => handleToggleLighting("amber")}
-              title="Option A: Cozy Amber"
-            >
-              <span className="choice-dot amber" />
-              COZY AMBER
-            </button>
-            <button
-              type="button"
-              role="radio"
-              aria-checked={lightingMode === "magenta"}
-              className={`lighting-choice-btn ${lightingMode === "magenta" ? "active magenta" : ""}`}
-              onClick={() => handleToggleLighting("magenta")}
-              title="Option B: CRT Magenta"
-            >
-              <span className="choice-dot magenta" />
-              CRT MAGENTA
-            </button>
-          </div>
-          <span>{presetMode === "reference" ? `${rows.length} SHELF TIERS ACTIVE` : `${String(completed).padStart(2, "0")} / 05 MILESTONES COMPLETE`}</span>
-          <span>DESIGNED TO EVOLVE ↗</span>
-        </div>
       </motion.div>
-
-      <section className="below-shelf">
-        <div><span className="tiny-cross">+</span><p>Not a destination.<br /><strong>A way of moving forward.</strong></p></div>
-        <p className="interaction-note"><Crosshair size={14} /> Explore the objects. Find your next step.</p>
-        <details onToggle={() => synth.play("thump")}>
-          <summary>SYSTEM CHANGELOG <span>V.1.0.26</span><ChevronDown size={14} /></summary>
-          <div className="changelog"><b>11.09.2026 — Initial transmission</b><p>Five progression modules, procedural sound, CRT playback, and a workspace that you can make your own.</p></div>
-        </details>
-      </section>
-
-      <footer className="page-footer">
-        <span>© 2026 ASCEND OS</span>
-        <span>BUILT FOR THE LONG GAME.</span>
-        <button onClick={toggleEdit}><Settings2 size={13} /> CUSTOMIZE YOUR SPACE</button>
-      </footer>
 
       {edit && (
         <aside className="editor-bar" aria-label="Layout editor">
@@ -2486,6 +2390,7 @@ export default function Home() {
         open={cdPlayerModalOpen}
         onOpenChange={setCdPlayerModalOpen}
         spotifyData={spotifyData}
+        onOpenSpotifySetup={() => setSpotifyModalOpen(true)}
       />
 
       {youtubeModalOpen && (

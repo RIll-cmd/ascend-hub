@@ -1,6 +1,6 @@
 export const anchorConfigDict = {
   lycaon: {
-    image: "resource/anchor/von_lycaon.png",
+    image: "resource/anchor/von_lycaon.webp",
     speechBubble: "resource/image/speechbubble_bot.svg",
     height: 100,
     width: 100,

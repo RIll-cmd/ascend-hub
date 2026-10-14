@@ -1,6 +1,6 @@
 # Ascend Desktop launcher (Windows)
 
-The launcher has independent **Start Vision** and **Start Hub** controls and two desktop shortcuts. It starts only the app you select. It stays responsive while a child imports models, optimizes frontend dependencies, or fails a health check. Each app has its own Stop, Cancel/Force stop, Retry, and Open actions.
+The two native Windows launchers share one supervisor engine. **Ascend Vision** opens an indigo Fairy eye window; **Ascend Hub** opens a charcoal operations console. Each shortcut starts only its product, and both windows can run simultaneously. Each has Start -> Starting -> Open, Cancel during startup, Stop, Force stop after a shutdown request, Retry after failure, and expandable diagnostics. Startup work runs off the UI thread.
 
 Full Vision is the default. **Chat recovery** starts a separate Fairy chat host with no camera, microphone, speech, gestures, focus sessions, or browser automation. Use it if full Vision fails or reaches its startup deadline. Stop full Vision before starting recovery so two processes do not own one chat session. The launcher enforces this per component.
 
@@ -32,16 +32,20 @@ If Windows encryption makes a profile under LocalAppData unreadable to a desktop
 You may open the controls without starting either app:
 
 ```powershell
-& 'D:\ascend_hub\desktop\Start-Ascend.ps1'
+& 'D:\ascend_hub\desktop\Start-Ascend.ps1' # Vision controls, without autostart
+# To select Hub and start it, pass -Target Hub and your existing -ProfilePath.
 ```
 
-The app starts Hub on the local profile's port (5173 by default) and Vision on its own ephemeral loopback port. After authenticated health responds, it opens the correct browser page. A second shortcut click sends a start request to the existing launcher instead of creating a second camera owner. Closing the launcher asks before stopping its owned apps.
+The app starts Hub on the local profile's port (5173 by default) and Vision on its own ephemeral loopback port. After authenticated health responds, **Open** becomes available for the verified loopback URL. Chat, camera, microphone and Core labels come from that health contract; absent/unknown fields say **Not checked**. Hub interface availability is distinct from Core/status-feed availability. No camera, model or AI request is made to draw the launcher artwork.
+
+A per-Windows-owner/per-product mutex prevents duplicate process trees; a second shortcut click restores the existing product window. Distinct eye/CRT icons and AppUserModelIDs identify the products in native windows and the taskbar. If the old combined launcher is running, close it before starting a new product owner. Closing one launcher offers **Cancel closing** or **Stop this app and close**. The window remains responsive and closes only after its own owned tree is verified empty. It never stops the other product.
 
 ## Current release limits
 
-- Hub uses its local Vinext development runtime. The built Wrangler runtime cannot start with the current media library: multiple videos exceed its 25 MiB asset limit. The launcher keeps that portable profile unverified. This means the first Hub start may spend time optimizing dependencies; progress and Cancel remain available.
+- Hub uses the `production` runtime by default: the launcher runs `scripts/run-framework.mjs serve`, which rebuilds Hub only when its source changed and serves it on `127.0.0.1` together with the agent room. A normal start takes about 2 seconds; the first start after an update builds first, which takes about 15 seconds. `-HubRuntime development` keeps the Vite development server instead. The built Wrangler (`portable`) runtime still cannot start with the current media library, because several videos exceed its 25 MiB asset limit.
+- One double-click is enough for Hub. The launcher starts Hub, opens it in an Edge app window when it is ready (or the default browser without Edge), and stays as a small window. Closing that window while Hub runs hides it to the tray icon. The tray menu has Open Hub, Show launcher, Stop Hub and Quit; Quit stops Hub and the agent room. Double-clicking the shortcut again while Hub runs opens Hub instead of starting a second copy.
 - Full Vision still performs native model/camera initialization in its main process. The launcher reports stages, enforces a deadline, and offers chat recovery if it stalls. Camera inference has not yet been moved to an isolated worker, so a native driver crash can still end full Vision while the launcher remains open.
-- Vision Stop requests an authenticated local shutdown and waits up to 15 seconds for cleanup. Hub Stop attempts a window-close signal; its headless development process may require **Cancel / Force stop**. Force stop terminates only the child tree owned by this launcher; it does not terminate unrelated Python or Node instances.
+- Vision Stop requests an authenticated local shutdown. Hub runs headless with no window to close, so its Stop, the tray's Stop Hub and Quit end Hub's owned Windows Job Object straight away (the agent room included). For Vision, the 15-second deadline starts at the Stop request, including HTTP time. A missed deadline becomes **Could not stop**, with **Force stop** available and continued observation for late exit. Start/Open remain disabled while stopping. Force stop terminates only the product instance's owned Windows Job Object and verifies all descendants exited before showing Stopped. Startup, uptime, shutdown and stage durations are separate; completed/failed durations freeze.
 - The launch health token and instance ID travel only in the child environment and local request header. A browser or an occupied port alone cannot establish readiness. Diagnostics write safe stage/exit metadata under `%LOCALAPPDATA%\Ascend\Desktop\logs`, not child stdout or chat text.
 
 ## Checks used during implementation
@@ -51,4 +55,33 @@ The app starts Hub on the local profile's port (5173 by default) and Vision on i
 & 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' -NoProfile -File 'desktop\tests\Test-Supervisor.ps1' -PythonExe 'D:\ascend-vision\ascend-vision\.venv\Scripts\python.exe'
 ```
 
-The second check uses its own loopback fixture children. It verifies hung startup, independent product health, cancellation, early exit, wrong identity, and no raw child output in diagnostics. `desktop/tests/Test-LiveRecovery.ps1` additionally starts the real local Hub and Vision chat recovery host using an explicitly selected profile; it does not open a browser, camera, or model request.
+The supervisor check uses isolated authenticated loopback fixture children, covering real shutdown deadlines, late exit, scoped ownership, repeated activation, legacy conflict, child/descendant termination, force-stop exceptions, cancellation races and frozen lifecycle durations. It never touches existing user applications.
+
+Additional checks:
+
+```powershell
+powershell.exe -NoProfile -STA -File desktop/tests/Test-LauncherLayout.ps1 -AuditDirectory docs/audits/tv-launcher-assets
+powershell.exe -NoProfile -STA -File desktop/tests/Test-NativeLaunchers.ps1 -PythonExe C:/Python314/python.exe
+powershell.exe -NoProfile -File desktop/tests/Test-Installer.ps1
+```
+
+Layout checks render both actual XAML compositions with synthetic states, long messages, visible keyboard focus and 100/150/200% scale transforms; PNGs show the full scroll extent on the product background. They do not change Windows display settings. Native checks create temporary cloned fixture shortcuts, run real offscreen WPF windows with `-FixtureMode`, verify repeat-click restoration, Cancel closing, responsive Stop/Force stop and close-one-keeps-other. FixtureMode uses only the explicit test profile and suppresses taskbar/window placement. Normal shortcuts do not use it.
+
+The installer fixture writes only temporary shortcut/profile files. Existing installations can retain all shortcut arguments, profile paths and working directories when updating only `IconLocation` to `desktop/assets/vision.ico,0` or `hub.ico,0`; do not force reinstall merely to update icons. Icon source is the shared static WPF geometry; `tests/Build-LauncherAssets.ps1` renders PNG/ICO assets at 32/48/64/128/256 pixels. No generated replacement eye artwork is used.
+
+`tests/Test-LiveRecovery.ps1` is an optional separate live-runtime check requiring an explicitly selected profile. It is outside the fixture verification above.
+
+
+## Replace an existing Hub session
+
+When Hub startup reports its configured port is in use, **Stop other session and retry** appears beside Retry. The action is enabled only when the listener is the current Windows user's Node process, its executable matches the profile, and its actual working directory and startup arguments identify this Hub checkout (or the parent checkout of an installed worktree). Other applications, builds, inaccessible processes, and ambiguous port owners are not eligible.
+
+Clicking the action rechecks the port owner and process start time, stops that verified session and its captured child workers, waits up to 15 seconds for exit and port release, and starts a new supervised Hub instance. It does not stop Vision or other Node applications. If ownership changes or shutdown fails, the launcher reports failure and keeps ordinary Retry available. Duplicate clicks cannot launch duplicate instances. No session is stopped automatically when opening the launcher.
+
+Check without touching existing sessions:
+
+```powershell
+powershell.exe -NoProfile -STA -File desktop/tests/Test-SessionReplacement.ps1 -NodeExe D:/node.exe
+```
+
+The check uses isolated fixture processes and ports; it covers replacement/restart, descendant cleanup, an unrelated listener, a changed port owner, and native action visibility/availability.

@@ -10,6 +10,8 @@ param(
     [string]$DestinationRoot = (Join-Path $env:LOCALAPPDATA 'Ascend\Desktop'),
     [string]$ShortcutDirectory = [Environment]::GetFolderPath('DesktopDirectory'),
     [switch]$SkipShortcuts,
+    # production runs the built Hub through scripts/run-framework.mjs serve; development keeps the Vite dev server.
+    [ValidateSet('development', 'production')][string]$HubRuntime = 'production',
     [switch]$Force
 )
 
@@ -46,6 +48,7 @@ $PythonExe = Resolve-RequiredFile $PythonExe 'Vision Python executable'
 $VisionEnvFile = Resolve-RequiredFile $VisionEnvFile 'Vision owner-managed env file'
 $visionConfig = Resolve-RequiredFile $VisionConfig 'Vision config'
 [void](Resolve-RequiredFile (Join-Path $HubRoot 'node_modules\vinext\dist\cli.js') 'Hub local runtime')
+if ($HubRuntime -eq 'production') { [void](Resolve-RequiredFile (Join-Path $HubRoot 'scripts\run-framework.mjs') 'Hub serve script') }
 [void](Resolve-RequiredFile (Join-Path $VisionRoot 'fairy-ui\dist\index.html') 'Fairy UI build')
 [void](Resolve-RequiredFile (Join-Path $VisionRoot 'desktop_host.py') 'Vision recovery host')
 
@@ -59,7 +62,7 @@ $profile = [ordered]@{
     schemaVersion = 1
     hub = [ordered]@{
         root = $HubRoot; executable = $NodeExe; buildId = 'local-development'
-        runtime = 'development'; port = 5173; startupSeconds = 90
+        runtime = $HubRuntime; port = 5173; startupSeconds = 90
     }
     vision = [ordered]@{
         root = $VisionRoot; executable = $PythonExe; buildId = 'local-development'
@@ -103,6 +106,7 @@ if (-not $SkipShortcuts) {
         $shortcut.Arguments = "-NoProfile -STA -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launcherPath`" -Target $name -ProfilePath `"$profilePath`""
         $shortcut.WorkingDirectory = $HubRoot
         $shortcut.Description = "Start Ascend $name with startup status and recovery controls"
+        $shortcut.IconLocation = (Join-Path $PSScriptRoot "assets/$($name.ToLowerInvariant()).ico") + ",0"
         $shortcut.Save()
     }
 }

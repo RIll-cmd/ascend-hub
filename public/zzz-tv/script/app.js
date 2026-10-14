@@ -1,3 +1,4 @@
+import { initSpotifySetup } from "./channel-setup.js";
 import { Clock } from "./clock.js";
 import { Calendar } from "./calendar.js";
 import { TVContentManager } from "./tv.js";
@@ -50,7 +51,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     mediaintegration: false,
     isAudioVisual: true,
     musicVisualizerStyle: "gooeyWave",
-    weather_api: "FLTQSEWVR77875H6UM6P65DUF",
+    weather_api: "",
     weather_latitude: 14.5995,
     weather_longitude: 120.9842,
     weather_city: "Manila,PH",
@@ -58,7 +59,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     object_fit: "cover",
   };
 
-  console.log("Wallpaper Setting:", wallpaperSettings);
+
 
   const clock = new Clock(hourTens, hourOnes, minuteTens, minuteOnes);
   clock.start();
@@ -279,6 +280,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   console.log("tv dictionary initialized:", tv_dict);
 
+  initSpotifySetup(tvContentManager.mediaListeners);
+
   initializeEventListeners(
     tvContentManager,
     tvSwitch,
@@ -291,7 +294,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Parent Ascend OS postMessage listener for sound toggle & control
   window.addEventListener("message", (event) => {
+    if (event.origin !== location.origin || event.source !== window.parent) return;
     if (!event.data || typeof event.data !== "object") return;
+    if (event.data.type === "SELECT_INPUT") {
+      tvContentManager.selectInput(event.data.input);
+      return;
+    }
     if (event.data.type === "SET_MUTE") {
       const isMuted = Boolean(event.data.muted);
       if (switchChannelStaticSound) switchChannelStaticSound.muted = isMuted;
@@ -321,6 +329,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (trigger) trigger.click();
     }
   });
+  window.parent.postMessage({ type: "TV_READY" }, location.origin);
 });
 
 function getDOMElements() {
