@@ -5,6 +5,10 @@ const isAgent = value => AGENT_IDS.includes(value);
 
 export const isReady = text => /\[READY\]/.test(String(text));
 
+// Suggested changes an agent offers with roles or a plan; a bad entry is dropped, never a reason to re-ask.
+export const cleanOptions = v => (Array.isArray(v) ? v : [])
+  .filter(o => typeof o === 'string' && o.trim() && o.length <= 160).map(o => o.replace(/\s+/g, ' ').trim()).slice(0, 4);
+
 export function extractJsonBlock(text) {
   const blocks = [...String(text).matchAll(/```json\s*\n([\s\S]*?)```/g)];
   if (blocks.length === 0) return fail('No ```json block found.');
@@ -23,7 +27,7 @@ export function validateRoles(v) {
   }
   const reviewer = v.reviewer ?? null;
   if (reviewer !== null && !isAgent(reviewer)) return fail('reviewer must be an agent id or null.');
-  return { ok: true, value: { orchestrator: v.orchestrator, coders: [...v.coders], reviewer } };
+  return { ok: true, value: { orchestrator: v.orchestrator, coders: [...v.coders], reviewer, options: cleanOptions(v.options) } };
 }
 
 export function validatePlan(v, coders) {
@@ -36,7 +40,7 @@ export function validatePlan(v, coders) {
     if (!coders.includes(task.assignee)) return fail(`Task ${n} assignee must be one of the coders: ${coders.join(', ')}.`);
     tasks.push({ id: n, title: task.title.replace(/\s+/g, ' ').trim(), assignee: task.assignee, description: task.description.trim() });
   }
-  return { ok: true, value: { tasks } };
+  return { ok: true, value: { tasks, options: cleanOptions(v.options) } };
 }
 
 export function validateVerdict(v) {

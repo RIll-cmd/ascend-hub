@@ -38,6 +38,7 @@ export type SessionView = {
     waiting?: boolean;
   } | null;
   transcript: Message[];
+  attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "result"; summary: string; options: string[]; decisions: string[] } | null;
 };
 
 export function rolesOf(agent: AgentId, roles: Roles | null): string[] {

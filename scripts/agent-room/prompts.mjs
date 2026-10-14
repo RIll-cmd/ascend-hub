@@ -50,9 +50,9 @@ function stageRules(stage, agent, roles, extra) {
         'Keep your message under 200 words. When you agree with the current proposal, end your message with [READY].',
       ].join('\n');
     case 'roles':
-      return 'Write the roles the discussion agreed on (or your best proposal) as one fenced json block and nothing else:\n```json\n{"orchestrator": "codex", "coders": ["claude"], "reviewer": "agy"}\n```\nUse the agent ids codex, claude, agy. reviewer may be null. Do not edit files.';
+      return 'Write the roles the discussion agreed on (or your best proposal) as one fenced json block and nothing else:\n```json\n{"orchestrator": "codex", "coders": ["claude"], "reviewer": "agy", "options": ["Make Claude the reviewer", "Let Antigravity code too"]}\n```\nUse the agent ids codex, claude, agy. reviewer may be null. options lists 2 to 4 short changes the owner might want instead (each under 160 characters). If the owner asked for changes in the conversation, apply them. Do not edit files.';
     case 'plan':
-      return `You are the orchestrator. Break the owner's task into 1 to 20 small tasks that coders do one at a time, in order.\nThe coders are:\n${team}\nPlan around what each coder can run. Reply with one fenced json block:\n\`\`\`json\n{"tasks": [{"title": "short title", "assignee": "${coders[0] ?? 'claude'}", "description": "what to do and how to check it"}]}\n\`\`\`\nDo not edit files.`;
+      return `You are the orchestrator. Break the owner's task into 1 to 20 small tasks that coders do one at a time, in order.\nThe coders are:\n${team}\nPlan around what each coder can run. Reply with one fenced json block:\n\`\`\`json\n{"tasks": [{"title": "short title", "assignee": "${coders[0] ?? 'claude'}", "description": "what to do and how to check it"}], "options": ["Merge tasks 1 and 2", "Add a test task"]}\n\`\`\`\noptions lists 2 to 4 short changes the owner might want instead (each under 160 characters). If the owner asked for changes in the conversation, apply them.\nDo not edit files.`;
     case 'build':
       return [
         `You are a coder. You ${CAPABILITIES[agent]}.`,

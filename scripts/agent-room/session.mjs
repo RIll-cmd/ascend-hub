@@ -7,6 +7,7 @@ import { AGENT_IDS, extractJsonBlock, isReady, validatePlan, validateReassign, v
 import { resolveDebateFolder, resolveProjectDir, roomError } from './paths.mjs';
 import { commitAll, createProject, headCommit, lastCommitDiff, renderPlan, rollback } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
+import { attention, GATES } from './attention.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
 export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
@@ -19,7 +20,7 @@ function subagentChoice(choice) {
   if (typeof choice !== 'object' || typeof (choice.claude ?? true) !== 'boolean') throw roomError('SUBAGENTS_INVALID');
   return { claude: choice.claude ?? true };
 }
-export const GATES = { 'gate-roles': 'roles', 'gate-plan': 'plan', 'gate-result': 'result' };
+export { GATES };
 
 export class RoomSession {
   constructor({ dir, settings, runTurn = realRunTurn, state, transcript }) {
@@ -103,7 +104,7 @@ export class RoomSession {
     return { id, mode, project, stage, pause, active, roles };
   }
 
-  view() { return { ...this.state, transcript: this.transcript.slice(-200) }; }
+  view() { return { ...this.state, attention: attention(this.state, this.transcript), transcript: this.transcript.slice(-200) }; }
 
   // Sub-agent progress only updates the CRT (saved at most once a second); start and finish also go to the transcript.
   onAgentEvent(agent, event) {
@@ -252,7 +253,9 @@ export class RoomSession {
   async rolesStep() {
     const roles = await this.jsonTurn('codex', this.prompt('roles', 'codex'), 'proposing roles', validateRoles, []);
     if (!roles) return;
-    this.state.roles = roles;
+    const { options, ...chosen } = roles;
+    this.state.roles = chosen;
+    this.state.roleOptions = options;
     this.state.stage = 'gate-roles';
     this.save();
     this.say('room', 'Roles proposed. Waiting for the owner.');
@@ -262,14 +265,14 @@ export class RoomSession {
     const { roles } = this.state;
     const plan = await this.jsonTurn(roles.orchestrator, this.prompt('plan', roles.orchestrator), 'planning', v => validatePlan(v, roles.coders), []);
     if (!plan) return;
-    this.setPlan(plan.tasks, 'plan: initial plan');
+    this.setPlan(plan.tasks, 'plan: initial plan', plan.options);
     this.state.stage = 'gate-plan';
     this.save();
     this.say('room', 'Plan ready. Waiting for the owner.');
   }
 
-  setPlan(tasks, message) {
-    this.state.plan = { tasks: tasks.map(t => ({ ...t, status: 'pending', attempts: 0, reassigned: false, commit: null, notes: '' })) };
+  setPlan(tasks, message, options = []) {
+    this.state.plan = { tasks: tasks.map(t => ({ ...t, status: 'pending', attempts: 0, reassigned: false, commit: null, notes: '' })), options };
     writeFileSync(join(this.state.projectDir, 'PLAN.md'), renderPlan(this.state.plan.tasks), 'utf8');
     const hash = commitAll(this.state.projectDir, message);
     if (hash) this.say('room', `Committed ${hash} "${message}".`);
@@ -392,15 +395,24 @@ export class RoomSession {
     this.say('room', 'Verdict saved.');
   }
 
-  gate({ gate, decision, roles, plan } = {}) {
+  gate({ gate, decision, roles, plan, note } = {}) {
     const state = this.state;
     if (GATES[state.stage] !== gate || state.pause) throw roomError('GATE_NOT_OPEN');
+    if (decision === 'revise' && gate !== 'result') {
+      if (typeof note !== 'string' || !note.trim() || note.length > 2000) throw roomError('NOTE_INVALID');
+      // The agents read the conversation, so the note in the transcript is how they learn what to change.
+      state.stage = gate;
+      this.say('room', `Owner asked for changes to the ${gate}: ${note.replace(/\s+/g, ' ').trim()}`);
+      this.save();
+      return this.kick();
+    }
     if (gate === 'roles') {
       if (decision !== 'approve') throw roomError('DECISION_INVALID');
       if (roles !== undefined) {
         const checked = validateRoles(roles);
         if (!checked.ok) throw roomError('ROLES_INVALID', checked.error);
-        state.roles = checked.value;
+        const { options, ...chosen } = checked.value;
+        state.roles = chosen;
       }
       state.stage = 'plan';
       this.say('room', 'Owner approved the roles.');

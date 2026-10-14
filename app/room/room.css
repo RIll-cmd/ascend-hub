@@ -141,3 +141,6 @@
 
 .agent-room .agent-room-sound { display: inline-flex; align-items: center; padding: 3px 8px; background: transparent; color: var(--room-paper); border-color: #6b5a48; }
 .agent-room .agent-room-sound[aria-pressed="true"] { background: var(--room-accent); color: var(--room-ink); }
+
+.agent-room .agent-room-options { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.agent-room .agent-room-change textarea { width: 100%; box-sizing: border-box; margin: 6px 0; }

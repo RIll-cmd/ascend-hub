@@ -17,7 +17,7 @@ test('reports a missing or broken json block with a reason', () => {
 
 test('validates roles', () => {
   assert.deepEqual(validateRoles({ orchestrator: 'codex', coders: ['claude', 'agy'], reviewer: null }),
-    { ok: true, value: { orchestrator: 'codex', coders: ['claude', 'agy'], reviewer: null } });
+    { ok: true, value: { orchestrator: 'codex', coders: ['claude', 'agy'], reviewer: null, options: [] } });
   assert.deepEqual(validateRoles({ orchestrator: 'codex', coders: ['codex'] }).value.reviewer, null);
   for (const bad of [null, [], { orchestrator: 'gpt', coders: ['claude'] }, { orchestrator: 'codex', coders: [] },
     { orchestrator: 'codex', coders: ['claude', 'claude'] }, { orchestrator: 'codex', coders: ['claude'], reviewer: 'me' }]) {
@@ -27,7 +27,7 @@ test('validates roles', () => {
 
 test('validates a plan, renumbers ids and flattens titles', () => {
   const plan = validatePlan({ tasks: [{ id: 9, title: ' Scaffold\nproject ', assignee: 'claude', description: 'Set up.' }] }, ['claude']);
-  assert.deepEqual(plan, { ok: true, value: { tasks: [{ id: 1, title: 'Scaffold project', assignee: 'claude', description: 'Set up.' }] } });
+  assert.deepEqual(plan, { ok: true, value: { tasks: [{ id: 1, title: 'Scaffold project', assignee: 'claude', description: 'Set up.' }], options: [] } });
   assert.equal(validatePlan({ tasks: [] }, ['claude']).ok, false);
   assert.equal(validatePlan({ tasks: Array.from({ length: 21 }, () => ({ title: 't', assignee: 'claude', description: '' })) }, ['claude']).ok, false);
   assert.match(validatePlan({ tasks: [{ title: 't', assignee: 'agy', description: '' }] }, ['claude']).error, /assignee must be one of the coders: claude/);

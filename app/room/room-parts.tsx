@@ -216,10 +216,32 @@ function PausePanel({ session, act }: { session: SessionView; act: Act }) {
   );
 }
 
+// Sends the step back to the agents with the owner's note; a suggested option fills the note.
+function ChangeRequest({ gate, options, act }: { gate: "roles" | "plan"; options: string[]; act: Act }) {
+  const [note, setNote] = useState("");
+  return (
+    <div className="agent-room-gate agent-room-change">
+      <p>Or ask the agents to change the {gate}:</p>
+      {options.length > 0 && (
+        <div className="agent-room-options">
+          {options.map(option => <button key={option} type="button" onClick={() => setNote(option)}>{option}</button>)}
+        </div>
+      )}
+      <textarea aria-label={`What should change in the ${gate}?`} value={note} maxLength={2000} rows={2} onChange={e => setNote(e.target.value)} placeholder="What should change?" />
+      <button type="button" disabled={!note.trim()} onClick={() => act(GATE, { gate, decision: "revise", note: note.trim() })}>Request changes</button>
+    </div>
+  );
+}
+
 export function GateBar({ session, act }: { session: SessionView; act: Act }) {
   if (session.pause) return <PausePanel session={session} act={act} />;
-  if (session.stage === "gate-roles" && session.roles) return <RolesGate key={session.id} initial={session.roles} act={act} />;
-  if (session.stage === "gate-plan" && session.plan) return <PlanGate key={session.id} tasks={session.plan.tasks} coders={session.roles?.coders ?? []} act={act} />;
+  const options = session.attention?.options ?? [];
+  if (session.stage === "gate-roles" && session.roles) {
+    return <><RolesGate key={session.id} initial={session.roles} act={act} /><ChangeRequest key={`${session.id}-roles`} gate="roles" options={options} act={act} /></>;
+  }
+  if (session.stage === "gate-plan" && session.plan) {
+    return <><PlanGate key={session.id} tasks={session.plan.tasks} coders={session.roles?.coders ?? []} act={act} /><ChangeRequest key={`${session.id}-plan`} gate="plan" options={options} act={act} /></>;
+  }
   if (session.stage === "gate-result") {
     return (
       <div className="agent-room-gate">
