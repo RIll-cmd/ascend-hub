@@ -1946,7 +1946,7 @@ button img {
 #weather-banner-channel-text {
   position: absolute;
   top: 81%;
-  left: 1%;
+  left: 3.5%; /* clear of the CRT corner */
   font-size: 6vh;
   font-family: "Horizon", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   color: #ffffff;
@@ -2660,3 +2660,26 @@ body {
 }
 
 /*# sourceMappingURL=styles.css.map */
+
+/* Stat card captions: small, above each value. */
+.weather-stat-label {
+  position: absolute;
+  top: 6%;
+  left: 40%;
+  width: 58%;
+  font-family: "Amboy Black", sans-serif;
+  font-size: 1.05vh;
+  letter-spacing: 0.08em;
+  color: #a6ff00;
+  opacity: 0.85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#feels-like-temp, #humidity-text, #pop-text, #wind-text {
+  top: 30%;
+}
+.weather-unit {
+  font-size: 0.5em;
+  letter-spacing: 0.04em;
+}

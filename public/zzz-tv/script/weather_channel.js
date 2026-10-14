@@ -18,7 +18,7 @@ export class WeatherChannel {
 
     this.windUnit = "m/s"; // Change to "m/h" for MPH
 
-    this.degree = "Â°";
+    this.degree = "°";
     this.tempUnit = "C";
 
     this.weatherTodayData = null;
@@ -181,10 +181,11 @@ export class WeatherChannel {
     feelsLikeTemperatureText.id = "feels-like-temp";
     feelsLikeTemperatureText.textContent = "131";
 
+    feelsLikeTitle.className = "weather-stat-label";
     feelsLikeContainer.append(
       feelsLikeIcon,
       feelsLikeTempIcon,
-      // feelsLikeTitle,
+      feelsLikeTitle,
       feelsLikeTemperatureText
     );
 
@@ -203,9 +204,10 @@ export class WeatherChannel {
     humidityText.id = "humidity-text";
     humidityText.textContent = "63%";
 
+    humidityTitle.className = "weather-stat-label";
     humidityContainer.append(
       humidityIcon,
-      // humidityTitle,
+      humidityTitle,
       humidityText
     );
 
@@ -224,7 +226,11 @@ export class WeatherChannel {
     popText.id = "pop-text";
     popText.textContent = "120";
 
-    popContainer.append(popIcon, popText);
+    const popTitle = document.createElement("div");
+    popTitle.className = "weather-stat-label";
+    popTitle.textContent = "CHANCE OF RAIN";
+
+    popContainer.append(popIcon, popTitle, popText);
 
     const windContainer = document.createElement("div");
     windContainer.id = "wind-container";
@@ -241,7 +247,11 @@ export class WeatherChannel {
     windText.id = "wind-text";
     windText.textContent = "90%";
 
-    windContainer.append(windIcon, windText);
+    const windTitle = document.createElement("div");
+    windTitle.className = "weather-stat-label";
+    windTitle.textContent = "WIND";
+
+    windContainer.append(windIcon, windTitle, windText);
 
     weatherSubInfoContainer.append(
       feelsLikeContainer,
@@ -822,24 +832,19 @@ export class WeatherChannel {
     // this.dayOfWeekToday.textContent = "Wednesday".toUpperCase(); //
     let currentTempNum = main.temp == null ? null : Math.round(Number(main.temp));
     let currentTemp = currentTempNum == null ? "—" : currentTempNum.toString();
-    // If the length is already 3 or more, return the number as it is (with the sign)
-    if (currentTempNum != null && currentTemp.length < 3) {
-      currentTemp = Math.abs(currentTemp).toString().padStart(2, "0");
-      if (currentTempNum < 0) {
-        currentTemp = "-" + currentTemp;
-      } else {
-        currentTemp = "0" + currentTemp;
-      }
-    }
-    this.weatherTodayTemperatureText.textContent = `${currentTemp}Â°${this.tempUnit}`;
-    this.feelsLikeTemperatureText.textContent = `${Math.round(
-      main.feels_like
-    )}Â°${this.tempUnit}`;
+    this.weatherTodayTemperatureText.textContent = `${currentTemp}°${this.tempUnit}`;
+    this.feelsLikeTemperatureText.textContent = main.feels_like == null ? "N/A" : `${Math.round(main.feels_like)}°${this.tempUnit}`;
     this.humidityText.textContent = main.humidity == null ? "N/A" : `${Math.round(main.humidity)}%`;
 
     this.popText.textContent = `N/A`;
     // wind.speed = 100
-    this.windText.textContent = wind.speed == null ? "N/A" : `${wind.speed.toFixed(1)}`;
+    this.windText.textContent = wind.speed == null ? "N/A" : wind.speed.toFixed(1);
+    if (wind.speed != null) {
+      const unit = document.createElement("span");
+      unit.className = "weather-unit";
+      unit.textContent = ` ${this.windUnit}`;
+      this.windText.append(unit);
+    }
     const mainWeather = weather[0].main ?? "clear";
     this.weatherLocationText.textContent = location[0].name ?? "N/A";
     this.weatherTodayConditionText.textContent = mainWeather.toUpperCase();

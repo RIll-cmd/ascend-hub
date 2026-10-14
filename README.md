@@ -5,7 +5,7 @@
 # Ascend Hub
 
 **A retro control room for your AI coding agents.**
-Watch Codex, Claude and Antigravity work together in one Agent Room, see their status on CRT televisions, and keep an eye on your subscription limits, all from one local dashboard.
+Watch Codex, Claude and Antigravity work together in one Agent Room, see their status on CRT televisions, and keep an eye on your subscription limits. Between sessions, the same TV plays your Spotify music, the weather, YouTube and a little game.
 
 ![Node 22.13+](https://img.shields.io/badge/node-%E2%89%A522.13-3c873a)
 ![React 19](https://img.shields.io/badge/react-19-149eca)
@@ -98,11 +98,20 @@ A 3D room where **Codex**, **Claude** and **Antigravity** build software togethe
 - **Usage:** tokens per agent and task, plus cost where the CLI reports it.
 - **Voice gates:** with Ascend Vision running, it announces when the room needs you and accepts spoken decisions such as "approve" or "merge", confirmed with "yes".
 
-### Media
+### The TV and its channels
 
-- **Spotify** now-playing, through your own Spotify developer app.
-- **Weather** from Visual Crossing, for a location you choose.
-- A **YouTube** tuner with curated recommendations and search.
+The big CRT on the home screen is a working television. Click its upper knob to change input and the lower knob to change channel:
+
+- **Music:** the Spotify track you are playing, with its album art, artist and progress.
+- **Weather:** the current temperature, feels-like, humidity, chance of rain and wind, plus a short forecast, from Visual Crossing. A news-style anchor reads out the conditions.
+- **YouTube:** search a title or paste a link, or tune into curated recommendations.
+- **Video:** Zenless Zone Zero shows and commercials on rotation.
+- **Game:** a small Bangboo jump game. Click to start.
+
+### CD player
+
+- Opens from the shelf. The jewel case, disc label and background follow the album art of the song playing on Spotify, so it changes with every album.
+- Shows the track, artist and progress, with a **Customize** panel for its look.
 
 ### Desktop launcher (Windows)
 
@@ -117,6 +126,14 @@ A 3D room where **Codex**, **Claude** and **Antigravity** build software togethe
 | <img src="docs/screenshots/home.webp" alt="Home screen with the retro CRT television, calendar and clock" /> **Home** | <img src="docs/screenshots/limits.webp" alt="The Limits panel open over the home screen, with 5-hour and weekly bars for Claude and Codex" /> **Subscription limits** |
 | <img src="docs/screenshots/tv-detail.webp" alt="The Codex CLI status monitor opened from its shelf TV" /> **Status monitor** | <img src="docs/screenshots/room-start.webp" alt="The Agent Room: three agent desks in a 3D room, agent cards with limits, and the start form" /> **Agent Room** |
 | <img src="docs/screenshots/room-workflow.webp" alt="The Workflow tab of a finished parallel session, with swim lanes and three tasks" /> **Workflow view** (two tasks ran in parallel) | <img src="docs/screenshots/room-debate.webp" alt="A finished debate with the judge's combined answer" /> **Debate verdict** |
+
+**The TV, the CD player and the game**
+
+| | |
+| --- | --- |
+| <img src="docs/screenshots/tv-music.webp" alt="The music channel showing the Spotify track, artist, album art and progress" /> **Music (Spotify)** | <img src="docs/screenshots/cd-player.webp" alt="The CD player styled after the playing album's cover art" /> **CD player** (follows the album art) |
+| <img src="docs/screenshots/tv-weather.webp" alt="The weather channel with temperature, feels-like, humidity, chance of rain and wind" /> **Weather** | <img src="docs/screenshots/tv-youtube.webp" alt="The YouTube tuner with search and recommendations" /> **YouTube tuner** |
+| <img src="docs/screenshots/tv-commercials.webp" alt="A Zenless Zone Zero commercial playing on the TV" /> **ZZZ shows and commercials** | <img src="docs/screenshots/tv-game.webp" alt="The Bangboo jump game on the TV" /> **Bangboo jump game** |
 
 ## Requirements
 
