@@ -86,7 +86,7 @@ function StatusVideo({ video, reduceMotion, onIssue }: {
   return <>
     <video ref={element} className={`shelf-status-tv__video${issue ? " is-unavailable" : ""}`}
       src={video.src} style={{ objectPosition: video.objectPosition }}
-      autoPlay={!reduceMotion} loop muted playsInline preload="auto" tabIndex={-1} aria-hidden="true"
+      autoPlay={!reduceMotion} loop muted playsInline preload="metadata" tabIndex={-1} aria-hidden="true"
       onError={() => setIssue("unavailable")} />
     {issue ? <div className="shelf-status-tv__static" aria-hidden="true" /> : null}
   </>;

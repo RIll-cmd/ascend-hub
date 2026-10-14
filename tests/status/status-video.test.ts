@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { createElement } from "react";
@@ -141,4 +142,9 @@ test("autoplay policy is distinct from an unsupported clip and cannot overwrite 
   assert.equal(classifyStatusMediaFailure(new DOMException("unsupported", "NotSupportedError"), null), "unavailable");
   assert.equal(classifyStatusMediaFailure(new Error("decoder failed"), null), "unavailable");
   assert.equal(classifyStatusMediaFailure(new DOMException("blocked", "NotAllowedError"), "unavailable"), "unavailable");
+});
+test("status TV video only preloads metadata", async () => {
+  const source = await readFile("components/status/ShelfStatusTv.tsx", "utf8");
+  assert.match(source, /<video[\s\S]*?preload="metadata"/);
+  assert.doesNotMatch(source, /preload="auto"/);
 });
