@@ -76,6 +76,8 @@ Set-Location D:\ascend_hub
 
 Leave this terminal open. Hub normally starts at `http://localhost:5173`.
 
+For everyday use, run `npm run serve` instead of `npm run dev`. It runs Hub from a production build on `http://127.0.0.1:5173`, together with the agent room, and needs far less memory than the development server. It rebuilds only when the source changed since the last build, and it listens on this computer only.
+
 ### 4. Confirm the Hub proxy
 
 In another PowerShell terminal, request the normalized Shelf snapshot:
@@ -199,6 +201,7 @@ Each agent needs its own instance-bound producer credential. Credentials and dur
 
 ```sh
 npm run dev                                      # Development server
+npm run serve                                    # Production build on 127.0.0.1 (rebuilds only when sources change)
 npm run test:status                              # Hub Shelf tests
 node --no-warnings --test tests/phase3/*.test.mjs  # Local-agent adapter tests
 npm run lint                                     # Repository lint
