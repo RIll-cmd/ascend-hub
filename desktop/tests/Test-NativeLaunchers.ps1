@@ -67,18 +67,22 @@ try {
     $hubPattern=$hubWindow.GetCurrentPattern([Windows.Automation.WindowPattern]::Pattern)
     $hubWindow.GetCurrentPattern([Windows.Automation.TransformPattern]::Pattern).Resize(420,460)
     $hubPattern.Close()
-    Assert-ClosePrompt $hubWindow
-    [void](Wait-For {Find-Control $hubWindow 'CloseCancel'} 'nonblocking close choices')
-    Invoke-Control $hubWindow 'CloseCancel'
-    Assert ((Find-Control $hubWindow 'Primary').Current.IsEnabled) 'cancel close keeps runtime available'
-    $hubPattern.Close();Invoke-Control $hubWindow 'CloseStop'
+    [void](Wait-For {$h=Get-Window $hub.Id; if($null -eq $h -or $h.Current.IsOffscreen){$true}} 'closing a running Hub hides it to the tray')
+    Assert (-not $hub.HasExited) 'Hub keeps running in the tray'
+    $again=Start-Process -FilePath (Join-Path $scratch 'Hub.lnk') -PassThru -WindowStyle Hidden
+    [void](Wait-For {$again.Refresh();$again.HasExited} 'second Hub shortcut exits after activating')
+    $hubWindow=Wait-For {$h=Get-Window $hub.Id; if($null -ne $h -and -not $h.Current.IsOffscreen){$h}} 'second shortcut shows the launcher in fixture mode'
+    Assert ((Find-Control $hubWindow 'Primary').Current.Name -eq 'Open Hub') 'Hub still running after reopening'
+    Invoke-Control $hubWindow 'Stop'
     [void](Wait-For {if((Find-Control $hubWindow 'Force').Current.IsEnabled){$true}} 'force available during stop')
     Assert (-not (Find-Control $hubWindow 'Primary').Current.IsEnabled) 'stopping cannot open or start'
     $details=Find-Control $hubWindow 'Details';$details.GetCurrentPattern([Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
     Assert ((Find-Control $hubWindow 'Diagnostics').Current.IsEnabled) 'diagnostics stay responsive during stop'
     Assert ((Find-Control $visionWindow 'Primary').Current.Name -eq 'Open Vision') 'closing Hub preserves Vision'
     Invoke-Control $hubWindow 'Force'
-    [void](Wait-For {$hub.Refresh();$hub.HasExited} 'Hub owned tree stopped and window closed')
+    [void](Wait-For {if((Find-Control $hubWindow 'Primary').Current.Name -eq 'Start Hub'){$true}} 'Hub owned tree stopped')
+    $hubWindow.GetCurrentPattern([Windows.Automation.WindowPattern]::Pattern).Close()
+    [void](Wait-For {$hub.Refresh();$hub.HasExited} 'closing a stopped Hub exits the launcher')
     Assert ((Find-Control $visionWindow 'Primary').Current.Name -eq 'Open Vision') 'Hub disposed without stopping Vision'
     $visionWindow.GetCurrentPattern([Windows.Automation.TransformPattern]::Pattern).Resize(420,460)
     $visionPattern.Close();Assert-ClosePrompt $visionWindow;Invoke-Control $visionWindow 'CloseStop'
