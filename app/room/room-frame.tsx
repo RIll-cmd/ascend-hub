@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { messageLine, plateText, type DeckAgent, type DeckView } from "./deck/deck-view";
 import { StageSteps, Transcript, type Act } from "./room-parts";
-import { AGENT_IDS, AGENT_NAMES, type AgentId, type Message, type SessionView } from "./room-types";
+import { AGENT_IDS, AGENT_NAMES, type AgentId, type AgentQuota, type Message, type QuotaWindow, type SessionView } from "./room-types";
 
 const clock = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "");
 
@@ -25,8 +25,17 @@ export function TopBar({ session, view, running, act, soundOn, onToggleSound }: 
   );
 }
 
-export function Inspector({ agent, view, session, pinned, onSelect }: {
+// "5h 8% · week 26%": how much of each subscription window the agent has used, when its CLI reports it.
+export function quotaLine(quota: AgentQuota | undefined): string | null {
+  if (!quota) return null;
+  const part = (label: string, w: QuotaWindow) => (w && w.usedPercent !== null ? `${label} ${w.usedPercent}%` : null);
+  const parts = [part("5h", quota.fiveHour), part("week", quota.weekly)].filter(Boolean);
+  return parts.length ? parts.join(" · ") : null;
+}
+
+export function Inspector({ agent, view, session, pinned, onSelect, quota }: {
   agent: DeckAgent | null; view: DeckView; session: SessionView | null; pinned: boolean; onSelect: (id: AgentId) => void;
+  quota?: Partial<Record<AgentId, AgentQuota>>;
 }) {
   if (!agent) {
     return (
@@ -38,6 +47,7 @@ export function Inspector({ agent, view, session, pinned, onSelect }: {
             <button key={a.id} type="button" className="agent-room-card" style={{ borderLeftColor: a.color }} onClick={() => onSelect(a.id)}>
               <span><b style={{ color: a.color }}>{a.name}</b> {a.roles.map(role => <span key={role} className="agent-room-badge">{role}</span>)}</span>
               <small>{plateText(a)}</small>
+              {quotaLine(quota?.[a.id]) && <small className={(quota?.[a.id]?.fiveHour?.usedPercent ?? 0) >= 90 || (quota?.[a.id]?.weekly?.usedPercent ?? 0) >= 90 ? "agent-room-quota is-problem" : "agent-room-quota"}>Usage: {quotaLine(quota?.[a.id])}</small>}
               {latest && <small className="agent-room-card-line">{latest.to ? `→ ${latest.to}: ` : ""}{latest.text}</small>}
             </button>
           );

@@ -176,3 +176,4 @@
 .agent-room .agent-room-limits { display: flex; flex-wrap: wrap; gap: 8px; border: 1px solid #d8c7a6; border-radius: 6px; padding: 6px 8px; }
 .agent-room .agent-room-limits label { display: flex; flex-direction: column; font-size: 12px; }
 .agent-room .agent-room-limits input { width: 80px; }
+.agent-room .agent-room-quota { font-size: 11px; opacity: 0.85; }

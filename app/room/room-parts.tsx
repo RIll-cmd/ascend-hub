@@ -91,7 +91,9 @@ export function RolesEditor({ value, onChange }: { value: Roles; onChange: (role
   );
 }
 
-export function BriefForm({ agents, folders = [], repos = [], act }: { agents?: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[]; act: Act }) {
+export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act }: {
+  agents?: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[]; quotaWarning?: string | null; act: Act;
+}) {
   const [kind, setKind] = useState<SessionMode>("build");
   const [project, setProject] = useState("");
   const [task, setTask] = useState("");
@@ -174,6 +176,7 @@ export function BriefForm({ agents, folders = [], repos = [], act }: { agents?: 
         <label className="agent-room-check"><input type="checkbox" checked={claudeSubagents} onChange={e => setClaudeSubagents(e.target.checked)} /> Claude may use sub-agents</label>
         <small>Codex: always on (it cannot be switched off). Antigravity: not supported yet.</small>
       </fieldset>
+      {quotaWarning && <p className="agent-room-hint is-problem" role="status">{quotaWarning}</p>}
       <button type="submit" disabled={missing.length > 0 || (kind === "debate" && !chosenFolder)}>Start</button>
       {missing.length > 0 && <p className="agent-room-hint">Waiting for: {missing.map(id => AGENT_NAMES[id]).join(", ")}</p>}
     </form>

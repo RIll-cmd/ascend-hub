@@ -9,6 +9,7 @@ import { branchDiff, commitAll, commitDiff, createProject, createWorktree, finis
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
+import { claudeQuota, latestCodexQuota } from './quota.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
 export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
@@ -145,6 +146,13 @@ export class RoomSession {
   onAgentEvent(agent, event) {
     const used = usageEvent(agent, event);
     if (used) this.turnUsage = used;
+    const quota = agent === 'claude' ? claudeQuota(event) : null;
+    if (quota) this.onQuota?.('claude', quota);
+    // Codex writes its windows to its own session log; refresh after each Codex turn.
+    if (agent === 'codex' && event.type === 'turn.completed' && this.settings.codexHome) {
+      const latest = latestCodexQuota(this.settings.codexHome);
+      if (latest) this.onQuota?.('codex', latest);
+    }
     const active = this.state.active;
     const sub = subagentEvent(agent, event);
     if (!sub || active?.agent !== agent) return;

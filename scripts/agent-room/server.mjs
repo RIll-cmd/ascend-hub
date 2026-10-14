@@ -8,6 +8,7 @@ import { buildInvocation, defaultSettings, mergeSettings, runTurn as realRunTurn
 import { AGENT_IDS } from './parse.mjs';
 import { listDebateFolders, listRepos, roomDataDir, roomError } from './paths.mjs';
 import { suggestCheck } from './project.mjs';
+import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
 import { readJson, writeJsonAtomic } from './store.mjs';
 import { ensureRoomToken } from './token.mjs';
@@ -15,10 +16,10 @@ import { ensureRoomToken } from './token.mjs';
 const PROBE_TTL_MS = 10 * 60_000;
 const MAX_BODY = 64 * 1024;
 
-export async function probeAgent(agentId, settings, runTurn = realRunTurn) {
+export async function probeAgent(agentId, settings, runTurn = realRunTurn, onEvent) {
   const cwd = tmpdir();
   const outFile = join(cwd, `ascend-room-probe-${agentId}.txt`);
-  const result = await runTurn(buildInvocation(agentId, 'read', 'Reply with exactly: READY', { cwd, settings, outFile }), { cwd, timeoutMs: 120_000 });
+  const result = await runTurn(buildInvocation(agentId, 'read', 'Reply with exactly: READY', { cwd, settings, outFile }), { cwd, timeoutMs: 120_000, onEvent });
   if (result.ok && result.text.includes('READY')) return { state: 'ready' };
   return { state: 'offline', detail: result.timedOut ? 'timed out' : (result.error ?? (result.stderr || result.text || 'no reply')).slice(-200) };
 }
@@ -61,7 +62,11 @@ function restoreSession(dataDir, settings, runTurn) {
 const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409 };
 
 export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, port = 5181, idleMs = 30 * 60_000, token = randomBytes(32).toString('hex') }) {
-  const probeOne = probe ?? (id => probeAgent(id, settings, runTurn));
+  // The readiness probe is a real turn, so it also refreshes Claude's quota before any session runs.
+  const probeOne = probe ?? (id => probeAgent(id, settings, runTurn, event => {
+    const value = id === 'claude' ? claudeQuota(event) : null;
+    if (value) recordQuota('claude', value);
+  }));
   const expected = Buffer.from(`Bearer ${token}`);
   const agents = Object.fromEntries(AGENT_IDS.map(id => [id, { state: 'checking' }]));
   let probedAt = 0;
@@ -74,6 +79,21 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   };
   let session = null;
   const busy = () => Boolean(session && !TERMINAL.has(session.state.stage));
+  // Last known subscription windows per agent; kept across restarts so the meter is not blank until the next turn.
+  const quotaFile = join(dataDir, 'quota.json');
+  const quota = { claude: null, codex: null, agy: null, ...(existsSync(quotaFile) ? readJson(quotaFile) : {}) };
+  const recordQuota = (agent, value) => {
+    quota[agent] = { ...value, seenAt: new Date().toISOString() };
+    try { writeJsonAtomic(quotaFile, quota); } catch { /* the meter is a convenience */ }
+  };
+  let codexQuotaAt = 0;
+  const refreshCodexQuota = () => {
+    if (Date.now() - codexQuotaAt < 30_000 || !settings.codexHome) return;
+    codexQuotaAt = Date.now();
+    const value = latestCodexQuota(settings.codexHome);
+    if (value) recordQuota('codex', value);
+  };
+  const watch = s => { if (s) s.onQuota = recordQuota; return s; };
   let lastRequest = Date.now();
 
   const server = createServer(async (req, res) => {
@@ -90,13 +110,14 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       if (route === 'GET /status') {
         if (Date.now() - probedAt > PROBE_TTL_MS && !busy()) refreshProbes();
         const repos = listRepos(settings).map(dir => ({ dir, check: suggestCheck(dir, settings.checks) }));
-        return send(200, { online: true, agents, folders: listDebateFolders(settings), repos, session: session?.summary() ?? null });
+        refreshCodexQuota();
+        return send(200, { online: true, agents, folders: listDebateFolders(settings), repos, quota, quotaWarning: quotaWarning(quota), session: session?.summary() ?? null });
       }
       if (route === 'POST /sessions') {
         if (busy()) return send(409, { error: 'SESSION_ACTIVE', message: 'A session is already running.' });
         const missing = AGENT_IDS.filter(id => agents[id].state !== 'ready');
         if (missing.length) return send(409, { error: 'AGENTS_NOT_READY', message: `Not ready: ${missing.join(', ')}.` });
-        session = RoomSession.create({ dataDir, settings, runTurn }, body);
+        session = watch(RoomSession.create({ dataDir, settings, runTurn }, body));
         session.kick();
         return send(201, { session: session.summary() });
       }
@@ -123,7 +144,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   });
   // Only the process that owns the port may probe, restore or touch a project: a duplicate must fail first.
   refreshProbes();
-  session = restoreSession(dataDir, settings, runTurn);
+  session = watch(restoreSession(dataDir, settings, runTurn));
   session?.kick();
   const actualPort = server.address().port;
   const infoFile = join(dataDir, 'server.json');

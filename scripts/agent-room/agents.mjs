@@ -12,6 +12,8 @@ export function defaultSettings(env = process.env) {
     buildsRoot: env.ASCEND_BUILDS_ROOT ?? 'D:\\ascend-builds',
     maxDiscussTurns: 6,
     debateFolders: ['D:\\ascend_hub', 'D:\\ascend-core', 'D:\\ascend-vision'],
+    // Codex keeps its rate-limit windows in its session logs; only that field is ever read.
+    codexHome: env.CODEX_HOME ?? join(env.USERPROFILE ?? env.HOME ?? '', '.codex'),
     // Default checks for repo sessions; the owner can change the command when starting a session.
     checks: {
       'D:\\ascend_hub': 'npx --no-install tsc --noEmit && npx --no-install tsx --test tests/agent-room/*.test.ts && node --no-warnings --test tests/agent-room/*.test.mjs tests/hub/*.test.mjs',

@@ -21,7 +21,12 @@ export type Message = {
 };
 export type Availability = { state: "checking" | "ready" | "offline"; detail?: string };
 export type RepoChoice = { dir: string; check: string };
-export type RoomStatus = { online: true; agents: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[] };
+export type QuotaWindow = { usedPercent: number | null; resetsAt: string | null } | null;
+export type AgentQuota = { fiveHour: QuotaWindow; weekly: QuotaWindow; seenAt?: string } | null;
+export type RoomStatus = {
+  online: true; agents: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[];
+  quota?: Partial<Record<AgentId, AgentQuota>>; quotaWarning?: string | null;
+};
 
 export type SessionView = {
   id: string;

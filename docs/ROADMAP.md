@@ -88,6 +88,16 @@ Each slice ships on its own, with tests and a live run, in this order.
 
 ### M6b — Quota meter
 
+**Done (2026-10-14):**
+- `scripts/agent-room/quota.mjs`:
+  - Claude's windows come from its `rate_limit_event`, seen during the startup readiness probe and every turn.
+  - Codex's come from the `rate_limits` field of its newest session log under `~\.codex\sessions`. Only that field is read, logs still being written are skipped, and reads are throttled to every 30 seconds.
+  - Antigravity reports nothing.
+- The last values are kept in `.sites-runtime/agent-room/quota.json`.
+- `/status` returns `quota` and `quotaWarning` (90% or more of either window).
+- The agent cards show "Usage: 5h 11% · week 26%", and the start form shows the warning.
+- Live: Codex 11% / 26%, Claude 5% / 80%.
+
 - **Problem:** Claude and Codex subscriptions have a rolling 5-hour window plus a weekly cap. A session that starts near either limit dies halfway.
 - **Read limits passively** from the events turns already emit: Codex token-count events carry rate-limit percentages, and Claude emits rate-limit notices. No extra polling, and no scraping of web pages.
 - **Where it shows:** a small meter per agent on the deck nameplates and in `/status`, for example "Codex 72% of 5-hour window, resets 14:20".

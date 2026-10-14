@@ -133,11 +133,11 @@ export default function RoomPage() {
             {session && <Transcript messages={messages.slice(-80)} />}
           </section>
           <aside className="agent-room-side">
-            <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} />
+            <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} quota={status?.quota} />
             {session && <GateBar session={session} act={act} />}
             {session && <VerdictPanel session={session} />}
             {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
-            {!running && <BriefForm agents={status?.agents} folders={status?.folders} repos={status?.repos} act={act} />}
+            {!running && <BriefForm agents={status?.agents} folders={status?.folders} repos={status?.repos} quotaWarning={status?.quotaWarning} act={act} />}
             {error && <p role="alert" className="agent-room-error">{error}</p>}
           </aside>
         </div>
