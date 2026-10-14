@@ -125,6 +125,7 @@ export function buildPrompt({ stage, agent, roles, task, planText = '', transcri
     '',
     stageRules(stage, agent, roles, extra),
     templateRules(stage, extra),
+    extra.parallel && stage === 'plan' ? 'Tasks run at the same time unless ordered: give a task "after": [numbers of earlier tasks it needs first]. Tasks that change the same files must be ordered, or their merges conflict.' : '',
     memory.length ? `\nPROJECT MEMORY (owner-approved notes from earlier sessions):\n${cap(memory.map(n => `- ${n}`).join('\n'), 3000)}` : '',
     '',
     DEBATE_STAGES.has(stage) ? 'QUESTION:' : 'OWNER TASK:',

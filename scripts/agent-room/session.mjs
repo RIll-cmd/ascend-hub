@@ -5,7 +5,7 @@ import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { subagentEvent, usageEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, createProject, createWorktree, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, renderPlan, resetTo, rollback, rootCommit, runCheck } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, createProject, createWorktree, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
@@ -64,6 +64,7 @@ export class RoomSession {
     const models = cleanModels(body.models);
     const limits = cleanLimits(body.limits, settings.limits ?? DEFAULT_LIMITS);
     if (check !== undefined && check !== null && (typeof check !== 'string' || check.length > 500)) throw roomError('CHECK_INVALID');
+    if (body.parallel !== undefined && body.parallel !== null && typeof body.parallel !== 'boolean') throw roomError('PARALLEL_INVALID');
     const subagents = subagentChoice(body.subagents);
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
     let presetRoles = null;
@@ -93,6 +94,8 @@ export class RoomSession {
       id, mode: 'build', subagents, project, projectDir, task: task.trim(), stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
       repo: repoInfo, check: check?.trim() || null, limits, turns: 0, workMs: 0, usage: {}, template, models,
+      // A bug fix is a strict red-then-green sequence, so it never runs tasks in parallel.
+      parallel: body.parallel === true && template !== 'bugfix',
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
@@ -267,7 +270,7 @@ export class RoomSession {
   prompt(stage, agent, extra = {}) {
     return buildPrompt({
       stage, agent, roles: this.state.roles, task: this.state.task,
-      planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript, extra: { template: this.state.template, ...extra },
+      planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript, extra: { template: this.state.template, parallel: this.state.parallel, ...extra },
       memory: this.projectMemory(),
     });
   }
@@ -279,8 +282,8 @@ export class RoomSession {
     try { return this.state.mode === 'debate' ? [] : readMemory(this.dataDir, memoryKey(this.state)); } catch { return []; }
   }
 
-  // A race turn runs in its own worktree (cwd), leaves the deck's active agent alone and reports failure instead of pausing.
-  async turn(agent, mode, prompt, activity, to = [], { cwd = this.state.projectDir, race = false } = {}) {
+  // A side turn (race or parallel task) runs in its own worktree (cwd), leaves the deck's active agent alone and reports failure instead of pausing.
+  async turn(agent, mode, prompt, activity, to = [], { cwd = this.state.projectDir, side = false } = {}) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       if (this.state.stage === 'stopped') return null;
       const hit = sessionLimitHit(this.state);
@@ -288,7 +291,7 @@ export class RoomSession {
         this.pauseWith(hit.reason, { kind: hit.kind });
         return null;
       }
-      if (!race) this.setActive(agent, activity);
+      if (!side) this.setActive(agent, activity);
       this.turnUsage[agent] = null;
       const controller = new AbortController();
       this.controllers.add(controller);
@@ -303,7 +306,7 @@ export class RoomSession {
       const result = await this.runTurn(invocation, { cwd, timeoutMs, signal: controller.signal, onEvent });
       this.controllers.delete(controller);
       if (this.state.stage === 'stopped' || result.aborted) return null;
-      if (!race) this.setActive(null);
+      if (!side) this.setActive(null);
       this.countTurn(agent, result.durationMs);
       if (result.ok) {
         this.say(agent, result.text, { to: typeof to === 'function' ? to(result.text) : to, usage: this.turnUsage[agent] });
@@ -313,7 +316,7 @@ export class RoomSession {
       const detail = result.stderr ? ` ${result.stderr.slice(-300)}` : '';
       this.say('room', `${AGENT_NAMES[agent]} turn failed (${why}).${detail}${attempt === 1 ? ' Retrying once.' : ''}`);
     }
-    if (race) return null;
+    if (side) return null;
     this.pauseWith(`${AGENT_NAMES[agent]} failed twice.`);
     return null;
   }
@@ -397,6 +400,10 @@ export class RoomSession {
       }
       this.say('room', 'Checks pass before any change; the refactor must keep them green.');
     }
+    if (state.parallel) {
+      const batch = this.readyBatch();
+      if (batch.length > 1) return this.parallelTasks(batch);
+    }
     if (task.status !== 'review') {
       const allowed = (state.limits?.rounds ?? Infinity) + (task.extraRounds ?? 0);
       if ((task.rounds ?? 0) >= allowed) {
@@ -467,6 +474,35 @@ export class RoomSession {
     return this.state.stage === 'stopped' ? null : result;
   }
 
+  // Runs work(item) for every item at once, each in its own worktree branched from the session's HEAD, then done();
+  // every worktree and branch is removed afterwards, whatever happened.
+  async inWorktrees(items, work, done) {
+    const state = this.state;
+    // A leftover from a crashed run would block the new worktree.
+    for (const item of items) {
+      try { finishWorktree(state.projectDir, item.dir, item.branch, null, 'reject'); } catch { /* nothing left over */ }
+    }
+    try {
+      // allSettled: one item's setup error must not clean up worktrees another agent is still editing.
+      const settled = await Promise.allSettled(items.map(async item => {
+        createWorktree(state.projectDir, item.dir, item.branch);
+        item.made = true;
+        linkDependencies(state.repo?.dir ?? state.projectDir, item.dir);
+        await work(item);
+      }));
+      const broken = settled.find(r => r.status === 'rejected');
+      if (broken) throw broken.reason;
+      return await done();
+    } finally {
+      for (const item of items) if (item.made) finishWorktree(state.projectDir, item.dir, item.branch, null, 'reject');
+    }
+  }
+
+  // The commit an agent left in a side worktree: the room commits for it, or it committed itself.
+  sideCommit(dir, base, message) {
+    return commitAll(dir, message) ?? (headCommit(dir) !== base ? headCommit(dir) : null);
+  }
+
   // Best-of-N: every coder attempts the task at once in its own worktree, branched from the session's HEAD.
   // Attempts that change nothing or fail the checks drop out; one judge turn ranks the rest; the winner fast-forwards in.
   async raceTask(task, base) {
@@ -484,19 +520,11 @@ export class RoomSession {
       { kind: 'assign', by: state.roles.orchestrator, to: [...coders] });
     this.setActive(coders[0], `racing ${coders.length} attempts`);
     try {
-      // A leftover from a crashed race would block the new worktree.
-      for (const a of attempts) {
-        try { finishWorktree(state.projectDir, a.dir, a.branch, null, 'reject'); } catch { /* nothing left over */ }
-      }
-      // allSettled: one attempt's setup error must not clean up worktrees another agent is still editing.
-      const settled = await Promise.allSettled(attempts.map(async attempt => {
-        createWorktree(state.projectDir, attempt.dir, attempt.branch);
-        attempt.made = true;
-        linkDependencies(state.repo?.dir ?? state.projectDir, attempt.dir);
-        const text = await this.turn(attempt.agent, 'edit', prompts[attempt.agent], 'racing', to, { cwd: attempt.dir, race: true });
+      await this.inWorktrees(attempts, async attempt => {
+        const text = await this.turn(attempt.agent, 'edit', prompts[attempt.agent], 'racing', to, { cwd: attempt.dir, side: true });
         if (text === null) return Object.assign(attempt, { ok: false, why: 'the turn failed' });
         attempt.summary = text;
-        attempt.commit = commitAll(attempt.dir, message) ?? (headCommit(attempt.dir) !== base ? headCommit(attempt.dir) : null);
+        attempt.commit = this.sideCommit(attempt.dir, base, message);
         if (!attempt.commit) return Object.assign(attempt, { ok: false, why: 'no changes were made' });
         if (state.check) {
           attempt.check = await this.runChecks(attempt.dir);
@@ -504,42 +532,134 @@ export class RoomSession {
         }
         attempt.diff = branchDiff(attempt.dir, base, 20_000);
         attempt.ok = true;
-      }));
-      const broken = settled.find(r => r.status === 'rejected');
-      if (broken) throw broken.reason;
-      this.setActive(null);
-      if (state.stage === 'stopped' || state.pause) return;
-      for (const a of attempts) this.say('room', `${AGENT_NAMES[a.agent]}'s attempt ${a.ok ? (state.check ? 'passed the checks' : 'is ready') : `dropped out: ${a.why}`}.`);
-      const survivors = attempts.filter(a => a.ok);
-      task.raced = { attempts: attempts.map(a => ({ agent: a.agent, ok: Boolean(a.ok), commit: a.commit ?? null, why: a.why ?? '' })), winner: null, reason: '' };
-      if (survivors.length === 0) {
-        const why = attempts.map(a => `${AGENT_NAMES[a.agent]}: ${a.why}`).join('; ');
-        return this.taskFailed(task, `no attempt passed (${why}).${attempts.find(a => a.check)?.check ? `\n${attempts.find(a => a.check).check.output.slice(-2000)}` : ''}`);
-      }
-      let winner = survivors[0];
-      if (survivors.length > 1) {
-        const judge = state.roles.reviewer ?? state.roles.orchestrator;
-        const pick = await this.jsonTurn(judge, this.prompt('judge', judge, { task, attempts: survivors }), 'judging',
-          v => validateJudge(v, survivors.map(a => a.agent)), survivors.map(a => a.agent));
-        if (!pick) return;
-        winner = survivors.find(a => a.agent === pick.winner);
-        task.raced.reason = pick.reason;
-      }
-      task.raced.winner = winner.agent;
-      task.assignee = winner.agent;
-      task.commit = fastForward(state.projectDir, winner.branch);
-      if (winner.check) task.check = winner.check;
-      task.status = 'done';
-      this.say('room', `Kept ${AGENT_NAMES[winner.agent]}'s attempt (${task.commit})${task.raced.reason ? `: ${task.raced.reason.replace(/\.$/, '')}` : ''}. The other attempts were deleted.`);
-      this.save();
+      }, () => this.pickWinner(task, attempts));
     } finally {
       if (state.active?.activity?.startsWith('racing')) this.setActive(null);
-      for (const a of attempts) if (a.made) finishWorktree(state.projectDir, a.dir, a.branch, null, 'reject');
       if (task.status === 'running') {
         task.status = 'pending';
         this.save();
       }
     }
+  }
+
+  async pickWinner(task, attempts) {
+    const state = this.state;
+    this.setActive(null);
+    if (state.stage === 'stopped' || state.pause) return;
+    for (const a of attempts) this.say('room', `${AGENT_NAMES[a.agent]}'s attempt ${a.ok ? (state.check ? 'passed the checks' : 'is ready') : `dropped out: ${a.why}`}.`);
+    const survivors = attempts.filter(a => a.ok);
+    task.raced = { attempts: attempts.map(a => ({ agent: a.agent, ok: Boolean(a.ok), commit: a.commit ?? null, why: a.why ?? '' })), winner: null, reason: '' };
+    if (survivors.length === 0) {
+      const why = attempts.map(a => `${AGENT_NAMES[a.agent]}: ${a.why}`).join('; ');
+      const failedCheck = attempts.find(a => a.check)?.check;
+      return this.taskFailed(task, `no attempt passed (${why}).${failedCheck ? `\n${failedCheck.output.slice(-2000)}` : ''}`);
+    }
+    let winner = survivors[0];
+    if (survivors.length > 1) {
+      const judge = state.roles.reviewer ?? state.roles.orchestrator;
+      const pick = await this.jsonTurn(judge, this.prompt('judge', judge, { task, attempts: survivors }), 'judging',
+        v => validateJudge(v, survivors.map(a => a.agent)), survivors.map(a => a.agent));
+      if (!pick) return;
+      winner = survivors.find(a => a.agent === pick.winner);
+      task.raced.reason = pick.reason;
+    }
+    task.raced.winner = winner.agent;
+    task.assignee = winner.agent;
+    task.commit = fastForward(state.projectDir, winner.branch);
+    if (winner.check) task.check = winner.check;
+    task.status = 'done';
+    this.say('room', `Kept ${AGENT_NAMES[winner.agent]}'s attempt (${task.commit})${task.raced.reason ? `: ${task.raced.reason.replace(/\.$/, '')}` : ''}. The other attempts were deleted.`);
+    this.save();
+  }
+
+  // Pending tasks whose earlier tasks are finished, at most one per coder; a race always runs on its own.
+  readyBatch() {
+    const { plan, limits } = this.state;
+    const finished = id => ['done', 'skipped'].includes(plan.tasks.find(t => t.id === id)?.status);
+    const busy = new Set();
+    const batch = [];
+    for (const t of plan.tasks) {
+      const allowed = (limits?.rounds ?? Infinity) + (t.extraRounds ?? 0);
+      if (t.status !== 'pending' || t.race || busy.has(t.assignee) || (t.rounds ?? 0) >= allowed || !(t.after ?? []).every(finished)) continue;
+      busy.add(t.assignee);
+      batch.push(t);
+    }
+    return batch;
+  }
+
+  // Independent tasks run at once, each in its own worktree; then the merge queue lands them one at a time, in plan order.
+  async parallelTasks(batch) {
+    const state = this.state;
+    rollback(state.projectDir);
+    const base = headCommit(state.projectDir);
+    const to = state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator];
+    const items = batch.map(task => ({
+      task, branch: `room/par-${state.id.slice(-6)}-t${task.id}`,
+      dir: join(this.settings.buildsRoot, 'worktrees', `${basename(state.projectDir)}-t${task.id}`),
+    }));
+    for (const { task } of items) {
+      task.rounds = (task.rounds ?? 0) + 1;
+      task.status = 'running';
+      this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
+    }
+    const prompts = Object.fromEntries(items.map(({ task }) => [task.id, this.prompt('build', task.assignee, { task })]));
+    this.setActive(batch[0].assignee, `${batch.length} tasks in parallel`);
+    try {
+      await this.inWorktrees(items, async item => {
+        const { task } = item;
+        const text = await this.turn(task.assignee, 'edit', prompts[task.id], 'editing', to, { cwd: item.dir, side: true });
+        if (text === null) return void (item.why = 'the turn failed');
+        if (!this.sideCommit(item.dir, base, `task-${task.id}: ${task.title}`)) item.why = 'no changes were made';
+      }, async () => {
+        this.setActive(null);
+        for (const item of items) {
+          if (state.stage === 'stopped' || state.pause) return;
+          if (item.why) await this.taskFailed(item.task, item.why);
+          else await this.mergeTask(item);
+        }
+      });
+    } finally {
+      if (state.active?.activity?.endsWith('in parallel')) this.setActive(null);
+      for (const { task } of items) if (task.status === 'running') task.status = 'pending';
+      this.save();
+    }
+  }
+
+  // One merge-queue step: squash the task in, run the checks and the review on the merged code; any failure undoes this merge only.
+  async mergeTask({ task, branch }) {
+    const state = this.state;
+    const before = headCommit(state.projectDir);
+    const message = `task-${task.id}: ${task.title}`;
+    const undo = () => {
+      resetTo(state.projectDir, before);
+      task.commit = null;
+    };
+    const merged = squashMerge(state.projectDir, branch, message);
+    if (merged.conflict) return this.taskFailed(task, `its changes conflict with work merged before it (${merged.conflict.join(', ')}). Redo it on top of the current code.`);
+    if (!merged.commit) return this.taskFailed(task, 'nothing was left to merge');
+    task.commit = merged.commit;
+    this.say('room', `Merged task ${task.id} as ${task.commit} "${message}".`);
+    if (state.check) {
+      const result = await this.runChecks();
+      if (result === null) return;
+      task.check = result;
+      if (!result.ok) {
+        undo();
+        return this.taskFailed(task, `the checks failed after merging (${state.check}):\n${result.output.slice(-3000)}`);
+      }
+      this.say('room', `Checks passed after merging task ${task.id} (${Math.round(result.ms / 1000)}s).`);
+    }
+    const reviewer = state.roles.reviewer;
+    if (reviewer) {
+      const verdict = await this.jsonTurn(reviewer, this.prompt('review', reviewer, { task, diff: lastCommitDiff(state.projectDir), check: state.check }), 'reviewing', validateVerdict, [task.assignee]);
+      if (!verdict) return undo();
+      if (verdict.verdict !== 'ok') {
+        undo();
+        return this.taskFailed(task, verdict.notes || 'the reviewer requested changes');
+      }
+    }
+    task.status = 'done';
+    this.save();
   }
 
   async taskFailed(task, reason) {

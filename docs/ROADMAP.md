@@ -163,6 +163,13 @@ Each slice ships on its own, with tests and a live run, in this order.
 
 ### M6f — Parallel tasks with a merge queue
 
+**Done (2026-10-14):**
+- Behind a setting: the start form's "Run independent tasks at the same time (experimental)" sets the session's `parallel`. It is off by default, and bug fix sessions never run in parallel.
+- Plan tasks can carry `"after": [earlier task numbers]`. Only earlier tasks are allowed, so the order is always valid. The orchestrator is asked to order tasks that touch the same files, and the plan gate shows "Starts after task …".
+- Each round runs every pending task whose earlier tasks are finished, at most one per coder. Each task runs in its own worktree (`room/par-<id>-t<task>`) cut from the session's HEAD. A race task always runs alone.
+- **Merge queue:** in plan order, each task is squash-merged into the session branch as one commit. The checks run, then the review. A conflict, a red check or a "changes" review undoes only that merge and sends the task back to its coder. Its next round runs on top of the merged work.
+- **Live:** add.js (Claude on haiku) and mul.js (Codex) ran at once and merged in order with checks after each. calc.js then waited for both. History stayed linear, and no worktrees or branches were left.
+
 - **Problem:** independent tasks still run one at a time.
 - **Planning:** the orchestrator marks dependencies, and independent tasks run at once, each in its own worktree off the session branch.
 - **Merge queue:** finished task branches merge into the session branch one at a time, and checks run after each merge. A conflict or red check sends that task back to its coder. Guides agree merging is still the weak spot, so this ships last, behind a setting.

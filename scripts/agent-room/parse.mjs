@@ -41,6 +41,11 @@ export function validatePlan(v, coders) {
     const clean = { id: n, title: task.title.replace(/\s+/g, ' ').trim(), assignee: task.assignee, description: task.description.trim() };
     // A race needs rivals: every coder attempts the task and the best attempt is kept.
     if (task.race === true && coders.length > 1) clean.race = true;
+    // Only earlier tasks, so the order is always valid and there can be no cycle.
+    if (task.after !== undefined && task.after !== null) {
+      if (!Array.isArray(task.after) || !task.after.every(d => Number.isInteger(d) && d >= 1 && d < n)) return fail(`Task ${n} after may only list earlier task numbers.`);
+      if (task.after.length) clean.after = [...new Set(task.after)].sort((a, b) => a - b);
+    }
     tasks.push(clean);
   }
   return { ok: true, value: { tasks, options: cleanOptions(v.options) } };

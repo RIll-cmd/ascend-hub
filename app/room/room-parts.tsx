@@ -134,6 +134,7 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
   const [repoDir, setRepoDir] = useState("");
   const [check, setCheck] = useState<string | null>(null);
   const [limits, setLimits] = useState({ minutes: 120, turns: 80, rounds: 3 });
+  const [parallel, setParallel] = useState(false);
   const [template, setTemplate] = useState<"feature" | "bugfix" | "refactor" | "review">("feature");
   const [models, setModels] = useState<{ codex: string; claude: string }>({ codex: "", claude: "" });
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
@@ -148,7 +149,7 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
   const reviewBody = { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}) };
   return (
     <form className="agent-room-brief" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", body); }}>
       <div className="agent-room-kind" role="radiogroup" aria-label="Session type">
@@ -204,6 +205,11 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
           <label>What should they build?
             <textarea value={task} onChange={e => setTask(e.target.value)} maxLength={4000} required rows={4} />
           </label>
+          {template !== "bugfix" && (
+            <label className="agent-room-check" title="Tasks that do not depend on each other run at once, each in its own worktree, then merge one at a time with the checks after each merge.">
+              <input type="checkbox" checked={parallel} onChange={e => setParallel(e.target.checked)} /> Run independent tasks at the same time (experimental)
+            </label>
+          )}
           <label className="agent-room-check"><input type="checkbox" checked={ownRoles} onChange={e => setOwnRoles(e.target.checked)} /> Set roles myself (skip the discussion)</label>
           {ownRoles && <RolesEditor value={roles} onChange={setRoles} />}
         </>
@@ -265,7 +271,7 @@ function RolesGate({ initial, act }: { initial: Roles; act: Act }) {
 }
 
 function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]; act: Act }) {
-  const [draft, setDraft] = useState(tasks.map(t => ({ title: t.title, assignee: t.assignee, description: t.description, race: t.race === true })));
+  const [draft, setDraft] = useState(tasks.map(t => ({ title: t.title, assignee: t.assignee, description: t.description, race: t.race === true, after: t.after })));
   const update = (index: number, patch: Partial<(typeof draft)[number]>) => setDraft(d => d.map((t, j) => (j === index ? { ...t, ...patch } : t)));
   return (
     <div className="agent-room-gate">
@@ -280,6 +286,7 @@ function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]
                 <input type="checkbox" checked={t.race} onChange={e => update(i, { race: e.target.checked })} /> Race all coders
               </label>
             )}
+            {t.after && <small>Starts after task {t.after.join(", ")}</small>}
             <p>{t.description}</p>
           </li>
         ))}

@@ -52,6 +52,19 @@ export function fastForward(dir, branch) {
   return headCommit(dir);
 }
 
+// One merge-queue step: the task branch lands as a single commit; a conflict leaves the session worktree as it was.
+export function squashMerge(dir, branch, message) {
+  try {
+    git(dir, ['merge', '--squash', '-q', branch]);
+  } catch (error) {
+    const files = git(dir, ['diff', '--name-only', '--diff-filter=U']).split('\n').filter(Boolean);
+    rollback(dir);
+    if (!files.length) throw error;
+    return { conflict: files };
+  }
+  return { commit: commitAll(dir, message) };
+}
+
 export function lastCommitDiff(dir) {
   return git(dir, ['show', '--stat', '--patch', '--format=%s', 'HEAD']);
 }
