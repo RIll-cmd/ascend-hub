@@ -16,6 +16,17 @@ namespace Ascend.Desktop {
         public int Pid { get; private set; }
         public long StartedTicks { get; private set; }
         string directory, command;
+        // A verified Hub session is our own Hub entry point running a long-lived command (dev, serve or start), never a build.
+        public static bool KnownEntry(string entry,string[] args,string[] roots) {
+            bool known=false;
+            foreach(string candidate in roots) {
+                if(candidate==null) continue;
+                if(EqualPath(entry,System.IO.Path.Combine(candidate,"scripts/run-framework.mjs"))) known=args.Length>2 && (args[2]=="dev" || args[2]=="serve");
+                if(EqualPath(entry,System.IO.Path.Combine(candidate,"node_modules/vinext/dist/cli.js"))) known=args.Length>2 && (args[2]=="dev" || args[2]=="start");
+                if(EqualPath(entry,System.IO.Path.Combine(candidate,"node_modules/vite/bin/vite.js"))) known=args.Length==2 || args[2].StartsWith("--",StringComparison.Ordinal) || args[2]=="dev" || args[2]=="serve";
+            }
+            return known;
+        }
         public static bool PortBusy(int port) { return System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners().Any(endpoint=>endpoint.Port==port); }
         public static HubSessionConflict Find(string executable,string root,int port) {
             try {
@@ -32,11 +43,7 @@ namespace Ascend.Desktop {
                     if(!System.IO.File.Exists(System.IO.Path.Combine(cwd,"app/api/health/route.ts")))return null;
                     string[] args=Arguments(cmd);if(args.Length<2)return null;
                     string entry=System.IO.Path.IsPathRooted(args[1])?args[1]:System.IO.Path.Combine(cwd,args[1]);
-                    bool known=false;
-                    foreach(string candidate in new[]{cwd,full,other}) {
-                        if(EqualPath(entry,System.IO.Path.Combine(candidate,"scripts/run-framework.mjs")) || EqualPath(entry,System.IO.Path.Combine(candidate,"node_modules/vinext/dist/cli.js")))known=args.Length>2 && args[2]=="dev";
-                        if(EqualPath(entry,System.IO.Path.Combine(candidate,"node_modules/vite/bin/vite.js")))known=args.Length==2 || args[2].StartsWith("--",StringComparison.Ordinal) || args[2]=="dev" || args[2]=="serve";
-                    }
+                    bool known=KnownEntry(entry,args,new[]{cwd,full,other});
                     // Parse actual argv; text inside an arbitrary Node -e script isn't authority.
                     if(!known)return null;
                     return new HubSessionConflict {Pid=pid,StartedTicks=process.StartTime.ToUniversalTime().Ticks,directory=cwd,command=cmd};

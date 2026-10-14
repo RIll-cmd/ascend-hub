@@ -183,6 +183,10 @@ namespace Ascend.Desktop {
                         Update(slot,generation,"starting","Optimizing Hub dependencies","");
                     } else if(name=="hub" && line.Contains("Starting local server")) {
                         Update(slot,generation,"starting","Starting Hub local server","");
+                    } else if(name=="hub" && (line.Contains("building") || line.Contains("Building") || line.Contains("transforming"))) {
+                        Update(slot,generation,"starting","Building Hub (first start after an update)","");
+                    } else if(name=="hub" && line.Contains("Production server running")) {
+                        Update(slot,generation,"starting","Starting Hub","");
                     }
                 };
                 var env=new Dictionary<string,string> { {"ASCEND_LAUNCH_TOKEN",token}, {"ASCEND_INSTANCE_ID",slot.View.InstanceId}, {"ASCEND_BUILD_ID",selected.buildId}, {"ASCEND_OPEN_BROWSER","0"}, {"ASCEND_DESKTOP_LAUNCH","1"}, {"PYTHONUNBUFFERED","1"} };
@@ -227,8 +231,8 @@ namespace Ascend.Desktop {
             if(String.IsNullOrWhiteSpace(p.buildId)) throw new InvalidOperationException("build-id-missing");
             if(fixtures) return;
             if(component=="hub") {
-                if(p.runtime!="development" && p.runtime!="portable") throw new InvalidOperationException("runtime-profile");
-                string artifact=p.runtime=="portable"?"dist/server/wrangler.json":"node_modules/vinext/dist/cli.js";
+                if(p.runtime!="development" && p.runtime!="portable" && p.runtime!="production") throw new InvalidOperationException("runtime-profile");
+                string artifact=p.runtime=="portable"?"dist/server/wrangler.json":p.runtime=="production"?"scripts/run-framework.mjs":"node_modules/vinext/dist/cli.js";
                 if(!File.Exists(Path.Combine(p.root,artifact))) throw new InvalidOperationException("hub-build-missing");
                 if(p.runtime=="portable") {
                     string release=Path.Combine(p.root,"desktop/release.json");
@@ -244,9 +248,10 @@ namespace Ascend.Desktop {
             }
         }
         static int Port(ComponentProfile p) { return p.port>0?p.port:5173; }
-        static string[] Arguments(ComponentProfile p,string component,bool recovery,bool fixtures) {
+        public static string[] Arguments(ComponentProfile p,string component,bool recovery,bool fixtures) {
             if(fixtures) return p.fixtureArguments;
             if(component=="vision") return recovery ? new [] {"desktop_host.py","--config",p.config,"--env-file",p.envFile,"--no-open"} : new [] {"main.py","--focus","--config",p.config,"--env-file",p.envFile};
+            if(p.runtime=="production") return new [] {"scripts/run-framework.mjs","serve","--port",Port(p).ToString()};
             if(p.runtime=="development") return new [] {"node_modules/vinext/dist/cli.js","dev","--host","127.0.0.1","--port",Port(p).ToString()};
             return new [] {"--import","./scripts/sites-env.mjs","./node_modules/wrangler/bin/wrangler.js","dev","--config","dist/server/wrangler.json","--local","--persist-to",".wrangler/state","--ip","127.0.0.1","--port",Port(p).ToString(),"--inspector-port","0"};
         }
