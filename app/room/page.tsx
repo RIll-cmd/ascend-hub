@@ -5,7 +5,7 @@ import { WorkflowPanel } from "./workflow-panel";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, Ticker, TopBar, TranscriptDrawer } from "./room-frame";
-import { BriefForm, GateBar, TaskBoard, Transcript, VerdictPanel } from "./room-parts";
+import { BriefForm, GateBar, TaskBoard, Transcript, VerdictPanel, WorktreeCleanup } from "./room-parts";
 import { roomSound, soundPref } from "./room-sound";
 import { soundCues } from "./room-sound-cues";
 import { BOARD_STAGES, TERMINAL_STAGES, type AgentId, type RoomStatus, type SessionView } from "./room-types";
@@ -137,6 +137,7 @@ export default function RoomPage() {
             {session && <GateBar session={session} act={act} />}
             {session && <VerdictPanel session={session} />}
             {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
+            {!running && <WorktreeCleanup />}
             {!running && <BriefForm agents={status?.agents} folders={status?.folders} repos={status?.repos} quotaWarning={status?.quotaWarning} act={act} />}
             {error && <p role="alert" className="agent-room-error">{error}</p>}
           </aside>

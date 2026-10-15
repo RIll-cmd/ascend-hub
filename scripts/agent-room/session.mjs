@@ -1,11 +1,11 @@
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { subagentEvent, usageEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, createProject, createWorktree, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, createProject, createWorktree, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, openPullRequest, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
@@ -781,13 +781,21 @@ export class RoomSession {
       state.stage = 'build';
       this.say('room', 'Owner approved the plan. Building.');
     } else if (state.repo) {
-      if (!['merge', 'accept', 'reject'].includes(decision)) throw roomError('DECISION_INVALID');
+      // "pr" pushes to a remote, so Hub offers it behind a confirmation and voice gates never do (see attention.mjs).
+      if (!['merge', 'pr', 'accept', 'reject'].includes(decision)) throw roomError('DECISION_INVALID');
       const { dir, branch, baseBranch } = state.repo;
-      // A refused merge throws here, before the stage changes, so the gate stays open.
-      finishWorktree(dir, state.projectDir, branch, baseBranch, decision === 'accept' ? 'keep' : decision);
+      if (decision === 'pr') {
+        const summary = join(this.dir, 'SUMMARY.md');
+        state.repo.prUrl = openPullRequest(dir, branch, baseBranch, {
+          title: state.task.split('\n')[0].slice(0, 72), body: existsSync(summary) ? readFileSync(summary, 'utf8') : state.task, gh: this.settings.gh,
+        });
+      }
+      // A refused merge or pull request throws before the stage changes, so the gate stays open.
+      finishWorktree(dir, state.projectDir, branch, baseBranch, decision === 'merge' || decision === 'reject' ? decision : 'keep');
       state.stage = decision === 'reject' ? 'rejected' : 'done';
       this.keepNotes(decision, memory);
       this.say('room', decision === 'merge' ? `Owner merged ${branch} into ${baseBranch}.`
+        : decision === 'pr' ? `Owner opened a pull request for ${branch}: ${state.repo.prUrl}`
         : decision === 'accept' ? `Owner kept branch ${branch}; merge it when ready.` : `Owner rejected the result; branch ${branch} was deleted.`);
     } else {
       if (decision !== 'accept' && decision !== 'reject') throw roomError('DECISION_INVALID');

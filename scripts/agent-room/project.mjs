@@ -143,6 +143,24 @@ export function branchDiff(dir, base, maxChars = 150_000) {
   return text.length > maxChars ? `${text.slice(0, maxChars)}\n... diff cut at ${maxChars} characters` : text;
 }
 
+// Pushes the session branch to origin and opens a pull request with gh; the gate stays open if either step fails.
+export function openPullRequest(repo, branch, baseBranch, { title, body, gh = { command: 'gh', prefixArgs: [] } }) {
+  try {
+    git(repo, ['remote', 'get-url', 'origin']);
+  } catch {
+    throw roomError('PR_FAILED', 'The repo has no origin remote to push to.');
+  }
+  try {
+    git(repo, ['push', '-q', '-u', 'origin', branch]);
+  } catch (error) {
+    throw roomError('PR_FAILED', `Push failed: ${error.message}`);
+  }
+  const result = spawnSync(gh.command, [...gh.prefixArgs, 'pr', 'create', '--base', baseBranch, '--head', branch, '--title', title, '--body', body],
+    { cwd: repo, encoding: 'utf8', windowsHide: true, timeout: 60_000 });
+  if (result.error || result.status !== 0) throw roomError('PR_FAILED', (result.stderr || result.error?.message || 'gh pr create failed').trim().slice(-300));
+  return result.stdout.trim().split('\n').at(-1);
+}
+
 // merge: fast-forward the base branch only if the owner's checkout still sits on it; keep: leave the branch; reject: delete it.
 export function finishWorktree(repo, dir, branch, baseBranch, decision) {
   if (decision === 'merge') {

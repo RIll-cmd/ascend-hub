@@ -55,7 +55,7 @@ export type SessionView = {
   } | null;
   transcript: Message[];
   stageLog?: { stage: Stage; at: string }[];
-  repo?: { dir: string; branch: string; base: string; baseBranch: string } | null;
+  repo?: { dir: string; branch: string; base: string; baseBranch: string; prUrl?: string } | null;
   check?: string | null;
   attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "result"; summary: string; options: string[]; decisions: string[]; memory?: string[] } | null;
 };

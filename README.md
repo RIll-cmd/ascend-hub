@@ -188,8 +188,8 @@ Then double-click **Ascend Hub** on the desktop. Closing the launcher window whi
 6. Answer the gates as they come:
    - **Roles:** edit the roles or approve them.
    - **Plan:** rename tasks, change who does each, tick **Race all coders** on a hard task, then approve. Or ask for changes with a note.
-   - **Result:** read the summary and diff, tick the memory notes worth keeping, then merge, keep or reject.
-7. Follow progress in the *Deck* and *Workflow* tabs. **Stop** in the top bar ends the session at any time; committed work stays.
+   - **Result:** read the summary and diff, tick the memory notes worth keeping, then merge, keep the branch, open a pull request (pushes to `origin` and uses the GitHub CLI `gh`), or reject.
+7. Follow progress in the *Deck* and *Workflow* tabs. **Stop** in the top bar ends the session at any time; committed work stays. A stopped repo session keeps its worktree for inspection until you press **Remove worktrees** above the start form; its branch stays either way.
 
 > [!TIP]
 > Check the **Limits** bars before a long session. The start form also warns when an agent has used 90% or more of a window.

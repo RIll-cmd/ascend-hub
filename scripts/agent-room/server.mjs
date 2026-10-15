@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildInvocation, defaultSettings, mergeSettings, runTurn as realRunTurn } from './agents.mjs';
 import { AGENT_IDS } from './parse.mjs';
 import { listDebateFolders, listRepos, roomDataDir, roomError } from './paths.mjs';
-import { suggestCheck } from './project.mjs';
+import { finishWorktree, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { readMemory, writeMemory } from './memory.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
@@ -58,6 +58,15 @@ function restoreSession(dataDir, settings, runTurn) {
     if (state && !TERMINAL.has(state.stage)) return RoomSession.load({ settings, runTurn }, join(sessions, name));
   }
   return null;
+}
+
+// A stopped repo session keeps its worktree for inspection until the owner clears it from Hub; its branch always stays.
+function leftoverWorktrees(dataDir) {
+  const sessions = join(dataDir, 'sessions');
+  if (!existsSync(sessions)) return [];
+  return readdirSync(sessions).map(id => readJson(join(sessions, id, 'state.json')))
+    .filter(s => s?.stage === 'stopped' && s.repo && existsSync(s.projectDir))
+    .map(s => ({ id: s.id, project: s.project, dir: s.projectDir, branch: s.repo.branch, repo: s.repo.dir }));
 }
 
 const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409 };
@@ -141,6 +150,12 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         return send(201, { session: session.summary() });
       }
       if (route === 'GET /sessions/current') return send(200, { session: session?.view() ?? null });
+      if (route === 'GET /worktrees') return send(200, { worktrees: leftoverWorktrees(dataDir) });
+      if (route === 'POST /worktrees/clean') {
+        const removed = leftoverWorktrees(dataDir);
+        for (const w of removed) finishWorktree(w.repo, w.dir, w.branch, null, 'keep');
+        return send(200, { removed });
+      }
       if (route === 'GET /memory') {
         const key = new URL(req.url, 'http://room').searchParams.get('key');
         return send(200, { key, notes: readMemory(dataDir, key) });

@@ -118,6 +118,29 @@ function MemoryEditor({ dir }: { dir: string }) {
   );
 }
 
+// Stopped repo sessions keep their worktree for inspection; this clears them. Their branches, and every commit, stay.
+export function WorktreeCleanup() {
+  const [worktrees, setWorktrees] = useState<{ id: string; project: string; branch: string }[]>([]);
+  const [status, setStatus] = useState("");
+  useEffect(() => {
+    fetch("/api/room/worktrees", { cache: "no-store" })
+      .then(r => (r.ok ? (r.json() as Promise<{ worktrees?: { id: string; project: string; branch: string }[] }>) : null))
+      .then(data => setWorktrees(data?.worktrees ?? []), () => setWorktrees([]));
+  }, []);
+  const clean = async () => {
+    const res = await fetch("/api/room/worktrees", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    if (res.ok) setWorktrees([]);
+    setStatus(res.ok ? "Removed. The branches are still in your repo." : "Could not remove them.");
+  };
+  if (worktrees.length === 0) return status ? <p className="agent-room-hint">{status}</p> : null;
+  return (
+    <section className="agent-room-gate" aria-label="Leftover worktrees">
+      <p>{worktrees.length} stopped session{worktrees.length === 1 ? "" : "s"} still {worktrees.length === 1 ? "has a" : "have"} worktree: {worktrees.map(w => w.branch).join(", ")}</p>
+      <button type="button" onClick={() => void clean()}>Remove worktrees (branches stay)</button> <small>{status}</small>
+    </section>
+  );
+}
+
 export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act }: {
   agents?: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[]; quotaWarning?: string | null; act: Act;
 }) {
@@ -377,6 +400,9 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
         <MemoryPicker proposal={proposal} onChange={setMemory} />
         <button onClick={() => act(GATE, { gate: "result", decision: "merge", memory })}>Merge into {baseBranch}</button>
         <button onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Keep branch</button>
+        <button onClick={() => {
+          if (window.confirm(`Push ${branch} to origin and open a pull request into ${baseBranch}?`)) void act(GATE, { gate: "result", decision: "pr", memory });
+        }}>Open pull request</button>
         <button onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject and delete branch</button>
         <small>Merge only fast-forwards {baseBranch} while your checkout is on it; otherwise keep the branch and merge it yourself.</small>
       </div>
