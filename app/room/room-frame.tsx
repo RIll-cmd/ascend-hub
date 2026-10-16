@@ -1,6 +1,5 @@
 "use client";
 import { Volume2, VolumeX } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { messageLine, plateText, type DeckAgent, type DeckView } from "./deck/deck-view";
 import { LimitsBars, RefreshLimits, useLimits } from "./limits-panel";
@@ -14,7 +13,8 @@ export function TopBar({ session, view, running, act, soundOn, onToggleSound }: 
 }) {
   return (
     <header className="agent-room-bar">
-      <Link href="/" className="agent-room-back">◂ Shelf</Link>
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- vinext Link does nothing on click in production builds */}
+      <a href="/" className="agent-room-back">◂ Shelf</a>
       <span className="agent-room-title">AGENT ROOM{session ? ` · ${session.project}` : ""}</span>
       {session && <StageSteps stage={session.stage} paused={Boolean(session.pause)} mode={session.mode} />}
       <span className="agent-room-status"><i aria-hidden="true" />{view.status}</span>

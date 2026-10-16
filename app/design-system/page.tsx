@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
 import { ArrowLeft, Check, Copy, ExternalLink, Lightbulb, Play, Pause, Power, Tv, Disc, Speaker } from "lucide-react";
 import { COLLECTIBLES } from "../collectibles";
 import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../../components/RetroMediaCenter";
@@ -47,9 +46,10 @@ export default function DesignSystemPage() {
       {/* Top Header */}
       <div style={{ maxWidth: "1160px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #23160e", paddingBottom: "20px" }}>
         <div>
-          <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", font: "10px var(--mono)", color: "#fea480", textDecoration: "none", marginBottom: "8px" }}>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- vinext Link does nothing on click in production builds */}
+          <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", font: "10px var(--mono)", color: "#fea480", textDecoration: "none", marginBottom: "8px" }}>
             <ArrowLeft size={13} /> BACK TO WORKSPACE
-          </Link>
+          </a>
           <h1 style={{ font: "600 32px var(--sans)", margin: 0, letterSpacing: "-0.5px" }}>Design System & Live Spec</h1>
           <p style={{ font: "13px var(--sans)", color: "#a4805c", margin: "4px 0 0" }}>
             WorkOS Launch Week Summer 2026 · Extracted Tokens, Shelf Architecture & Retro Props

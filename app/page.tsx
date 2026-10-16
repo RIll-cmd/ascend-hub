@@ -1,6 +1,5 @@
 "use client";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import Link from "next/link";
 import type { SpotifyPlaybackState, SpotifySetupState } from "@/lib/spotify";
 import { motion, useReducedMotion } from "framer-motion";
 import { Rnd } from "react-rnd";
@@ -1819,7 +1818,7 @@ export default function Home() {
                                           </div>
                                         )
                                       ) : slot.isPoster ? (
-                                        <Link
+                                        <a
                                           href="/room"
                                           aria-label="Enter the agent room"
                                           className="framed-poster"
@@ -1838,7 +1837,7 @@ export default function Home() {
                                             <img src="/ascend-hub-staircase.webp" alt="Ascend Hub — One level at a time" draggable={false} />
                                             <span className="framed-poster-glass" aria-hidden="true" />
                                           </div>
-                                        </Link>
+                                        </a>
                                       ) : (
                                         <div
                                           className="empty-cubby-prompt"
