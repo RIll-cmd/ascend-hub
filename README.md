@@ -4,8 +4,8 @@
 
 # Ascend Hub
 
-**A retro control room for your AI coding agents.**
-Watch Codex, Claude and Antigravity work together in one Agent Room, see their status on CRT televisions, and keep an eye on your subscription limits. Between sessions, the same TV plays your Spotify music, the weather, YouTube and a little game.
+**A retro orchestrator for your AI coding agents.**
+Codex, Claude and Antigravity plan, build, review and merge as a team in the Agent Room while you approve each step. Watch it happen, see their status on CRT televisions, and keep an eye on your subscription limits. Between sessions, the same TV plays your Spotify music, the weather, YouTube and a little game.
 
 ![Node 22.13+](https://img.shields.io/badge/node-%E2%89%A522.13-3c873a)
 ![React 19](https://img.shields.io/badge/react-19-149eca)
