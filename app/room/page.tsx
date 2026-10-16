@@ -8,6 +8,7 @@ import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, LimitsCard, RoomSidebar, SessionCard, TopBar, TranscriptDrawer, type HistoryItem } from "./room-frame";
 import { BriefComposer, BriefSettings, GateBar, TaskBoard, Transcript, useBrief, VerdictPanel, WorktreeCleanup } from "./room-parts";
+import { RoleSets } from "./role-sets";
 import { roomSound, soundPref } from "./room-sound";
 import { themePref } from "./theme";
 import { soundCues } from "./room-sound-cues";
@@ -206,6 +207,7 @@ export default function RoomPage() {
         {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
         {composing && <WorktreeCleanup />}
         {composing && <BriefSettings brief={brief} quotaWarning={status?.quotaWarning} />}
+        {composing && <RoleSets />}
       </aside>
       <TranscriptDrawer open={drawer} onClose={closeDrawer} messages={messages} />
     </main>

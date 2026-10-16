@@ -1,6 +1,6 @@
 # Ascend roadmap — Hub and Vision
 
-Updated 2026-10-16.
+Updated 2026-10-17.
 
 **Goals:**
 - **Hub:** the owner's main coding tool, where Codex, Claude and Antigravity plan, build and review together.
@@ -35,7 +35,7 @@ Updated 2026-10-16.
 | M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Done (2026-10-14); PRs via `gh` not yet |
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
 | M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Done (2026-10-14) |
-| M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | Planned (2026-10-16) |
+| M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | In progress: M7a done (2026-10-17) |
 
 **Reliability work alongside:**
 - Room sessions keep a pending gate across restarts.
@@ -133,7 +133,7 @@ Third-party skills are untrusted instructions running inside the agents.
 
 | Slice | Delivers |
 | --- | --- |
-| M7a | Data model, a library of local folders, role-set switches in the UI |
+| M7a | Data model, a library of local folders, role-set switches in the UI (done 2026-10-17) |
 | M7b | Copying skills into the session, the skill index in prompts, `role` on plan tasks, coders getting the skills for their role |
 | M7c | Specialist review passes: code review, security, UI/UX |
 | M7d | Add from a GitHub URL: pinned commit, license, diff on update |
@@ -146,12 +146,20 @@ Third-party skills are untrusted instructions running inside the agents.
 - keeping the switches;
 - falling back when no agent wears a role.
 
-### Open decisions
+### Decisions (2026-10-17)
 
-1. **Where roles live.** Options are per agent, per task or both. Recommended: both. Agents wear sets, tasks get labels, and the two are matched.
-2. **How skills arrive.** Options are fetching on demand or copying into the repo. Recommended: fetch on demand with one approval per source, because some licenses may not allow redistribution.
-3. **Security tools.** Either Semgrep and CodeQL are required for the Security set, or Security runs on the review skill alone until they're installed.
-4. **21st.dev.** Which repo is meant.
+1. **Where roles live:** both. Agents wear sets, tasks get role labels, and the two are matched.
+2. **How skills arrive:** fetched on demand, one approval per source, pinned to a commit. Nothing third-party is copied into this repo.
+3. **Security tools:** optional. The Security set runs on its review skills and uses Semgrep or CodeQL only when they're installed.
+4. **21st.dev:** left out of the Frontend set for now; add it from a GitHub URL once the repo is known.
+
+### M7a as built (2026-10-17)
+
+- `scripts/agent-room/skills.mjs` holds the five starting sets and reads the library from `.sites-runtime/agent-room/skills/<id>/SKILL.md` (name and description from the front matter, a has-scripts flag, an optional `source.json`).
+- The owner's switches are saved in `.sites-runtime/agent-room/role-sets.json`. Every set starts off; Supabase starts off inside Backend.
+- The room server has `GET/POST /role-sets`, with a Hub proxy at `/api/room/role-sets`.
+- A **Role sets** section in the right column switches sets and single skills, links each skill's source, and marks skills that are not installed or include scripts.
+- Sessions do not use the sets yet; that is M7b.
 
 ## Room ideas backlog (2026-10-16)
 

@@ -458,3 +458,8 @@
   --paper: #fffdf6; --paper-light: #ffffff; --sand: #f3d36b; --ink: #1d1a16; --on-paper-muted: #6b6250;
   --accent: #e5484d; --accent-ink: #ffffff; --highlight: #fbe9a8; --code-bg: #1d1a16; --code-text: #f7efd9;
 }
+
+/* Role sets in the right column */
+.agent-room .agent-room-roleset small { margin-left: auto; font-size: 11px; opacity: 0.75; }
+.agent-room .agent-room-roleset ul { list-style: none; margin: 4px 0 0 22px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.agent-room .agent-room-roleset a { color: inherit; }
