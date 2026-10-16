@@ -250,13 +250,16 @@
 /* ===== Neobrutalist "dark wood" theme: walnut page, cream cards, black borders and hard shadows, orange actions. =====
    Components come from components/neo (neobrutalism.dev); these tokens feed them, and the rules below style the room's own parts. */
 .agent-room.room-app {
-  --wood: #1d1611; --wood-deep: #15100c; --paper: #f3e6cf; --paper-light: #fffaf0; --sand: #e5d2ae; --ink: #14100c;
-  --on-wood-muted: #b9a68a; --on-paper-muted: #6b5a48; --orange: #ff7a1a;
-  --main: var(--orange); --main-foreground: var(--ink); --background: var(--sand); --secondary-background: var(--paper);
+  --page: #1d1611; --page-deep: #15100c; --page-image: none; --on-page: #f3e6cf; --on-page-muted: #b9a68a;
+  --deep-text: var(--on-page); --deep-muted: var(--on-page-muted); --header-bg: var(--page); --header-text: var(--on-page); --header-muted: var(--on-page-muted);
+  --paper: #f3e6cf; --paper-light: #fffaf0; --sand: #e5d2ae; --ink: #14100c; --on-paper-muted: #6b5a48;
+  --accent: #ff7a1a; --accent-ink: #14100c; --highlight: #ffe0c2; --code-bg: #1d1611; --code-text: #f3e6cf;
+  --main: var(--accent); --main-foreground: var(--accent-ink); --background: var(--sand); --secondary-background: var(--paper);
   --foreground: var(--ink); --border: #000; --ring: #000; --overlay: rgb(0 0 0 / 0.7); --shadow: 4px 4px 0 0 #000;
-  --room-ink: var(--ink); --room-paper: var(--paper); --room-card: var(--paper); --room-accent: var(--orange);
+  --room-ink: var(--ink); --room-paper: var(--paper); --room-card: var(--paper); --room-accent: var(--accent);
   display: grid; grid-template-columns: 260px minmax(0, 1fr) 340px; height: 100vh; padding: 0; overflow: hidden;
-  background: var(--wood); color: var(--paper); font-family: var(--body), system-ui, sans-serif; font-weight: 500; font-size: 14px; accent-color: var(--orange);
+  background: var(--page); background-image: var(--page-image); background-size: 40px 40px; color: var(--on-page);
+  font-family: var(--body), system-ui, sans-serif; font-weight: 500; font-size: 14px; accent-color: var(--accent);
 }
 .room-app h1, .room-app h2, .room-app h3, .room-app h4 { font-weight: 700; }
 /* globals.css resets buttons and headings outside any cascade layer, which beats Tailwind's layered classes.
@@ -268,36 +271,36 @@
   box-shadow: 3px 3px 0 0 #000; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
 .room-app button:not([data-slot]):hover:not(:disabled) { transform: translate(3px, 3px); box-shadow: none; }
 .room-app ::-webkit-scrollbar { width: 12px; height: 12px; }
-.room-app ::-webkit-scrollbar-track { background: var(--wood-deep); }
+.room-app ::-webkit-scrollbar-track { background: var(--page-deep); }
 .room-app ::-webkit-scrollbar-thumb { background: var(--paper); border: 2px solid #000; border-radius: 5px; }
 
 /* Left: sessions */
-.room-left { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; padding: 14px 12px; background: var(--wood-deep); border-right: 2px solid #000; }
-.room-app .room-left-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; color: var(--paper); text-decoration: none; font-weight: 700;
+.room-left { display: flex; flex-direction: column; gap: 6px; min-height: 0; min-width: 0; padding: 14px 12px; background: var(--page-deep); color: var(--deep-text); border-right: 2px solid #000; }
+.room-app .room-left-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; color: var(--deep-text); text-decoration: none; font-weight: 700;
   font-family: var(--display), sans-serif; font-size: 17px; letter-spacing: 0.04em; text-transform: uppercase; }
-.room-app .room-left-item:hover { color: var(--orange); }
+.room-app .room-left-item:hover { text-decoration: underline; text-decoration-thickness: 2px; }
 .room-app .room-left-new { margin-bottom: 6px; }
-.room-left-label { margin: 10px 4px 2px; font: 700 13px/1 var(--display), sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: var(--on-wood-muted); }
+.room-left-label { margin: 10px 4px 2px; font: 700 13px/1 var(--display), sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: var(--deep-muted); }
 .room-history { list-style: none; margin: 0; padding: 2px 6px 6px 0; overflow-y: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
 .room-app .room-history button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; max-width: 100%; overflow: hidden; padding: 7px 10px;
-  border: 2px solid transparent; border-radius: 5px; background: transparent; color: var(--paper); box-shadow: none; text-align: left; transform: none; }
-.room-app .room-history button:hover { border-color: #000; background: rgba(243, 230, 207, 0.08); transform: none; }
+  border: 2px solid transparent; border-radius: 5px; background: transparent; color: var(--deep-text); box-shadow: none; text-align: left; transform: none; }
+.room-app .room-history button:hover { border-color: #000; background: color-mix(in srgb, var(--deep-text) 8%, transparent); transform: none; }
 .room-app .room-history button.is-active { border-color: #000; background: var(--paper); color: var(--ink); box-shadow: 3px 3px 0 0 #000; }
 .room-history span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.room-history small, .room-history-empty { font-size: 12px; color: var(--on-wood-muted); }
+.room-history small, .room-history-empty { font-size: 12px; color: var(--deep-muted); }
 .room-app .room-history button.is-active small { color: var(--on-paper-muted); }
 .room-history-empty { padding: 7px 10px; }
 .room-left-bottom { display: flex; align-items: center; gap: 10px; padding: 10px 4px 0; border-top: 2px solid #000; font-weight: 700; }
-.room-avatar { display: grid; place-items: center; width: 30px; height: 30px; border: 2px solid #000; border-radius: 5px; background: var(--orange); color: var(--ink);
+.room-avatar { display: grid; place-items: center; width: 30px; height: 30px; border: 2px solid #000; border-radius: 5px; background: var(--accent); color: var(--accent-ink);
   font: 700 16px/1 var(--display), sans-serif; box-shadow: 2px 2px 0 0 #000; }
 
 /* Middle: header, room and chat, prompt box */
 .room-center { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .room-app .agent-room-bar { flex: none; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: space-between; border: 0; border-bottom: 2px solid #000;
-  border-radius: 0; background: var(--wood); color: var(--paper); padding: 12px 20px; }
+  border-radius: 0; background: var(--header-bg); color: var(--header-text); padding: 12px 20px; }
 .room-app .agent-room-title { font: 700 22px/1 var(--display), sans-serif; letter-spacing: 0.04em; text-transform: uppercase; }
-.room-app .agent-room-status { color: var(--on-wood-muted); font-weight: 700; }
-.room-app .agent-room-status i { background: var(--orange); border: 2px solid #000; width: 10px; height: 10px; }
+.room-app .agent-room-status { color: var(--header-muted); font-weight: 700; }
+.room-app .agent-room-status i { background: var(--accent); border: 2px solid #000; width: 10px; height: 10px; }
 .room-app .agent-room-bar .agent-room-steps { gap: 0; align-items: center; }
 .room-app .agent-room-bar .agent-room-steps li { position: relative; border: 0; padding: 0; background: none; color: inherit; font-weight: inherit; }
 .room-app .agent-room-bar .agent-room-steps li + li { margin-left: 14px; }
@@ -309,7 +312,7 @@
 .room-app .agent-room-deck { flex: none; border: 2px solid #000; border-radius: 5px; box-shadow: 6px 6px 0 0 #000; height: clamp(300px, 52vh, 560px); }
 .room-app .room-center-body:not(:has(.agent-room-log)) .agent-room-deck { flex: 1 1 auto; height: auto; min-height: 300px; }
 .room-app .agent-room-log { display: flex; flex-direction: column; gap: 14px; background: transparent; border: 0; padding: 0 6px 6px 0; max-height: none; overflow: visible; }
-.room-app .room-note { margin: 0; padding-left: 4px; font-size: 12.5px; color: var(--on-wood-muted); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.room-app .room-note { margin: 0; padding-left: 4px; font-size: 12.5px; color: var(--on-page-muted); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
 .room-app .room-msg { color: var(--ink); }
 .room-msg > header { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
 .room-msg > header time { margin-left: auto; font-size: 11px; color: var(--on-paper-muted); }
@@ -329,7 +332,7 @@
 .md a, .md .md-link { color: #b4532f; text-decoration: underline; }
 .room-app .md-more { align-self: flex-start; padding: 2px 10px; font-size: 12px; font-weight: 700; }
 .md-code { margin: 0 0 8px; display: flex; flex-direction: column; gap: 4px; }
-.md-code pre { margin: 0; padding: 10px 12px; background: var(--wood); color: var(--paper); border: 2px solid #000; border-radius: 5px; overflow-x: auto;
+.md-code pre { margin: 0; padding: 10px 12px; background: var(--code-bg); color: var(--code-text); border: 2px solid #000; border-radius: 5px; overflow-x: auto;
   font: 12.5px/1.5 var(--mono), ui-monospace, Consolas, monospace; white-space: pre; }
 .md-code-lang { order: -1; font-size: 11px; font-weight: 700; color: var(--on-paper-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .room-app .agent-room-composer { display: flex; flex-direction: column; gap: 8px; background: var(--paper); color: var(--ink); border: 2px solid #000; border-radius: 5px;
@@ -340,7 +343,7 @@
 .room-app .agent-room-gate, .room-app .agent-room-offline { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--paper); color: var(--ink);
   border: 2px solid #000; border-radius: 5px; box-shadow: 4px 4px 0 0 #000; padding: 14px; }
 .room-app .agent-room-offline { margin: 20px; }
-.room-app .agent-room-summary { margin: 0; padding: 10px 12px; flex-basis: 100%; background: #ffe0c2; color: var(--ink); border: 2px solid #000; border-left-width: 6px; border-left-color: var(--orange); border-radius: 5px; line-height: 1.45; }
+.room-app .agent-room-summary { margin: 0; padding: 10px 12px; flex-basis: 100%; background: var(--highlight); color: var(--ink); border: 2px solid #000; border-left-width: 6px; border-left-color: var(--accent); border-radius: 5px; line-height: 1.45; }
 .room-app .agent-room-error { margin: 0; padding: 8px 12px; background: #ffd0d0; color: var(--ink); border: 2px solid #000; border-radius: 5px; box-shadow: 3px 3px 0 0 #000; }
 .room-app .agent-room-hint { color: var(--on-paper-muted); }
 .room-app .agent-room-plan-edit li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -379,7 +382,7 @@
 .room-app .agent-room-badge { background: var(--sand); color: var(--ink); border: 2px solid #000; border-radius: 5px; }
 .room-agent-latest { max-height: 280px; overflow-y: auto; font-size: 13px; }
 .room-app .agent-room-board li { border: 2px solid transparent; border-radius: 5px; }
-.room-app .agent-room-board li.is-running, .room-app .agent-room-board li.is-review { background: #ffe0c2; border-color: #000; }
+.room-app .agent-room-board li.is-running, .room-app .agent-room-board li.is-review { background: var(--highlight); border-color: #000; }
 .room-app .agent-room-verdict { color: var(--ink); }
 .room-app .agent-room-verdict h2 { font-size: 15px; margin: 0; }
 .room-app .agent-room-verdict-text { max-height: 50vh; overflow-y: auto; }
@@ -395,7 +398,7 @@
 /* Workflow, debate and drawer as cream sheets */
 .room-app .agent-room-workflow, .room-app .agent-room-debate { background: var(--paper); color: var(--ink); border: 2px solid #000; border-radius: 5px; box-shadow: 4px 4px 0 0 #000; }
 .room-app .agent-room-wf-stages li { background: var(--sand); border: 2px solid #000; border-radius: 5px; }
-.room-app .agent-room-wf-stages li.is-current { background: var(--orange); color: var(--ink); }
+.room-app .agent-room-wf-stages li.is-current { background: var(--accent); color: var(--accent-ink); }
 .room-app .agent-room-wf-lane-track { background: var(--paper-light); border: 2px solid #000; border-radius: 5px; height: 14px; }
 .room-app .agent-room-wf-lane-track i { border: 1px solid #000; }
 .room-app .agent-room-wf-tasks { border-left: 2px dashed #000; }
@@ -403,7 +406,7 @@
 .room-app .agent-room-debate-card { background: var(--paper-light); border: 2px solid #000; border-top: 6px solid var(--crt-color); border-radius: 5px; box-shadow: 3px 3px 0 0 #000; }
 .room-app .agent-room-debate-text { font: 14px/1.55 var(--body), sans-serif; }
 .room-app .agent-room-debate-card footer, .room-app .agent-room-judge { color: var(--on-paper-muted); border-color: #000; }
-.room-app .agent-room-drawer { background: var(--wood); color: var(--paper); border: 2px solid #000; border-bottom: 0; box-shadow: 0 -6px 0 0 #000; }
+.room-app .agent-room-drawer { background: var(--page); color: var(--on-page); border: 2px solid #000; border-bottom: 0; box-shadow: 0 -6px 0 0 #000; }
 
 @media (max-width: 1100px) {
   .agent-room.room-app { grid-template-columns: 1fr; height: auto; overflow: visible; }
@@ -416,3 +419,42 @@
 .room-app .agent-room-workflow, .room-app .agent-room-debate { flex: none; }
 .room-app .agent-room-memory .agent-room-check { flex: 1 1 100%; }
 .room-app .agent-room-memory .agent-room-check [data-slot="input"] { flex: 1; min-width: 0; }
+
+/* Theme picker in the sidebar */
+.room-app .room-theme { display: flex; align-items: center; gap: 8px; padding: 8px 4px 0; font: 700 13px/1 var(--display), sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: var(--deep-muted); }
+.room-app .room-theme [data-slot="native-select-wrapper"] { flex: 1; min-width: 0; }
+.room-app .room-theme select { font-family: var(--body), sans-serif; letter-spacing: normal; text-transform: none; }
+
+/* ===== Other neobrutalist themes; dark wood above is the default. ===== */
+.agent-room.room-app[data-theme="sky"] {
+  --page: #dbe8fe; --page-deep: #c9dcfd; --on-page: #000; --on-page-muted: #3f4a63;
+  --page-image: linear-gradient(rgb(0 0 0 / 0.06) 1px, transparent 1px), linear-gradient(90deg, rgb(0 0 0 / 0.06) 1px, transparent 1px);
+  --paper: #ffffff; --paper-light: #f5f8ff; --sand: #e6eefe; --ink: #000; --on-paper-muted: #4b5563;
+  --accent: #5294ff; --accent-ink: #000; --highlight: #c9f7df; --code-bg: #111827; --code-text: #e5e7eb;
+}
+.agent-room.room-app[data-theme="lime"] {
+  --page: #f0ede7; --page-deep: #e7e2d9; --on-page: #141414; --on-page-muted: #5d5950;
+  --paper: #ffffff; --paper-light: #fbfaf6; --sand: #e4d7fb; --ink: #141414; --on-paper-muted: #5d5950;
+  --accent: #dde88a; --accent-ink: #141414; --highlight: #f1f7c6; --code-bg: #1f1d1a; --code-text: #f0ede7;
+}
+.agent-room.room-app[data-theme="saas"] {
+  --page: #f8f5ff; --page-deep: #8000ff; --on-page: #111; --on-page-muted: #5b5670;
+  --deep-text: #ffffff; --deep-muted: #e3d1ff; --header-bg: #8000ff; --header-text: #ffffff; --header-muted: #e3d1ff;
+  --paper: #ffffff; --paper-light: #fcfaff; --sand: #efe6ff; --ink: #111; --on-paper-muted: #5b5670;
+  --accent: #ffe066; --accent-ink: #111; --highlight: #fff3b8; --code-bg: #1e1533; --code-text: #f3eeff;
+}
+.agent-room.room-app[data-theme="admin"] {
+  --page: #fbf8f1; --page-deep: #ffffff; --on-page: #111; --on-page-muted: #6b6b6b;
+  --paper: #ffffff; --paper-light: #fffdf7; --sand: #fff1b8; --ink: #111; --on-paper-muted: #6b6b6b;
+  --accent: #ffd93d; --accent-ink: #111; --highlight: #fff3c4; --code-bg: #111; --code-text: #fbf8f1;
+}
+.agent-room.room-app[data-theme="stack"] {
+  --page: #161616; --page-deep: #0e0e0e; --on-page: #f1ede4; --on-page-muted: #9a958b;
+  --paper: #f1ede4; --paper-light: #fbf8f2; --sand: #dcd6c8; --ink: #111; --on-paper-muted: #5f5a50;
+  --accent: #22b8e8; --accent-ink: #111; --highlight: #d3f1fb; --code-bg: #0e0e0e; --code-text: #f1ede4;
+}
+.agent-room.room-app[data-theme="flux"] {
+  --page: #f7efd9; --page-deep: #efe2c0; --on-page: #1d1a16; --on-page-muted: #6b6250;
+  --paper: #fffdf6; --paper-light: #ffffff; --sand: #f3d36b; --ink: #1d1a16; --on-paper-muted: #6b6250;
+  --accent: #e5484d; --accent-ink: #ffffff; --highlight: #fbe9a8; --code-bg: #1d1a16; --code-text: #f7efd9;
+}

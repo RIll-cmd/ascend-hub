@@ -8,6 +8,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/neo/native-select
 import { useNow } from "../status/use-now";
 import { LimitsBars, RefreshLimits, useLimits } from "./limits-panel";
 import { limitsView } from "./limits-view";
+import { THEMES, type ThemeId } from "./theme";
 import { Markdown } from "./markdown";
 import { SideSection, StageSteps, TEMPLATE_LABELS, Transcript, type Act } from "./room-parts";
 import { AGENT_IDS, AGENT_NAMES, TERMINAL_STAGES, type AgentId, type AgentQuota, type Message, type SessionView, type Stage } from "./room-types";
@@ -30,8 +31,9 @@ export type HistoryItem = { id: string; mode: "build" | "debate"; project: strin
 const historyState = (stage: Stage) => (TERMINAL_STAGES.includes(stage) ? stage : stage.startsWith("gate-") ? "waiting for you" : "running");
 
 // The left column: back to the shelf, a new session, past sessions, and the sound switch.
-export function RoomSidebar({ history, activeId, running, onNew, onOpen, soundOn, onToggleSound }: {
+export function RoomSidebar({ history, activeId, running, onNew, onOpen, soundOn, onToggleSound, theme, onTheme }: {
   history: HistoryItem[]; activeId: string | null; running: boolean; onNew: () => void; onOpen: (id: string) => void; soundOn: boolean; onToggleSound: () => void;
+  theme: ThemeId; onTheme: (id: ThemeId) => void;
 }) {
   return (
     <aside className="room-left" aria-label="Sessions">
@@ -52,6 +54,12 @@ export function RoomSidebar({ history, activeId, running, onNew, onOpen, soundOn
         ))}
         {history.length === 0 && <li className="room-history-empty">No sessions yet.</li>}
       </ul>
+      <label className="room-theme">
+        Theme
+        <NativeSelect size="sm" aria-label="Theme" value={theme} onChange={e => onTheme(e.target.value as ThemeId)}>
+          {THEMES.map(t => <NativeSelectOption key={t.id} value={t.id}>{t.name}</NativeSelectOption>)}
+        </NativeSelect>
+      </label>
       <div className="room-left-bottom">
         <span className="room-avatar" aria-hidden="true">A</span>
         <span>Agent Room</span>

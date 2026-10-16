@@ -9,6 +9,7 @@ import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from 
 import { Inspector, LimitsCard, RoomSidebar, SessionCard, TopBar, TranscriptDrawer, type HistoryItem } from "./room-frame";
 import { BriefComposer, BriefSettings, GateBar, TaskBoard, Transcript, useBrief, VerdictPanel, WorktreeCleanup } from "./room-parts";
 import { roomSound, soundPref } from "./room-sound";
+import { themePref } from "./theme";
 import { soundCues } from "./room-sound-cues";
 import { BOARD_STAGES, TERMINAL_STAGES, type AgentId, type RoomStatus, type SessionView } from "./room-types";
 
@@ -151,6 +152,7 @@ export default function RoomPage() {
   const view = useMemo(() => deckView(session, status), [session, status]);
   const liveView = useMemo(() => deckView(live, status), [live, status]);
   const { soundOn, toggle: toggleSound } = useRoomSound(liveView, pulses);
+  const theme = useSyncExternalStore(themePref.subscribe, themePref.get, () => "wood" as const);
   const running = isLive && liveRunning;
   const debate = session?.mode === "debate";
   const focus = view.agents.find(a => a.id === (selected ?? session?.active?.agent)) ?? null;
@@ -163,8 +165,8 @@ export default function RoomPage() {
   const newSession = () => { setViewing(null); setFreshOver(live?.id ?? null); setSelected(null); };
 
   return (
-    <main className="agent-room room-app">
-      <RoomSidebar history={history} activeId={session?.id ?? null} running={liveRunning} onNew={newSession} onOpen={openSession} soundOn={soundOn} onToggleSound={toggleSound} />
+    <main className="agent-room room-app" data-theme={theme}>
+      <RoomSidebar history={history} activeId={session?.id ?? null} running={liveRunning} onNew={newSession} onOpen={openSession} soundOn={soundOn} onToggleSound={toggleSound} theme={theme} onTheme={themePref.set} />
       <section className="room-center" aria-label="Room">
         <TopBar session={session} view={view} running={running} act={act} />
         {offline ? (
