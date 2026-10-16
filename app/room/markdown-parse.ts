@@ -86,3 +86,9 @@ export function inlineTokens(text: string): Inline[] {
   pushText(text.slice(at));
   return tokens;
 }
+
+// Gate summaries are flattened to one line (the same words Vision speaks), so fenced code arrives inline:
+// a closed fence becomes inline code, and a fence the length cap cut off loses its marker.
+export function inlineSummary(text: string): string {
+  return text.replace(/```[\w+-]*\s*([\s\S]*?)\s*```/g, "`$1`").replace(/```[\w+-]*\s*/g, "");
+}

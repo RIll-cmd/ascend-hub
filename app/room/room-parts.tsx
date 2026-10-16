@@ -15,6 +15,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/neo/native-select
 import { Textarea } from "@/components/neo/textarea";
 import { messageLine, nearBottom, stepStates } from "./deck/deck-view";
 import { Markdown } from "./markdown";
+import { inlineSummary } from "./markdown-parse";
 import { DiffView } from "./workflow-panel";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
@@ -447,7 +448,7 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
   if (session.pause) return <PausePanel session={session} act={act} />;
   const options = session.attention?.options ?? [];
   // The same words Vision speaks, so the page and the voice assistant agree.
-  const summary = session.attention?.summary ? <p className="agent-room-summary">{session.attention.summary}</p> : null;
+  const summary = session.attention?.summary ? <div className="agent-room-summary"><Markdown text={inlineSummary(session.attention.summary)} /></div> : null;
   if (session.stage === "gate-roles" && session.roles) {
     return <>{summary}<RolesGate key={session.id} initial={session.roles} act={act} /><ChangeRequest key={`${session.id}-roles`} gate="roles" options={options} act={act} /></>;
   }

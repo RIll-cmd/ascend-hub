@@ -41,3 +41,10 @@ test("inline: code, bold, italic and links; markup inside code stays literal", (
   ]);
   assert.deepEqual(inlineTokens("2 * 3 * 4 and a_b_c"), [{ kind: "text", text: "2 * 3 * 4 and a_b_c" }], "lone asterisks are not italics");
 });
+
+test("a one-line gate summary turns inline fences into inline code and drops a fence the length cap cut off", async () => {
+  const { inlineSummary } = await import("../../app/room/markdown-parse");
+  assert.equal(inlineSummary("Run from the root: ```sh node -e \"x()\" ``` Expected output: `hi`."), "Run from the root: `node -e \"x()\"` Expected output: `hi`.");
+  assert.equal(inlineSummary("Done. ```json {\"memory\": [\"a\""), "Done. {\"memory\": [\"a\"");
+  assert.equal(inlineSummary("Plain **summary**."), "Plain **summary**.");
+});
