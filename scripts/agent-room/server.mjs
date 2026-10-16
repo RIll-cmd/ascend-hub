@@ -11,7 +11,7 @@ import { finishWorktree, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { readMemory, writeMemory } from './memory.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
-import { readJson, writeJsonAtomic } from './store.mjs';
+import { readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 import { ensureRoomToken } from './token.mjs';
 
 const PROBE_TTL_MS = 10 * 60_000;
@@ -67,6 +67,25 @@ function leftoverWorktrees(dataDir) {
   return readdirSync(sessions).map(id => readJson(join(sessions, id, 'state.json')))
     .filter(s => s?.stage === 'stopped' && s.repo && existsSync(s.projectDir))
     .map(s => ({ id: s.id, project: s.project, dir: s.projectDir, branch: s.repo.branch, repo: s.repo.dir }));
+}
+
+const SESSION_ID = /^\d+-[0-9a-f]{6}$/;
+
+// The history list: newest first, a one-line summary each.
+function listSessions(dataDir) {
+  const root = join(dataDir, 'sessions');
+  if (!existsSync(root)) return [];
+  return readdirSync(root).filter(id => SESSION_ID.test(id)).sort().reverse().slice(0, 100)
+    .map(id => readJson(join(root, id, 'state.json'))).filter(Boolean)
+    .map(s => ({ id: s.id, mode: s.mode ?? 'build', project: s.project, stage: s.stage, title: String(s.task ?? '').split('\n')[0].slice(0, 80), createdAt: s.createdAt }));
+}
+
+// One past session as the room page shows it, read from disk without changing it.
+function readSession(dataDir, id) {
+  if (!SESSION_ID.test(id)) throw roomError('SESSION_ID_INVALID');
+  const dir = join(dataDir, 'sessions', id);
+  const state = readJson(join(dir, 'state.json'));
+  return state ? { ...state, active: null, attention: null, transcript: readJsonLines(join(dir, 'transcript.jsonl')).slice(-200) } : null;
 }
 
 const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409 };
@@ -150,6 +169,12 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         return send(201, { session: session.summary() });
       }
       if (route === 'GET /sessions/current') return send(200, { session: session?.view() ?? null });
+      if (route === 'GET /sessions') return send(200, { sessions: listSessions(dataDir) });
+      const past = req.method === 'GET' && /^\/sessions\/([^/]+)$/.exec(new URL(req.url, 'http://room').pathname);
+      if (past) {
+        const view = session?.state.id === past[1] ? session.view() : readSession(dataDir, past[1]);
+        return view ? send(200, { session: view }) : send(404, { error: 'NO_SESSION' });
+      }
       if (route === 'GET /worktrees') return send(200, { worktrees: leftoverWorktrees(dataDir) });
       if (route === 'POST /worktrees/clean') {
         const removed = leftoverWorktrees(dataDir);

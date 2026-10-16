@@ -1,37 +1,91 @@
 "use client";
-import { Volume2, VolumeX } from "lucide-react";
+import { ChevronLeft, Folder, FolderGit2, GitBranch, Layers, Plus, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { messageLine, plateText, type DeckAgent, type DeckView } from "./deck/deck-view";
 import { useNow } from "../status/use-now";
 import { LimitsBars, RefreshLimits, useLimits } from "./limits-panel";
 import { limitsView } from "./limits-view";
-import { SideSection, StageSteps, Transcript, type Act } from "./room-parts";
-import { AGENT_IDS, AGENT_NAMES, type AgentId, type AgentQuota, type Message, type SessionView } from "./room-types";
+import { SideSection, StageSteps, TEMPLATE_LABELS, Transcript, type Act } from "./room-parts";
+import { AGENT_IDS, AGENT_NAMES, TERMINAL_STAGES, type AgentId, type AgentQuota, type Message, type SessionView, type Stage } from "./room-types";
 
 const clock = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "");
 
-export function TopBar({ session, view, running, act, soundOn, onToggleSound }: {
-  session: SessionView | null; view: DeckView; running: boolean; act: Act; soundOn: boolean; onToggleSound: () => void;
-}) {
+export function TopBar({ session, view, running, act }: { session: SessionView | null; view: DeckView; running: boolean; act: Act }) {
   return (
     <header className="agent-room-bar">
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- vinext Link does nothing on click in production builds */}
-      <a href="/" className="agent-room-back">◂ Shelf</a>
-      <span className="agent-room-title">AGENT ROOM{session ? ` · ${session.project}` : ""}</span>
+      <span className="agent-room-title">{session ? session.project : "New session"}</span>
       {session && <StageSteps stage={session.stage} paused={Boolean(session.pause)} mode={session.mode} />}
       <span className="agent-room-status"><i aria-hidden="true" />{view.status}</span>
-      <button type="button" className="agent-room-sound" onClick={onToggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Mute room sound" : "Turn on room sound"}>
-        {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
-      </button>
       {running && <button className="agent-room-stop" onClick={() => act("/api/room/sessions/current/stop")}>Stop</button>}
     </header>
   );
 }
 
-// "5h 1% · wk 83%": the short form of an agent's subscription limits, for its one-line row.
-function limitsShort(quota: Partial<Record<AgentId, AgentQuota>> | undefined, id: AgentId, nowMs: number): string {
-  const bars = limitsView(quota, nowMs).find(a => a.agent === id)?.bars ?? [];
-  return bars.filter(b => b.percent !== null).map(b => `${b.label === "Weekly" ? "wk" : "5h"} ${b.percent}%`).join(" · ");
+export type HistoryItem = { id: string; mode: "build" | "debate"; project: string; stage: Stage; title: string; createdAt: string };
+
+const historyState = (stage: Stage) => (TERMINAL_STAGES.includes(stage) ? stage : stage.startsWith("gate-") ? "waiting for you" : "running");
+
+// The left column: back to the shelf, a new session, past sessions, and the sound switch.
+export function RoomSidebar({ history, activeId, running, onNew, onOpen, soundOn, onToggleSound }: {
+  history: HistoryItem[]; activeId: string | null; running: boolean; onNew: () => void; onOpen: (id: string) => void; soundOn: boolean; onToggleSound: () => void;
+}) {
+  return (
+    <aside className="room-left" aria-label="Sessions">
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- vinext Link does nothing on click in production builds */}
+      <a href="/" className="room-left-item"><ChevronLeft size={16} aria-hidden="true" /> Shelf</a>
+      <button type="button" className="room-left-item" onClick={onNew} disabled={running} title={running ? "A session is running" : "Start a new session"}>
+        <Plus size={16} aria-hidden="true" /> New session
+      </button>
+      <p className="room-left-label">Sessions</p>
+      <ul className="room-history">
+        {history.map(h => (
+          <li key={h.id}>
+            <button type="button" className={h.id === activeId ? "is-active" : undefined} onClick={() => onOpen(h.id)} title={h.title}>
+              <span>{h.title || h.project}</span>
+              <small>{h.mode === "debate" ? "Debate" : h.project} · {historyState(h.stage)}</small>
+            </button>
+          </li>
+        ))}
+        {history.length === 0 && <li className="room-history-empty">No sessions yet.</li>}
+      </ul>
+      <div className="room-left-bottom">
+        <span className="room-avatar" aria-hidden="true">A</span>
+        <span>Agent Room</span>
+        <button type="button" className="room-icon-button" onClick={onToggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Mute room sound" : "Turn on room sound"}>
+          {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// The right column's first card, like an environment summary: what this session works on.
+export function SessionCard({ session }: { session: SessionView }) {
+  const kind = session.mode === "debate" ? "Debate" : TEMPLATE_LABELS[session.template ?? "feature"];
+  return (
+    <SideSection title="Session" value={historyState(session.stage)} open>
+      <ul className="room-env">
+        <li><Folder size={15} aria-hidden="true" /> {session.project}</li>
+        <li title={session.repo?.dir ?? session.projectDir}><FolderGit2 size={15} aria-hidden="true" /> {session.repo?.dir ?? session.projectDir}</li>
+        {session.repo && <li><GitBranch size={15} aria-hidden="true" /> {session.repo.branch}</li>}
+        <li><Layers size={15} aria-hidden="true" /> {kind}</li>
+      </ul>
+    </SideSection>
+  );
+}
+
+// Subscription limits as a card: the fullest window as its value, every bar inside.
+export function LimitsCard({ quota }: { quota?: Partial<Record<AgentId, AgentQuota>> }) {
+  const limits = useLimits(null);
+  const nowMs = useNow(30_000);
+  const top = limitsView(quota, nowMs).flatMap(a => a.bars.map(b => ({ a, b }))).filter(x => x.b.percent !== null)
+    .sort((x, y) => (y.b.percent ?? 0) - (x.b.percent ?? 0))[0];
+  return (
+    <SideSection title="Limits" value={top ? `${top.a.name} ${top.b.label.toLowerCase()} ${top.b.percent}%` : "no reading"}>
+      <LimitsBars quota={quota} nowMs={nowMs} />
+      <RefreshLimits {...limits} />
+    </SideSection>
+  );
 }
 
 export function Inspector({ agent, view, session, pinned, onSelect, quota }: {
@@ -51,12 +105,10 @@ export function Inspector({ agent, view, session, pinned, onSelect, quota }: {
                 <span className="agent-room-swatch" style={{ background: a.color }} />
                 <b>{a.name}</b>
                 <span className="agent-room-agent-state">{plateText(a)}</span>
-                <small className="agent-room-agent-limits">{limitsShort(quota, a.id, nowMs)}</small>
               </button>
             </li>
           ))}
         </ul>
-        <RefreshLimits {...limits} />
       </SideSection>
     );
   }

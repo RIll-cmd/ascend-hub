@@ -4,7 +4,7 @@ import { DebateView } from "./debate-view";
 import { WorkflowPanel } from "./workflow-panel";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
-import { Inspector, Ticker, TopBar, TranscriptDrawer } from "./room-frame";
+import { Inspector, LimitsCard, RoomSidebar, SessionCard, TopBar, TranscriptDrawer, type HistoryItem } from "./room-frame";
 import { BriefComposer, BriefSettings, GateBar, TaskBoard, Transcript, useBrief, VerdictPanel, WorktreeCleanup } from "./room-parts";
 import { roomSound, soundPref } from "./room-sound";
 import { soundCues } from "./room-sound-cues";
@@ -90,61 +90,109 @@ function useRoomSound(view: DeckView, pulses: DeckPulse[]) {
   return { soundOn, toggle };
 }
 
+// Past sessions for the sidebar; refreshed every few seconds and whenever the live session changes stage.
+function useHistory(liveKey: string) {
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  useEffect(() => {
+    let alive = true;
+    const load = () => fetch("/api/room/sessions", { cache: "no-store" })
+      .then(r => (r.ok ? (r.json() as Promise<{ sessions?: HistoryItem[] }>) : null))
+      .then(data => { if (alive && data?.sessions) setHistory(data.sessions); }, () => {});
+    const first = setTimeout(load, 0);
+    const timer = setInterval(load, 8_000);
+    return () => { alive = false; clearTimeout(first); clearInterval(timer); };
+  }, [liveKey]);
+  return history;
+}
+
+// A past session opened from the sidebar, read-only.
+function usePastSession(id: string | null) {
+  const [past, setPast] = useState<SessionView | null>(null);
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    fetch(`/api/room/sessions/${id}`, { cache: "no-store" })
+      .then(r => (r.ok ? (r.json() as Promise<{ session?: SessionView }>) : null))
+      .then(data => { if (alive) setPast(data?.session ?? null); }, () => {});
+    return () => { alive = false; };
+  }, [id]);
+  return id ? past : null;
+}
+
 export default function RoomPage() {
-  const { status, session, offline, pulses, send } = useRoom();
+  const { status, session: live, offline, pulses, send } = useRoom();
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<AgentId | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [tab, setTab] = useState<"debate" | "deck" | "workflow">("debate");
-  const act = useCallback(async (path: string, body?: unknown) => setError(await send(path, body)), [send]);
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [fresh, setFresh] = useState(false);
+  const act = useCallback(async (path: string, body?: unknown) => {
+    const message = await send(path, body);
+    setError(message);
+    if (!message && path === "/api/room/sessions") setFresh(false);
+  }, [send]);
   const brief = useBrief(status?.agents, status?.folders, status?.repos);
   const closeDrawer = useCallback(() => setDrawer(false), []);
+  const liveRunning = Boolean(live && !TERMINAL_STAGES.includes(live.stage));
+  const history = useHistory(`${live?.id ?? ""}:${live?.stage ?? ""}`);
+  const pastView = usePastSession(viewing && viewing !== live?.id ? viewing : null);
+  // What the middle column shows: a past session, a blank new one, or the live session.
+  const session = viewing && viewing !== live?.id ? pastView : fresh && !liveRunning ? null : live;
+  const isLive = session !== null && session === live;
   const view = useMemo(() => deckView(session, status), [session, status]);
-  const { soundOn, toggle: toggleSound } = useRoomSound(view, pulses);
-  const running = Boolean(session && !TERMINAL_STAGES.includes(session.stage));
+  const liveView = useMemo(() => deckView(live, status), [live, status]);
+  const { soundOn, toggle: toggleSound } = useRoomSound(liveView, pulses);
+  const running = isLive && liveRunning;
   const debate = session?.mode === "debate";
   const focus = view.agents.find(a => a.id === (selected ?? session?.active?.agent)) ?? null;
   const showBoard = Boolean(session?.plan && BOARD_STAGES.includes(session.stage));
   const messages = session?.transcript ?? [];
   // "debate" is the default tab; a build session has no debate view, so it falls back to the deck.
   const shown = tab === "debate" && !debate ? "deck" : tab;
+  const composing = !liveRunning && (!session || isLive);
+  const openSession = (id: string) => { setViewing(id === live?.id ? null : id); setFresh(false); };
+  const newSession = () => { setViewing(null); setFresh(true); };
 
   return (
-    <main className="agent-room">
-      <TopBar session={session} view={view} running={running} act={act} soundOn={soundOn} onToggleSound={toggleSound} />
-      {offline ? (
-        <div className="agent-room-offline" role="status">
-          <p>Room offline: {offline}</p>
-          <p>It starts with Hub (<code>npm run serve</code> or the desktop shortcut). To start it alone, run <code>node scripts/agent-room/server.mjs</code> in the Hub folder.</p>
-        </div>
-      ) : (
-        <div className="agent-room-layout">
-          <section className="agent-room-stage" aria-label="Room">
+    <main className="agent-room room-app">
+      <RoomSidebar history={history} activeId={session?.id ?? null} running={liveRunning} onNew={newSession} onOpen={openSession} soundOn={soundOn} onToggleSound={toggleSound} />
+      <section className="room-center" aria-label="Room">
+        <TopBar session={session} view={view} running={running} act={act} />
+        {offline ? (
+          <div className="agent-room-offline" role="status">
+            <p>Room offline: {offline}</p>
+            <p>It starts with Hub (<code>npm run serve</code> or the desktop shortcut). To start it alone, run <code>node scripts/agent-room/server.mjs</code> in the Hub folder.</p>
+          </div>
+        ) : (
+          <div className="room-center-body">
             {session && (
               <div className="agent-room-tabs" role="tablist" aria-label="View">
                 {debate && <button role="tab" aria-selected={shown === "debate"} onClick={() => setTab("debate")}>Debate</button>}
                 <button role="tab" aria-selected={shown === "deck"} onClick={() => setTab("deck")}>Deck</button>
                 <button role="tab" aria-selected={shown === "workflow"} onClick={() => setTab("workflow")}>Workflow</button>
+                <button type="button" className="room-tab-link" onClick={() => setDrawer(true)}>Full transcript</button>
               </div>
             )}
             {shown === "debate" && session ? <DebateView session={session} />
               : shown === "workflow" && session ? <WorkflowPanel session={session} />
-                : <DeckCanvas view={view} pulses={pulses} selected={selected} onSelect={setSelected} />}
-            <Ticker messages={messages} onOpen={() => setDrawer(true)} />
+                : <DeckCanvas view={view} pulses={isLive ? pulses : []} selected={selected} onSelect={setSelected} />}
             {session && <Transcript messages={messages.slice(-80)} />}
-            {session && <GateBar session={session} act={act} />}
-            {!running && <BriefComposer brief={brief} act={act} />}
-          </section>
-          <aside className="agent-room-side">
-            <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} quota={status?.quota} />
-            {session && <VerdictPanel session={session} />}
-            {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
-            {!running && <WorktreeCleanup />}
-            {!running && <BriefSettings brief={brief} quotaWarning={status?.quotaWarning} />}
+            {session && isLive && <GateBar session={session} act={act} />}
             {error && <p role="alert" className="agent-room-error">{error}</p>}
-          </aside>
-        </div>
-      )}
+          </div>
+        )}
+        {!offline && composing && <div className="room-center-foot"><BriefComposer brief={brief} act={act} /></div>}
+      </section>
+      <aside className="room-right" aria-label="Details">
+        {session && <SessionCard session={session} />}
+        <LimitsCard quota={status?.quota} />
+        <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} quota={status?.quota} />
+        {session && <VerdictPanel session={session} />}
+        {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
+        {composing && <WorktreeCleanup />}
+        {composing && <BriefSettings brief={brief} quotaWarning={status?.quotaWarning} />}
+      </aside>
       <TranscriptDrawer open={drawer} onClose={closeDrawer} messages={messages} />
     </main>
   );

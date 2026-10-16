@@ -155,7 +155,7 @@ export function SideSection({ title, value, open, children }: { title: string; v
   );
 }
 
-const TEMPLATE_LABELS = { feature: "Feature", bugfix: "Bug fix", refactor: "Refactor", review: "Review only" } as const;
+export const TEMPLATE_LABELS = { feature: "Feature", bugfix: "Bug fix", refactor: "Refactor", review: "Review only" } as const;
 
 // Everything a new session needs. The settings live in the side panel, the task in the composer under the chat.
 export function useBrief(agents?: Record<AgentId, Availability>, folders: string[] = [], repos: RepoChoice[] = []) {
