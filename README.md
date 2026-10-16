@@ -83,6 +83,8 @@ Everything runs on your own computer and listens on `127.0.0.1` only.
 
 A 3D room where **Codex**, **Claude** and **Antigravity** build software together while you approve each step.
 
+The page has three columns: past sessions on the left, the 3D room and the chat in the middle with the prompt box under it, and session details, limits, agents and the plan on the right.
+
 - **Build a project:** the agents discuss the task, agree on roles (orchestrator, coders, reviewer), plan small tasks, build them one by one with a commit each, review, and write a summary.
 - **Three owner gates:** you approve the roles, the plan and the result. At the roles and plan gates you can also send the step back with a note, or pick one of the agents' suggested changes.
 - **New project or existing repo:** a new project gets its own git repository in `D:\ascend-builds\<name>`. An existing repo session works on its own branch in its own git worktree, so your checkout is never touched. At the end you can merge (fast-forward only), keep the branch, or reject it.
@@ -96,6 +98,9 @@ A 3D room where **Codex**, **Claude** and **Antigravity** build software togethe
 - **Debate a question:** the agents answer on their own, critique each other, and a judge writes the combined answer with *Where they agree*, *Where they disagree* and *Recommendation*. Debates are read-only.
 - **See everything:** the *Workflow* tab shows stage timings, swim lanes per agent, each task's rounds, reviews, checks, tokens and diffs. The *Deck* shows the 3D room, Claude's sub-agents and an optional sound layer.
 - **Usage:** tokens per agent and task, plus cost where the CLI reports it.
+- **Session history:** every past session is listed in the left column. Click one to read its chat, workflow, plan and verdict again.
+- **Formatted chat:** agent replies render Markdown, with headings, lists, inline code and code blocks that collapse when long. **Full transcript** opens every message in one drawer.
+- **Themes:** seven neobrutalist colour themes: *Dark wood* (default), *Sky*, *Lime*, *Retro SaaS*, *BrutAdmin*, *Brutstack* and *Neoflux*. Pick one under **Theme** at the bottom of the left column. Your browser remembers the choice.
 - **Voice gates:** with Ascend Vision running, it announces when the room needs you and accepts spoken decisions such as "approve" or "merge", confirmed with "yes".
 
 ### The TV and its channels
@@ -124,8 +129,13 @@ The big CRT on the home screen is a working television. Click its upper knob to 
 | | |
 | --- | --- |
 | <img src="docs/screenshots/home.webp" alt="Home screen with the retro CRT television, calendar and clock" /> **Home** | <img src="docs/screenshots/limits.webp" alt="The Limits panel open over the home screen, with 5-hour and weekly bars for Claude and Codex" /> **Subscription limits** |
-| <img src="docs/screenshots/tv-detail.webp" alt="The Codex CLI status monitor opened from its shelf TV" /> **Status monitor** | <img src="docs/screenshots/room-start.webp" alt="The Agent Room: three agent desks in a 3D room, agent cards with limits, and the start form" /> **Agent Room** |
+| <img src="docs/screenshots/tv-detail.webp" alt="The Codex CLI status monitor opened from its shelf TV" /> **Status monitor** | <img src="docs/screenshots/room-start.webp" alt="The Agent Room in the Dark wood theme: session history on the left, the 3D room with three agent desks and the prompt box in the middle, limits, agents and new-session options on the right" /> **Agent Room** |
 | <img src="docs/screenshots/room-workflow.webp" alt="The Workflow tab of a finished parallel session, with swim lanes and three tasks" /> **Workflow view** (two tasks ran in parallel) | <img src="docs/screenshots/room-debate.webp" alt="A finished debate with the judge's combined answer" /> **Debate verdict** |
+
+<p align="center">
+<img src="docs/screenshots/room-themes.webp" alt="The same finished session in six themes: Sky, Lime, Retro SaaS, BrutAdmin, Brutstack and Neoflux" width="900" /><br/>
+<b>Agent Room themes</b>: Sky, Lime, Retro SaaS (top), BrutAdmin, Brutstack, Neoflux (bottom). Dark wood is above.
+</p>
 
 **The TV, the CD player and the game**
 
@@ -181,15 +191,15 @@ Then double-click **Ascend Hub** on the desktop. Closing the launcher window whi
 ## Using the Agent Room
 
 1. Open **http://127.0.0.1:5173/room**, or click the *Ascend Hub* poster on the shelf. Wait until all three agents show as ready.
-2. Choose **Build a project** or **Debate a question**.
-3. For a build, pick the **Kind of work** and either a **New project** name or an **Existing repo**. Add a **check** command such as `npm test`. It is required for *Bug fix* and *Refactor*.
-4. Optionally set models, limits, sub-agents and **Run independent tasks at the same time**. Tick **Set roles myself** to skip the discussion.
-5. Describe the task and press **Start**.
+2. Under **New session** in the right column, choose **Build** or **Debate**.
+3. For a build, pick the **Kind of work** and either a **New project** name or an **Existing repo**. Under **Options**, add a **check** command such as `npm test`. It is required for *Bug fix* and *Refactor*.
+4. Also under **Options**, optionally set models, limits, sub-agents and **Run independent tasks at the same time**. Tick **Set roles myself** to skip the discussion.
+5. Describe the task in the prompt box under the room and press **Start**.
 6. Answer the gates as they come:
    - **Roles:** edit the roles or approve them.
    - **Plan:** rename tasks, change who does each, tick **Race all coders** on a hard task, then approve. Or ask for changes with a note.
    - **Result:** read the summary and diff, tick the memory notes worth keeping, then merge, keep the branch, open a pull request (pushes to `origin` and uses the GitHub CLI `gh`), or reject.
-7. Follow progress in the *Deck* and *Workflow* tabs. **Stop** in the top bar ends the session at any time; committed work stays. A stopped repo session keeps its worktree for inspection until you press **Remove worktrees** above the start form; its branch stays either way.
+7. Follow progress in the *Deck* and *Workflow* tabs. **Stop** in the top bar ends the session at any time; committed work stays. A stopped repo session keeps its worktree for inspection until you press **Remove worktrees** in the right column; its branch stays either way.
 
 > [!TIP]
 > Check the **Limits** bars before a long session. The start form also warns when an agent has used 90% or more of a window.
@@ -341,7 +351,7 @@ desktop/tests/Test-SessionReplacement.ps1
 | Path | Contents |
 | --- | --- |
 | `app/` | Pages and API routes: home, `/room`, the status and room proxies, media APIs |
-| `app/room/` | Agent Room UI: deck, workflow, gates, start form, limits |
+| `app/room/` | Agent Room UI: deck, workflow, gates, start form, limits, session history, themes |
 | `scripts/agent-room/` | Agent Room server: sessions, prompts, git work, checks, quota, memory |
 | `scripts/status-adapters/` | CLI status wrappers, hooks and reporters |
 | `components/`, `hooks/`, `lib/` | Shared UI components and logic |
