@@ -5,6 +5,7 @@ import { messageLine, plateText, type DeckAgent, type DeckView } from "./deck/de
 import { useNow } from "../status/use-now";
 import { LimitsBars, RefreshLimits, useLimits } from "./limits-panel";
 import { limitsView } from "./limits-view";
+import { Markdown } from "./markdown";
 import { SideSection, StageSteps, TEMPLATE_LABELS, Transcript, type Act } from "./room-parts";
 import { AGENT_IDS, AGENT_NAMES, TERMINAL_STAGES, type AgentId, type AgentQuota, type Message, type SessionView, type Stage } from "./room-types";
 
@@ -88,12 +89,9 @@ export function LimitsCard({ quota }: { quota?: Partial<Record<AgentId, AgentQuo
   );
 }
 
-export function Inspector({ agent, view, session, pinned, onSelect, quota }: {
+export function Inspector({ agent, view, session, pinned, onSelect }: {
   agent: DeckAgent | null; view: DeckView; session: SessionView | null; pinned: boolean; onSelect: (id: AgentId) => void;
-  quota?: Partial<Record<AgentId, AgentQuota>>;
 }) {
-  const limits = useLimits(null);
-  const nowMs = useNow(30_000);
   if (!agent) {
     const busy = view.agents.filter(a => a.state === "busy").length;
     return (
@@ -115,6 +113,7 @@ export function Inspector({ agent, view, session, pinned, onSelect, quota }: {
   const latest = agent.latest ? messageLine(agent.latest) : null;
   return (
     <section className="agent-room-inspector" aria-label={`${agent.name} details`} style={{ borderColor: agent.color }}>
+      {pinned && <button type="button" className="room-back" onClick={() => onSelect(agent.id)}><ChevronLeft size={14} aria-hidden="true" /> All agents</button>}
       <h2><span className="agent-room-swatch" style={{ background: agent.color }} />{agent.name}</h2>
       <p className="agent-room-badges">{agent.roles.map(role => <span key={role} className="agent-room-badge">{role}</span>)}</p>
       <h3>Current activity</h3>
@@ -127,18 +126,14 @@ export function Inspector({ agent, view, session, pinned, onSelect, quota }: {
           <ul>{agent.subagents.map(s => <li key={s.id}>↳ {s.label}{s.tool ? ` · ${s.tool}` : ""} <small>({s.status})</small></li>)}</ul>
         </>
       )}
-      <h3>Limits</h3>
-      <LimitsBars quota={quota} agents={[agent.id]} nowMs={nowMs} />
-      <RefreshLimits {...limits} />
       {latest && (
         <>
           <h3>Latest message</h3>
-          <blockquote>{agent.latest?.text.slice(0, 600)}</blockquote>
+          <div className="room-agent-latest"><Markdown text={agent.latest?.text.slice(0, 1200) ?? ""} foldCode={6} /></div>
           {latest.to && <p className="agent-room-sent">Sent to {latest.to}</p>}
         </>
       )}
       {session && session.mode !== "debate" && session.roles?.reviewer === agent.id && <p className="agent-room-hint">Reviews every task.</p>}
-      {pinned && <button type="button" className="agent-room-link" onClick={() => onSelect(agent.id)}>Show all agents</button>}
     </section>
   );
 }

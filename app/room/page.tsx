@@ -121,23 +121,29 @@ function usePastSession(id: string | null) {
 
 export default function RoomPage() {
   const { status, session: live, offline, pulses, send } = useRoom();
-  const [error, setError] = useState<string | null>(null);
+  // An error belongs to the live session it happened in; once another session is live it no longer applies.
+  const [failure, setFailure] = useState<{ text: string; liveId: string | null } | null>(null);
   const [selected, setSelected] = useState<AgentId | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [tab, setTab] = useState<"debate" | "deck" | "workflow">("debate");
   const [viewing, setViewing] = useState<string | null>(null);
-  const [fresh, setFresh] = useState(false);
+  // "New session" hides the live session it was pressed over; any newer live session shows again by itself.
+  const [freshOver, setFreshOver] = useState<string | null | undefined>(undefined);
+  const brief = useBrief(status?.agents, status?.folders, status?.repos);
+  const liveIdRef = useRef<string | null>(null);
+  useEffect(() => { liveIdRef.current = live?.id ?? null; }, [live?.id]);
+  const { setTask, setQuestion } = brief;
   const act = useCallback(async (path: string, body?: unknown) => {
     const message = await send(path, body);
-    setError(message);
-    if (!message && path === "/api/room/sessions") setFresh(false);
-  }, [send]);
-  const brief = useBrief(status?.agents, status?.folders, status?.repos);
+    setFailure(message ? { text: message, liveId: liveIdRef.current } : null);
+    if (!message && path === "/api/room/sessions") { setTask(""); setQuestion(""); }
+  }, [send, setTask, setQuestion]);
   const closeDrawer = useCallback(() => setDrawer(false), []);
   const liveRunning = Boolean(live && !TERMINAL_STAGES.includes(live.stage));
   const history = useHistory(`${live?.id ?? ""}:${live?.stage ?? ""}`);
   const pastView = usePastSession(viewing && viewing !== live?.id ? viewing : null);
   // What the middle column shows: a past session, a blank new one, or the live session.
+  const fresh = freshOver !== undefined && (live?.id ?? null) === freshOver;
   const session = viewing && viewing !== live?.id ? pastView : fresh && !liveRunning ? null : live;
   const isLive = session !== null && session === live;
   const view = useMemo(() => deckView(session, status), [session, status]);
@@ -151,8 +157,8 @@ export default function RoomPage() {
   // "debate" is the default tab; a build session has no debate view, so it falls back to the deck.
   const shown = tab === "debate" && !debate ? "deck" : tab;
   const composing = !liveRunning && (!session || isLive);
-  const openSession = (id: string) => { setViewing(id === live?.id ? null : id); setFresh(false); };
-  const newSession = () => { setViewing(null); setFresh(true); };
+  const openSession = (id: string) => { setViewing(id === live?.id ? null : id); setFreshOver(undefined); setSelected(null); };
+  const newSession = () => { setViewing(null); setFreshOver(live?.id ?? null); setSelected(null); };
 
   return (
     <main className="agent-room room-app">
@@ -179,7 +185,7 @@ export default function RoomPage() {
                 : <DeckCanvas view={view} pulses={isLive ? pulses : []} selected={selected} onSelect={setSelected} />}
             {session && <Transcript messages={messages.slice(-80)} />}
             {session && isLive && <GateBar session={session} act={act} />}
-            {error && <p role="alert" className="agent-room-error">{error}</p>}
+            {failure && failure.liveId === (live?.id ?? null) && <p role="alert" className="agent-room-error">{failure.text}</p>}
           </div>
         )}
         {!offline && composing && <div className="room-center-foot"><BriefComposer brief={brief} act={act} /></div>}
@@ -187,7 +193,7 @@ export default function RoomPage() {
       <aside className="room-right" aria-label="Details">
         {session && <SessionCard session={session} />}
         <LimitsCard quota={status?.quota} />
-        <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} quota={status?.quota} />
+        <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} />
         {session && <VerdictPanel session={session} />}
         {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
         {composing && <WorktreeCleanup />}

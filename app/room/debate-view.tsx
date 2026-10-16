@@ -1,5 +1,6 @@
 "use client";
 import { useState, type CSSProperties } from "react";
+import { Markdown } from "./markdown";
 import { AGENT_COLORS, debateRounds, messageLine, type DebateRound } from "./deck/deck-view";
 import { AGENT_IDS, AGENT_NAMES, type SessionView } from "./room-types";
 
@@ -8,9 +9,7 @@ const LABEL: Record<DebateRound, string> = { opening: "Opening", critique: "Crit
 
 function Verdict({ text }: { text: string }) {
   return (
-    <div className="agent-room-debate-verdict">
-      {text.split("\n").map((line, i) => (line.startsWith("## ") ? <h3 key={i}>{line.slice(3)}</h3> : <p key={i}>{line}</p>))}
-    </div>
+    <div className="agent-room-debate-verdict"><Markdown text={text} /></div>
   );
 }
 
@@ -48,7 +47,7 @@ export function DebateView({ session }: { session: SessionView }) {
                   <small>{LABEL[round]}</small>
                   <em>{speaking ? "Speaking…" : message ? "" : "Waiting"}</em>
                 </header>
-                <div className="agent-room-debate-text">{message?.text ?? ""}</div>
+                <div className="agent-room-debate-text"><Markdown text={message?.text ?? ""} /></div>
                 {message && (
                   <footer>
                     {line?.to && line.to !== "you" ? `→ ${line.to} · ` : ""}

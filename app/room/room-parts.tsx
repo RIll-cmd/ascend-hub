@@ -7,6 +7,7 @@ import {
   type RepoChoice,
 } from "./room-types";
 import { messageLine, nearBottom, stepStates } from "./deck/deck-view";
+import { Markdown } from "./markdown";
 import { DiffView } from "./workflow-panel";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
@@ -35,16 +36,29 @@ export function Transcript({ messages }: { messages: Message[] }) {
   return (
     <div ref={ref} className="agent-room-log" role="log" aria-label="Transcript"
       onScroll={event => { stick.current = nearBottom(event.currentTarget); }}>
-      {messages.map((m, i) => {
-        const line = messageLine(m);
-        return (
-          <p key={`${m.seq ?? m.at}-${i}`} className={m.from === "room" ? "is-room" : undefined}>
-            <b className={m.from === "room" ? undefined : `agent-room-name-${m.from}`}>{line.from}</b>
-            {line.to && <span className="agent-room-to"> → {line.to}</span>}: {m.text}
-          </p>
-        );
-      })}
+      {messages.map((m, i) => (m.from === "room"
+        ? <p key={`${m.seq ?? m.at}-${i}`} className="room-note">{m.text}</p>
+        : <ChatMessage key={`${m.seq ?? m.at}-${i}`} message={m} />))}
     </div>
+  );
+}
+
+const LONG_MESSAGE = { chars: 1600, lines: 28 };
+
+function ChatMessage({ message: m }: { message: Message }) {
+  const line = messageLine(m);
+  const long = m.text.length > LONG_MESSAGE.chars || m.text.split("\n").length > LONG_MESSAGE.lines;
+  const [open, setOpen] = useState(!long);
+  return (
+    <article className="room-msg">
+      <header>
+        <b className={`agent-room-name-${m.from}`}>{line.from}</b>
+        {line.to && <span className="agent-room-to">→ {line.to}</span>}
+        <time dateTime={m.at}>{new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
+      </header>
+      <div className={open ? "room-msg-body" : "room-msg-body is-folded"}><Markdown text={m.text} /></div>
+      {long && <button type="button" className="md-more" onClick={() => setOpen(o => !o)}>{open ? "Show less" : "Show more"}</button>}
+    </article>
   );
 }
 
@@ -291,10 +305,11 @@ export function BriefComposer({ brief: b, act }: { brief: Brief; act: Act }) {
   return (
     <form id={BRIEF_FORM} className="agent-room-composer" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", b.body); }}>
       <textarea value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required rows={3}
+        onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && b.canStart) e.currentTarget.form?.requestSubmit(); }}
         placeholder={build ? "What should they build?" : "What should they debate?"} aria-label={build ? "What should they build?" : "What should they debate?"} />
       <div className="agent-room-composer-bar">
         <small>{b.missing.length > 0 ? `Waiting for: ${b.missing.map(id => AGENT_NAMES[id]).join(", ")}` : build ? `${TEMPLATE_LABELS[b.template]} · ${b.inRepo ? "existing repo" : "new project"}` : "Debate · read-only"}</small>
-        <button type="submit" disabled={!b.canStart}>Start</button>
+        <button type="submit" disabled={!b.canStart} title="Ctrl+Enter">Start</button>
       </div>
     </form>
   );
@@ -314,7 +329,7 @@ export function VerdictPanel({ session }: { session: SessionView }) {
   return (
     <section className="agent-room-verdict" aria-label="Verdict">
       <h2>Verdict</h2>
-      <div className="agent-room-verdict-text">{answer}</div>
+      <div className="agent-room-verdict-text"><Markdown text={answer} /></div>
       <button onClick={download}>Download .md</button>
     </section>
   );
@@ -370,7 +385,7 @@ function PausePanel({ session, act }: { session: SessionView; act: Act }) {
           <button onClick={() => act(RESUME, { action: "reassign", agent })}>Reassign</button>
         </>
       )}
-      <button onClick={() => act(RESUME, { action: "stop" })}>Stop</button>
+      <button className="is-danger" onClick={() => act(RESUME, { action: "stop" })}>Stop</button>
     </div>
   );
 }
@@ -441,7 +456,7 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
         <button onClick={() => {
           if (window.confirm(`Push ${branch} to origin and open a pull request into ${baseBranch}?`)) void act(GATE, { gate: "result", decision: "pr", memory });
         }}>Open pull request</button>
-        <button onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject and delete branch</button>
+        <button className="is-danger" onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject and delete branch</button>
         <small>Merge only fast-forwards {baseBranch} while your checkout is on it; otherwise keep the branch and merge it yourself.</small>
       </div>
     );
@@ -454,7 +469,7 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
         <DiffView commit="all" label="Show all changes" />
         <MemoryPicker proposal={proposal} onChange={setMemory} />
         <button onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Accept</button>
-        <button onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject</button>
+        <button className="is-danger" onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject</button>
       </div>
     );
   }
