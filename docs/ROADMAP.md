@@ -1,6 +1,6 @@
 # Ascend roadmap — Hub and Vision
 
-Updated 2026-10-14.
+Updated 2026-10-16.
 
 **Goals:**
 - **Hub:** the owner's main coding tool, where Codex, Claude and Antigravity plan, build and review together.
@@ -34,7 +34,8 @@ Updated 2026-10-14.
 | M3 | Workflow view | A timeline graph of the session: stages, task nodes with agent, time, diff and test results, and a loop view counting coder ↔ reviewer rounds. | Done (2026-10-14); test results arrive with M4 |
 | M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Done (2026-10-14); PRs via `gh` not yet |
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
-| M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Planned (2026-10-14) |
+| M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Done (2026-10-14) |
+| M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | Planned (2026-10-16) |
 
 **Reliability work alongside:**
 - Room sessions keep a pending gate across restarts.
@@ -55,6 +56,130 @@ Updated 2026-10-14.
   - The Room records "Owner asked for changes: …" in the transcript and sends the session back to the `roles` or `plan` step. The agents see the note in the conversation.
   - The result gate stays accept/reject.
 - The Hub gate bar shows the spoken summary, the suggested changes as buttons, a free-text field and a **Request changes** button.
+
+## M7 — Role sets and skills: plan (2026-10-16)
+
+**Goal:** the owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security). Each role is a set of agent skills that the owner can switch on or off, and tasks go to the agent wearing the matching role.
+
+**Constraint from the current code:**
+- A prompt is capped at `MAX_PROMPT_CHARS` (28,000).
+- Antigravity takes its prompt as a command-line argument, so the Windows command-line limit also applies.
+- So skills are never pasted into prompts. Each agent gets a short index and reads the files it needs.
+
+### Concepts
+
+- **Skill:** a `SKILL.md` folder from a GitHub source, pinned to one commit, with its license and a has-scripts flag recorded.
+- **Role set:** a name, a short role prompt, and skills that can each be switched on or off. One skill can be in several sets.
+- **Assignment:** in each session, every agent wears zero or more role sets. They come on top of orchestrator, coders and reviewer.
+
+### Starting role sets
+
+Every skill can be switched off. Check each source's license and scripts before enabling it.
+
+| Set | Skills |
+| --- | --- |
+| UI/UX (design) | [Impeccable](https://impeccable.style/), [Anthropic frontend-design](https://github.com/anthropics/skills), [UI UX Pro Max](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill), [Vercel web-interface-guidelines](https://github.com/vercel-labs/web-interface-guidelines) |
+| Frontend (code) | [Vercel react-best-practices and composition-patterns](https://github.com/vercel-labs/agent-skills), web-interface-guidelines, [Magic UI](https://github.com/magicuidesign/magicui/tree/main/skills/magic-ui), 21st.dev agent skills (repo still to find) |
+| Code reviewer | [Sentry code-review](https://github.com/getsentry/skills), [Anthropic pr-review-toolkit](https://github.com/anthropics/claude-plugins-official/tree/main/plugins/pr-review-toolkit) |
+| Backend | [wshobson api-design-principles and architecture-patterns](https://github.com/wshobson/agents/tree/main/plugins/backend-development/skills), [Supabase Postgres best practices](https://github.com/supabase/agent-skills) (off by default) |
+| Security | [Trail of Bits differential-review and static-analysis](https://github.com/trailofbits/skills); Semgrep and CodeQL are installed separately |
+
+### Flow
+
+1. **Roles:** the orchestrator sees the enabled sets and proposes who wears which. The roles gate shows them as tags on each agent, and the owner can edit them.
+2. **Plan:**
+   - each task gets a `role` (frontend, backend and so on);
+   - `validatePlan` checks the role is an enabled set and prefers an assignee wearing it;
+   - the plan gate shows a role badge on each task.
+3. **Build:**
+   - the coder's prompt lists only the skills for that task's role, as name, one-line description and path, in about 1,500 characters;
+   - the prompt tells the coder to read the SKILL.md before starting.
+4. **Review:**
+   - the normal reviewer uses the Code reviewer set;
+   - with Security on, tasks also get a security review;
+   - frontend tasks get a design review from the UI/UX wearer, later with app-preview screenshots.
+5. **Workflow view:** shows each task's role and the SKILL.md files the agent actually read. Claude's and Codex's event streams report file reads; Antigravity's are unconfirmed.
+
+### Delivery to agents
+
+- Enabled skills are copied into the session folder at `.ascend/skills/<id>/`.
+- `.ascend/` goes into `.git/info/exclude`, so it is never committed.
+- One method works for all three CLIs: each reads inside its own folder, and copying avoids Claude's plan-mode limit on reading outside it.
+- Each CLI's own skill system is an optional later step.
+
+### Storage, API and UI
+
+- **Storage:**
+  - skills in `.sites-runtime/agent-room/skills/<id>/`, alongside `source.json` with the repo, path, commit, license and has-scripts;
+  - set definitions and switches in `role-sets.json`.
+- **Room server:** `GET/POST /skills` and `GET/POST /role-sets`, with matching Hub proxy routes.
+- **UI:**
+  - a Role sets section in the right column;
+  - a Skill library drawer: the list, source, license, view SKILL.md with the existing Markdown renderer, Add from GitHub URL, and Update with a diff;
+  - per-session overrides under Options in the start form.
+
+### Safety
+
+Third-party skills are untrusted instructions running inside the agents.
+
+- Pin each skill to one commit.
+- Show the content before it is enabled.
+- Show a diff before any update; never update automatically.
+- Warn when a skill includes scripts.
+- Put the room's rules after the skill text in every prompt, so the room's rules win a conflict.
+- Fetching a source is a download and waits for the owner's approval.
+
+### Slices
+
+| Slice | Delivers |
+| --- | --- |
+| M7a | Data model, a library of local folders, role-set switches in the UI |
+| M7b | Copying skills into the session, the skill index in prompts, `role` on plan tasks, coders getting the skills for their role |
+| M7c | Specialist review passes: code review, security, UI/UX |
+| M7d | Add from a GitHub URL: pinned commit, license, diff on update |
+| M7e | Which skills were read, shown per task; overrides per session |
+
+**Tests:**
+- plan role validation;
+- the size of the skill index;
+- the exclude entry;
+- keeping the switches;
+- falling back when no agent wears a role.
+
+### Open decisions
+
+1. **Where roles live.** Options are per agent, per task or both. Recommended: both. Agents wear sets, tasks get labels, and the two are matched.
+2. **How skills arrive.** Options are fetching on demand or copying into the repo. Recommended: fetch on demand with one approval per source, because some licenses may not allow redistribution.
+3. **Security tools.** Either Semgrep and CodeQL are required for the Security set, or Security runs on the review skill alone until they're installed.
+4. **21st.dev.** Which repo is meant.
+
+## Room ideas backlog (2026-10-16)
+
+Not scheduled.
+
+- **Running sessions:**
+  - retry from any stage;
+  - auto-continue when a limit window resets;
+  - limit-aware assignment, moving work away from an agent above 90%;
+  - a session queue;
+  - scheduled sessions;
+  - start from a GitHub issue or PR;
+  - a PR review mode that posts comments.
+- **Seeing the work:**
+  - a live diff panel;
+  - a file tree and read-only viewer;
+  - a terminal pane for check output;
+  - app preview with screenshots after UI tasks;
+  - search across sessions;
+  - transcript and summary export.
+- **Quality:**
+  - keep-going mode, looping until checks pass within the budgets;
+  - coverage and lint per task in the Workflow view.
+- **Reach:**
+  - phone push when a gate waits;
+  - publish the session summary as a page;
+  - MCP connectors for agents;
+  - several repos in one session.
 
 ## M6 — Harness extras: plan (2026-10-14)
 
