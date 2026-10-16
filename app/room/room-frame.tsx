@@ -2,8 +2,10 @@
 import { Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { messageLine, plateText, type DeckAgent, type DeckView } from "./deck/deck-view";
+import { useNow } from "../status/use-now";
 import { LimitsBars, RefreshLimits, useLimits } from "./limits-panel";
-import { StageSteps, Transcript, type Act } from "./room-parts";
+import { limitsView } from "./limits-view";
+import { SideSection, StageSteps, Transcript, type Act } from "./room-parts";
 import { AGENT_IDS, AGENT_NAMES, type AgentId, type AgentQuota, type Message, type SessionView } from "./room-types";
 
 const clock = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "");
@@ -26,31 +28,36 @@ export function TopBar({ session, view, running, act, soundOn, onToggleSound }: 
   );
 }
 
-function AgentsHeading() {
-  const limits = useLimits(null);
-  return <h3 className="agent-room-cards-head">Agents <RefreshLimits {...limits} /></h3>;
+// "5h 1% · wk 83%": the short form of an agent's subscription limits, for its one-line row.
+function limitsShort(quota: Partial<Record<AgentId, AgentQuota>> | undefined, id: AgentId, nowMs: number): string {
+  const bars = limitsView(quota, nowMs).find(a => a.agent === id)?.bars ?? [];
+  return bars.filter(b => b.percent !== null).map(b => `${b.label === "Weekly" ? "wk" : "5h"} ${b.percent}%`).join(" · ");
 }
 
 export function Inspector({ agent, view, session, pinned, onSelect, quota }: {
   agent: DeckAgent | null; view: DeckView; session: SessionView | null; pinned: boolean; onSelect: (id: AgentId) => void;
   quota?: Partial<Record<AgentId, AgentQuota>>;
 }) {
+  const limits = useLimits(null);
+  const nowMs = useNow(30_000);
   if (!agent) {
+    const busy = view.agents.filter(a => a.state === "busy").length;
     return (
-      <section className="agent-room-inspector agent-room-cards" aria-label="Agents">
-        <AgentsHeading />
-        {view.agents.map(a => {
-          const latest = a.latest ? messageLine(a.latest) : null;
-          return (
-            <button key={a.id} type="button" className="agent-room-card" style={{ borderLeftColor: a.color }} onClick={() => onSelect(a.id)}>
-              <span><b style={{ color: a.color }}>{a.name}</b> {a.roles.map(role => <span key={role} className="agent-room-badge">{role}</span>)}</span>
-              <small>{plateText(a)}</small>
-              <LimitsBars quota={quota} agents={[a.id]} />
-              {latest && <small className="agent-room-card-line">{latest.to ? `→ ${latest.to}: ` : ""}{latest.text}</small>}
-            </button>
-          );
-        })}
-      </section>
+      <SideSection title="Agents" value={busy ? `${busy} working` : "idle"} open>
+        <ul className="agent-room-agent-rows">
+          {view.agents.map(a => (
+            <li key={a.id}>
+              <button type="button" className="agent-room-agent-row" onClick={() => onSelect(a.id)} title={`Show ${a.name}'s details`}>
+                <span className="agent-room-swatch" style={{ background: a.color }} />
+                <b>{a.name}</b>
+                <span className="agent-room-agent-state">{plateText(a)}</span>
+                <small className="agent-room-agent-limits">{limitsShort(quota, a.id, nowMs)}</small>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <RefreshLimits {...limits} />
+      </SideSection>
     );
   }
   const latest = agent.latest ? messageLine(agent.latest) : null;
@@ -68,6 +75,9 @@ export function Inspector({ agent, view, session, pinned, onSelect, quota }: {
           <ul>{agent.subagents.map(s => <li key={s.id}>↳ {s.label}{s.tool ? ` · ${s.tool}` : ""} <small>({s.status})</small></li>)}</ul>
         </>
       )}
+      <h3>Limits</h3>
+      <LimitsBars quota={quota} agents={[agent.id]} nowMs={nowMs} />
+      <RefreshLimits {...limits} />
       {latest && (
         <>
           <h3>Latest message</h3>

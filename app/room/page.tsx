@@ -5,7 +5,7 @@ import { WorkflowPanel } from "./workflow-panel";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, Ticker, TopBar, TranscriptDrawer } from "./room-frame";
-import { BriefForm, GateBar, TaskBoard, Transcript, VerdictPanel, WorktreeCleanup } from "./room-parts";
+import { BriefComposer, BriefSettings, GateBar, TaskBoard, Transcript, useBrief, VerdictPanel, WorktreeCleanup } from "./room-parts";
 import { roomSound, soundPref } from "./room-sound";
 import { soundCues } from "./room-sound-cues";
 import { BOARD_STAGES, TERMINAL_STAGES, type AgentId, type RoomStatus, type SessionView } from "./room-types";
@@ -97,6 +97,7 @@ export default function RoomPage() {
   const [drawer, setDrawer] = useState(false);
   const [tab, setTab] = useState<"debate" | "deck" | "workflow">("debate");
   const act = useCallback(async (path: string, body?: unknown) => setError(await send(path, body)), [send]);
+  const brief = useBrief(status?.agents, status?.folders, status?.repos);
   const closeDrawer = useCallback(() => setDrawer(false), []);
   const view = useMemo(() => deckView(session, status), [session, status]);
   const { soundOn, toggle: toggleSound } = useRoomSound(view, pulses);
@@ -131,14 +132,15 @@ export default function RoomPage() {
                 : <DeckCanvas view={view} pulses={pulses} selected={selected} onSelect={setSelected} />}
             <Ticker messages={messages} onOpen={() => setDrawer(true)} />
             {session && <Transcript messages={messages.slice(-80)} />}
+            {session && <GateBar session={session} act={act} />}
+            {!running && <BriefComposer brief={brief} act={act} />}
           </section>
           <aside className="agent-room-side">
             <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} quota={status?.quota} />
-            {session && <GateBar session={session} act={act} />}
             {session && <VerdictPanel session={session} />}
             {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
             {!running && <WorktreeCleanup />}
-            {!running && <BriefForm agents={status?.agents} folders={status?.folders} repos={status?.repos} quotaWarning={status?.quotaWarning} act={act} />}
+            {!running && <BriefSettings brief={brief} quotaWarning={status?.quotaWarning} />}
             {error && <p role="alert" className="agent-room-error">{error}</p>}
           </aside>
         </div>

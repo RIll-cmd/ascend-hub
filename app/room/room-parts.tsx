@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES,
   type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
@@ -49,9 +50,8 @@ export function Transcript({ messages }: { messages: Message[] }) {
 
 export function TaskBoard({ tasks }: { tasks: PlanTask[] }) {
   return (
-    <aside className="agent-room-board" aria-label="Plan tasks">
-      <h2>Plan</h2>
-      <ol>
+    <SideSection title="Plan" value={`${tasks.filter(t => t.status === "done").length} of ${tasks.length} done`} open>
+      <ol className="agent-room-board">
         {tasks.map(t => (
           <li key={t.id} className={`is-${t.status}`}>
             <span>{t.id}. {t.title}</span>
@@ -59,7 +59,7 @@ export function TaskBoard({ tasks }: { tasks: PlanTask[] }) {
           </li>
         ))}
       </ol>
-    </aside>
+    </SideSection>
   );
 }
 
@@ -141,9 +141,24 @@ export function WorktreeCleanup() {
   );
 }
 
-export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act }: {
-  agents?: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[]; quotaWarning?: string | null; act: Act;
-}) {
+// A side-panel section, like a settings card: title, a one-line value and a chevron that opens the details.
+export function SideSection({ title, value, open, children }: { title: string; value?: ReactNode; open?: boolean; children: ReactNode }) {
+  return (
+    <details className="agent-room-section" open={open}>
+      <summary>
+        <span className="agent-room-section-title">{title}</span>
+        {value !== undefined && <span className="agent-room-section-value">{value}</span>}
+        <ChevronRight size={14} aria-hidden="true" className="agent-room-section-chevron" />
+      </summary>
+      <div className="agent-room-section-body">{children}</div>
+    </details>
+  );
+}
+
+const TEMPLATE_LABELS = { feature: "Feature", bugfix: "Bug fix", refactor: "Refactor", review: "Review only" } as const;
+
+// Everything a new session needs. The settings live in the side panel, the task in the composer under the chat.
+export function useBrief(agents?: Record<AgentId, Availability>, folders: string[] = [], repos: RepoChoice[] = []) {
   const [kind, setKind] = useState<SessionMode>("build");
   const [project, setProject] = useState("");
   const [task, setTask] = useState("");
@@ -158,7 +173,7 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
   const [check, setCheck] = useState<string | null>(null);
   const [limits, setLimits] = useState({ minutes: 120, turns: 80, rounds: 3 });
   const [parallel, setParallel] = useState(false);
-  const [template, setTemplate] = useState<"feature" | "bugfix" | "refactor" | "review">("feature");
+  const [template, setTemplate] = useState<keyof typeof TEMPLATE_LABELS>("feature");
   const [models, setModels] = useState<{ codex: string; claude: string }>({ codex: "", claude: "" });
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
   const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
@@ -173,91 +188,114 @@ export function BriefForm({ agents, folders = [], repos = [], quotaWarning, act 
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
     : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}) };
+  const canStart = missing.length === 0 && !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
+  return {
+    kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
+    judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
+    parallel, setParallel, template, setTemplate, models, setModels, needsCheck, missing, body, canStart, folders, repos,
+  };
+}
+export type Brief = ReturnType<typeof useBrief>;
+
+const BRIEF_FORM = "room-brief";
+
+export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaWarning?: string | null }) {
+  const options = b.kind === "debate" ? (b.claudeSubagents ? "sub-agents on" : "sub-agents off")
+    : `${b.checkCommand.trim() ? "checks on" : "no checks"} · ${b.limits.minutes} min`;
   return (
-    <form className="agent-room-brief" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", body); }}>
-      <div className="agent-room-kind" role="radiogroup" aria-label="Session type">
-        <label><input type="radio" name="room-kind" checked={kind === "build"} onChange={() => setKind("build")} /> Build a project</label>
-        <label><input type="radio" name="room-kind" checked={kind === "debate"} onChange={() => setKind("debate")} /> Debate a question</label>
-      </div>
-      {kind === "build" ? (
-        <>
-          <label>Kind of work
-            <select value={template} onChange={e => setTemplate(e.target.value as typeof template)}>
-              <option value="feature">Feature: discuss, plan, build</option>
-              <option value="bugfix">Bug fix: reproduce with a failing test first</option>
-              <option value="refactor">Refactor: behaviour must not change</option>
-              <option value="review">Review only: findings, no edits</option>
-            </select>
-          </label>
-          {needsCheck && <small>Needs a check command below: {template === "bugfix" ? "task 1 must make it fail, the fix must make it pass." : "it must pass before and after every task."}</small>}
-          <div className="agent-room-kind" role="radiogroup" aria-label="Where">
-            <label><input type="radio" name="room-where" checked={!inRepo} onChange={() => { setWhere("new"); setCheck(null); }} /> New project</label>
-            <label><input type="radio" name="room-where" checked={inRepo} disabled={repos.length === 0} onChange={() => { setWhere("repo"); setCheck(null); }} /> Existing repo</label>
-          </div>
-          {inRepo && (
-            <label>Repository
-              <select value={chosenRepo?.dir ?? ""} onChange={e => { setRepoDir(e.target.value); setCheck(null); }}>
-                {repos.map(r => <option key={r.dir} value={r.dir}>{r.dir}</option>)}
+    <>
+      <SideSection title="New session" value={b.kind === "debate" ? "Debate" : TEMPLATE_LABELS[b.template]} open>
+        <div className="agent-room-kind" role="radiogroup" aria-label="Session type">
+          <label><input type="radio" name="room-kind" checked={b.kind === "build"} onChange={() => b.setKind("build")} /> Build</label>
+          <label><input type="radio" name="room-kind" checked={b.kind === "debate"} onChange={() => b.setKind("debate")} /> Debate</label>
+        </div>
+        {b.kind === "build" ? (
+          <>
+            <label>Kind of work
+              <select value={b.template} onChange={e => b.setTemplate(e.target.value as Brief["template"])}>
+                <option value="feature">Feature: discuss, plan, build</option>
+                <option value="bugfix">Bug fix: failing test first</option>
+                <option value="refactor">Refactor: behaviour must not change</option>
+                <option value="review">Review only: findings, no edits</option>
               </select>
             </label>
-          )}
-          <label>{inRepo ? "Branch name" : "Project name"}
-            <input value={project} onChange={e => setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder={inRepo ? "fix-login" : "todo-system"} />
-          </label>
-          <small>{inRepo
-            ? `Works on branch room/${project || "<name>"}-… in its own worktree. Your checkout of ${chosenRepo?.dir} is not touched until you merge.`
-            : `Built in D:\\ascend-builds\\${project || "<name>"} as its own git repository.`}</small>
-          {inRepo && chosenRepo && <MemoryEditor key={chosenRepo.dir} dir={chosenRepo.dir} />}
-          <label>Checks after every task (optional)
-            <input value={checkCommand} onChange={e => setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
-          </label>
-          <small>Runs in the project folder after each task. A failing check sends the task back to the coder with the output.</small>
-          <fieldset className="agent-room-limits">
-            <legend>Models (empty uses each CLI&apos;s default)</legend>
-            <label>Codex <input list="room-codex-models" value={models.codex} onChange={e => setModels(m => ({ ...m, codex: e.target.value }))} placeholder="gpt-6-astra" spellCheck={false} /></label>
-            <label>Claude <input list="room-claude-models" value={models.claude} onChange={e => setModels(m => ({ ...m, claude: e.target.value }))} placeholder="default" spellCheck={false} /></label>
-            <datalist id="room-codex-models"><option value="gpt-6-astra" /></datalist>
-            <datalist id="room-claude-models"><option value="opus" /><option value="sonnet" /><option value="haiku" /></datalist>
-          </fieldset>
-          <fieldset className="agent-room-limits">
-            <legend>Limits (the room pauses and asks you when one is reached)</legend>
-            <label>Work minutes <input type="number" min={5} max={720} value={limits.minutes} onChange={e => setLimits(l => ({ ...l, minutes: Number(e.target.value) }))} /></label>
-            <label>Agent turns <input type="number" min={1} max={500} value={limits.turns} onChange={e => setLimits(l => ({ ...l, turns: Number(e.target.value) }))} /></label>
-            <label>Rounds per task <input type="number" min={1} max={10} value={limits.rounds} onChange={e => setLimits(l => ({ ...l, rounds: Number(e.target.value) }))} /></label>
-          </fieldset>
-          <label>What should they build?
-            <textarea value={task} onChange={e => setTask(e.target.value)} maxLength={4000} required rows={4} />
-          </label>
-          {template !== "bugfix" && (
-            <label className="agent-room-check" title="Tasks that do not depend on each other run at once, each in its own worktree, then merge one at a time with the checks after each merge.">
-              <input type="checkbox" checked={parallel} onChange={e => setParallel(e.target.checked)} /> Run independent tasks at the same time (experimental)
+            <div className="agent-room-kind" role="radiogroup" aria-label="Where">
+              <label><input type="radio" name="room-where" checked={!b.inRepo} onChange={() => { b.setWhere("new"); b.setCheck(null); }} /> New project</label>
+              <label><input type="radio" name="room-where" checked={b.inRepo} disabled={b.repos.length === 0} onChange={() => { b.setWhere("repo"); b.setCheck(null); }} /> Existing repo</label>
+            </div>
+            {b.inRepo && (
+              <label>Repository
+                <select value={b.chosenRepo?.dir ?? ""} onChange={e => { b.setRepoDir(e.target.value); b.setCheck(null); }}>
+                  {b.repos.map(r => <option key={r.dir} value={r.dir}>{r.dir}</option>)}
+                </select>
+              </label>
+            )}
+            <label title={b.inRepo ? `Works on branch room/<name>-… in its own worktree; ${b.chosenRepo?.dir} is untouched until you merge.` : "Built in D:\\ascend-builds\\<name> as its own git repository."}>
+              {b.inRepo ? "Branch name" : "Project name"}
+              <input form={BRIEF_FORM} value={b.project} onChange={e => b.setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder={b.inRepo ? "fix-login" : "todo-system"} />
             </label>
-          )}
-          <label className="agent-room-check"><input type="checkbox" checked={ownRoles} onChange={e => setOwnRoles(e.target.checked)} /> Set roles myself (skip the discussion)</label>
-          {ownRoles && <RolesEditor value={roles} onChange={setRoles} />}
-        </>
-      ) : (
-        <>
-          <label>What should they debate?
-            <textarea value={question} onChange={e => setQuestion(e.target.value)} maxLength={4000} required rows={4} />
-          </label>
-          <label>Folder they may read
-            <select value={chosenFolder} onChange={e => setFolder(e.target.value)} required>
-              {folders.map(f => <option key={f} value={f}>{f}</option>)}
-            </select>
-          </label>
-          <label>Judge <AgentSelect label="Judge" value={judge} options={AGENT_IDS} onChange={setJudge} /></label>
-          <small>Each agent answers alone, then critiques the others; the judge writes the combined answer. Read-only: nothing in the folder changes.</small>
-        </>
-      )}
-      <fieldset className="agent-room-subagents">
-        <legend>Sub-agents</legend>
-        <label className="agent-room-check"><input type="checkbox" checked={claudeSubagents} onChange={e => setClaudeSubagents(e.target.checked)} /> Claude may use sub-agents</label>
-        <small>Codex: always on (it cannot be switched off). Antigravity: not supported yet.</small>
-      </fieldset>
+            {b.inRepo && b.chosenRepo && <MemoryEditor key={b.chosenRepo.dir} dir={b.chosenRepo.dir} />}
+          </>
+        ) : (
+          <>
+            <label>Folder they may read
+              <select form={BRIEF_FORM} value={b.chosenFolder} onChange={e => b.setFolder(e.target.value)} required>
+                {b.folders.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </label>
+            <label>Judge <AgentSelect label="Judge" value={b.judge} options={AGENT_IDS} onChange={b.setJudge} /></label>
+          </>
+        )}
+      </SideSection>
+      <SideSection title="Options" value={options} open={(b.kind === "build" && b.needsCheck && !b.checkCommand.trim()) || undefined}>
+        {b.kind === "build" && (
+          <>
+            <label title="Runs in the project folder after each task; a failure sends the task back with the output.">
+              Checks after every task{b.needsCheck ? " (required)" : ""}
+              <input value={b.checkCommand} onChange={e => b.setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
+            </label>
+            <fieldset className="agent-room-limits">
+              <legend>Models</legend>
+              <label>Codex <input list="room-codex-models" value={b.models.codex} onChange={e => b.setModels(m => ({ ...m, codex: e.target.value }))} placeholder="default" spellCheck={false} /></label>
+              <label>Claude <input list="room-claude-models" value={b.models.claude} onChange={e => b.setModels(m => ({ ...m, claude: e.target.value }))} placeholder="default" spellCheck={false} /></label>
+              <datalist id="room-codex-models"><option value="gpt-6-astra" /></datalist>
+              <datalist id="room-claude-models"><option value="opus" /><option value="sonnet" /><option value="haiku" /></datalist>
+            </fieldset>
+            <fieldset className="agent-room-limits" title="The room pauses and asks you when one is reached.">
+              <legend>Limits</legend>
+              <label>Minutes <input type="number" min={5} max={720} value={b.limits.minutes} onChange={e => b.setLimits(l => ({ ...l, minutes: Number(e.target.value) }))} /></label>
+              <label>Turns <input type="number" min={1} max={500} value={b.limits.turns} onChange={e => b.setLimits(l => ({ ...l, turns: Number(e.target.value) }))} /></label>
+              <label>Rounds <input type="number" min={1} max={10} value={b.limits.rounds} onChange={e => b.setLimits(l => ({ ...l, rounds: Number(e.target.value) }))} /></label>
+            </fieldset>
+            {b.template !== "bugfix" && (
+              <label className="agent-room-check" title="Independent tasks run at once in their own worktrees, then merge one at a time with checks after each.">
+                <input type="checkbox" checked={b.parallel} onChange={e => b.setParallel(e.target.checked)} /> Parallel tasks (experimental)
+              </label>
+            )}
+            <label className="agent-room-check"><input type="checkbox" checked={b.ownRoles} onChange={e => b.setOwnRoles(e.target.checked)} /> Set roles myself</label>
+            {b.ownRoles && <RolesEditor value={b.roles} onChange={b.setRoles} />}
+          </>
+        )}
+        <label className="agent-room-check" title="Codex always uses sub-agents; Antigravity has no switch yet.">
+          <input type="checkbox" checked={b.claudeSubagents} onChange={e => b.setClaudeSubagents(e.target.checked)} /> Claude may use sub-agents
+        </label>
+      </SideSection>
       {quotaWarning && <p className="agent-room-hint is-problem" role="status">{quotaWarning}</p>}
-      <button type="submit" disabled={missing.length > 0 || (kind === "debate" && !chosenFolder) || (kind === "build" && needsCheck && !checkCommand.trim())}>Start</button>
-      {missing.length > 0 && <p className="agent-room-hint">Waiting for: {missing.map(id => AGENT_NAMES[id]).join(", ")}</p>}
+    </>
+  );
+}
+
+// The prompt box under the chat: what to build or debate, and Start. The side panel's fields belong to this form.
+export function BriefComposer({ brief: b, act }: { brief: Brief; act: Act }) {
+  const build = b.kind === "build";
+  return (
+    <form id={BRIEF_FORM} className="agent-room-composer" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", b.body); }}>
+      <textarea value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required rows={3}
+        placeholder={build ? "What should they build?" : "What should they debate?"} aria-label={build ? "What should they build?" : "What should they debate?"} />
+      <div className="agent-room-composer-bar">
+        <small>{b.missing.length > 0 ? `Waiting for: ${b.missing.map(id => AGENT_NAMES[id]).join(", ")}` : build ? `${TEMPLATE_LABELS[b.template]} · ${b.inRepo ? "existing repo" : "new project"}` : "Debate · read-only"}</small>
+        <button type="submit" disabled={!b.canStart}>Start</button>
+      </div>
     </form>
   );
 }

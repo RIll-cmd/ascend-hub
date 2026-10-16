@@ -67,10 +67,9 @@
 .agent-room-name-codex { color: #b0611a; } .agent-room-name-claude { color: #b4532f; } .agent-room-name-agy { color: #2a5bd0; }
 
 /* Task board, gates, brief form, verdict */
-.agent-room-board { background: var(--room-card); border: 1px solid var(--room-ink); border-radius: 4px; padding: 8px; }
-.agent-room-board h2 { font-size: 14px; margin: 0 0 6px; }
-.agent-room-board ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.agent-room-board li { display: flex; flex-direction: column; border: 1px solid var(--room-ink); border-radius: 3px; padding: 4px 6px; }
+.agent-room-board { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.agent-room-board li { display: flex; flex-direction: column; border-radius: 6px; padding: 4px 6px; font-size: 13px; }
+.agent-room-board li small { opacity: 0.7; }
 .agent-room-board li.is-running, .agent-room-board li.is-review { background: var(--room-accent); }
 .agent-room-board li.is-done { opacity: .75; } .agent-room-board li.is-skipped { text-decoration: line-through; opacity: .6; }
 .agent-room-gate, .agent-room-brief, .agent-room-offline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: var(--room-card);
@@ -214,3 +213,37 @@
 .limits-home-panel .limits-refresh { margin-top: 10px; }
 .limits-home-panel .limits-refresh button { background: rgba(255, 122, 69, 0.15); border: 1px solid rgba(255, 122, 69, 0.45); color: inherit; border-radius: 4px; padding: 3px 8px; }
 @media (prefers-reduced-motion: reduce) { .limits-spin { animation: none; } .limits-fill { transition: none; } }
+
+/* Side panel sections, modelled on a settings column: a title, a one-line value, a chevron. */
+.agent-room .agent-room-section { background: var(--room-card); border: 1px solid rgba(43, 33, 24, 0.22); border-radius: 10px; }
+.agent-room .agent-room-section > summary { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; list-style: none; }
+.agent-room .agent-room-section > summary::-webkit-details-marker { display: none; }
+.agent-room .agent-room-section-title { font-weight: 600; }
+.agent-room .agent-room-section-value { margin-left: auto; font-size: 12px; opacity: 0.65; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
+.agent-room .agent-room-section-chevron { flex: none; opacity: 0.6; transition: transform 0.15s; }
+.agent-room .agent-room-section[open] > summary .agent-room-section-chevron { transform: rotate(90deg); }
+.agent-room .agent-room-section-value + .agent-room-section-chevron { margin-left: 0; }
+.agent-room .agent-room-section-title + .agent-room-section-chevron { margin-left: auto; }
+.agent-room .agent-room-section-body { display: flex; flex-direction: column; gap: 8px; padding: 0 12px 12px; }
+.agent-room .agent-room-section-body label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.agent-room .agent-room-section-body label.agent-room-check, .agent-room .agent-room-section-body .agent-room-kind label { flex-direction: row; align-items: center; gap: 6px; }
+.agent-room .agent-room-section-body input, .agent-room .agent-room-section-body select { font: inherit; border: 1px solid rgba(43, 33, 24, 0.35); border-radius: 6px; padding: 4px 6px; background: #fff; }
+.agent-room .agent-room-section-body .agent-room-kind { display: flex; gap: 12px; }
+.agent-room .agent-room-section-body .agent-room-limits { display: flex; flex-wrap: wrap; gap: 6px; border: 0; padding: 0; margin: 0; }
+.agent-room .agent-room-section-body .agent-room-limits legend { font-size: 12px; opacity: 0.7; padding: 0; }
+.agent-room .agent-room-section-body .agent-room-limits label { flex: 1 1 80px; }
+.agent-room-agent-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.agent-room .agent-room-agent-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 4px; border: 0; border-radius: 6px; background: transparent; text-align: left; }
+.agent-room .agent-room-agent-row:hover { background: rgba(43, 33, 24, 0.07); }
+.agent-room-agent-row .agent-room-swatch { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.agent-room-agent-state { font-size: 12px; opacity: 0.7; }
+.agent-room-agent-limits { margin-left: auto; font-size: 11px; opacity: 0.7; white-space: nowrap; }
+
+/* The prompt box under the chat. */
+.agent-room-composer { display: flex; flex-direction: column; gap: 6px; background: var(--room-card); border: 1px solid rgba(43, 33, 24, 0.3); border-radius: 12px; padding: 10px 12px; }
+.agent-room-composer textarea { font: inherit; border: 0; background: transparent; resize: vertical; min-height: 56px; outline: none; }
+.agent-room-composer-bar { display: flex; align-items: center; gap: 8px; }
+.agent-room-composer-bar small { opacity: 0.65; }
+.agent-room-composer-bar button { margin-left: auto; }
+/* Gate prompts sit under the chat like the composer. */
+.agent-room-stage .agent-room-gate { border: 1px solid rgba(43, 33, 24, 0.3); border-radius: 12px; }
