@@ -1,11 +1,18 @@
 "use client";
-import { ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES,
   type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
   type RepoChoice,
 } from "./room-types";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/neo/accordion";
+import { Badge } from "@/components/neo/badge";
+import { Button } from "@/components/neo/button";
+import { Card } from "@/components/neo/card";
+import { Checkbox } from "@/components/neo/checkbox";
+import { Input } from "@/components/neo/input";
+import { NativeSelect, NativeSelectOption } from "@/components/neo/native-select";
+import { Textarea } from "@/components/neo/textarea";
 import { messageLine, nearBottom, stepStates } from "./deck/deck-view";
 import { Markdown } from "./markdown";
 import { DiffView } from "./workflow-panel";
@@ -20,7 +27,9 @@ export function StageSteps({ stage, paused, mode = "build" }: { stage: Stage; pa
     <ol className="agent-room-steps" aria-label="Session stage">
       {stepStates(stage, mode).map(step => (
         <li key={step.label} className={`is-${step.state}`} aria-current={step.state === "current" ? "step" : undefined}>
-          {step.label}{step.state === "current" && paused ? " · paused" : ""}
+          <Badge variant={step.state === "todo" ? "default" : "neutral"} className={step.state === "current" ? "bg-main" : undefined}>
+            {step.label}{step.state === "current" && paused ? " · paused" : ""}
+          </Badge>
         </li>
       ))}
     </ol>
@@ -50,15 +59,15 @@ function ChatMessage({ message: m }: { message: Message }) {
   const long = m.text.length > LONG_MESSAGE.chars || m.text.split("\n").length > LONG_MESSAGE.lines;
   const [open, setOpen] = useState(!long);
   return (
-    <article className="room-msg">
+    <Card size="sm" className="room-msg gap-1.5 bg-secondary-background px-4">
       <header>
         <b className={`agent-room-name-${m.from}`}>{line.from}</b>
         {line.to && <span className="agent-room-to">→ {line.to}</span>}
         <time dateTime={m.at}>{new Date(m.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
       </header>
       <div className={open ? "room-msg-body" : "room-msg-body is-folded"}><Markdown text={m.text} /></div>
-      {long && <button type="button" className="md-more" onClick={() => setOpen(o => !o)}>{open ? "Show less" : "Show more"}</button>}
-    </article>
+      {long && <Button type="button" variant="neutral" size="xs" className="self-start" onClick={() => setOpen(o => !o)}>{open ? "Show less" : "Show more"}</Button>}
+    </Card>
   );
 }
 
@@ -79,9 +88,9 @@ export function TaskBoard({ tasks }: { tasks: PlanTask[] }) {
 
 function AgentSelect({ value, options, label, onChange }: { value: AgentId; options: AgentId[]; label: string; onChange: (id: AgentId) => void }) {
   return (
-    <select aria-label={label} value={value} onChange={e => onChange(e.target.value as AgentId)}>
-      {options.map(id => <option key={id} value={id}>{AGENT_NAMES[id]}</option>)}
-    </select>
+    <NativeSelect size="sm" aria-label={label} value={value} onChange={e => onChange(e.target.value as AgentId)}>
+      {options.map(id => <NativeSelectOption key={id} value={id}>{AGENT_NAMES[id]}</NativeSelectOption>)}
+    </NativeSelect>
   );
 }
 
@@ -93,13 +102,13 @@ export function RolesEditor({ value, onChange }: { value: Roles; onChange: (role
       <legend>Roles</legend>
       <label>Orchestrator <AgentSelect label="Orchestrator" value={value.orchestrator} options={AGENT_IDS} onChange={orchestrator => onChange({ ...value, orchestrator })} /></label>
       <span>Coders {AGENT_IDS.map(id => (
-        <label key={id}><input type="checkbox" checked={value.coders.includes(id)} onChange={() => toggleCoder(id)} /> {AGENT_NAMES[id]}</label>
+        <label key={id} className="agent-room-check"><Checkbox checked={value.coders.includes(id)} onCheckedChange={() => toggleCoder(id)} /> {AGENT_NAMES[id]}</label>
       ))}</span>
       <label>Reviewer{" "}
-        <select aria-label="Reviewer" value={value.reviewer ?? ""} onChange={e => onChange({ ...value, reviewer: (e.target.value || null) as AgentId | null })}>
-          <option value="">None</option>
-          {AGENT_IDS.map(id => <option key={id} value={id}>{AGENT_NAMES[id]}</option>)}
-        </select>
+        <NativeSelect size="sm" aria-label="Reviewer" value={value.reviewer ?? ""} onChange={e => onChange({ ...value, reviewer: (e.target.value || null) as AgentId | null })}>
+          <NativeSelectOption value="">None</NativeSelectOption>
+          {AGENT_IDS.map(id => <NativeSelectOption key={id} value={id}>{AGENT_NAMES[id]}</NativeSelectOption>)}
+        </NativeSelect>
       </label>
     </fieldset>
   );
@@ -126,8 +135,8 @@ function MemoryEditor({ dir }: { dir: string }) {
   return (
     <details className="agent-room-memory">
       <summary>Project memory for {key} ({text ? text.split("\n").filter(Boolean).length : 0} notes)</summary>
-      <textarea value={text} rows={5} onChange={e => { setText(e.target.value); setStatus(""); }} aria-label={`Project memory for ${key}`} placeholder="One note per line. Agents read these at the start of every session in this repo." />
-      <button type="button" onClick={() => void save()}>Save memory</button> <small>{status}</small>
+      <Textarea value={text} rows={5} onChange={e => { setText(e.target.value); setStatus(""); }} aria-label={`Project memory for ${key}`} placeholder="One note per line. Agents read these at the start of every session in this repo." />
+      <Button type="button" size="sm" onClick={() => void save()}>Save memory</Button> <small>{status}</small>
     </details>
   );
 }
@@ -148,24 +157,26 @@ export function WorktreeCleanup() {
   };
   if (worktrees.length === 0) return status ? <p className="agent-room-hint">{status}</p> : null;
   return (
-    <section className="agent-room-gate" aria-label="Leftover worktrees">
+    <Card size="sm" className="agent-room-gate flex-row flex-wrap items-center gap-2 px-4" aria-label="Leftover worktrees">
       <p>{worktrees.length} stopped session{worktrees.length === 1 ? "" : "s"} still {worktrees.length === 1 ? "has a" : "have"} worktree: {worktrees.map(w => w.branch).join(", ")}</p>
-      <button type="button" onClick={() => void clean()}>Remove worktrees (branches stay)</button> <small>{status}</small>
-    </section>
+      <Button type="button" variant="neutral" size="sm" onClick={() => void clean()}>Remove worktrees (branches stay)</Button> <small>{status}</small>
+    </Card>
   );
 }
 
 // A side-panel section, like a settings card: title, a one-line value and a chevron that opens the details.
-export function SideSection({ title, value, open, children }: { title: string; value?: ReactNode; open?: boolean; children: ReactNode }) {
+export function SideSection({ title, value, open, force, children }: { title: string; value?: ReactNode; open?: boolean; force?: boolean; children: ReactNode }) {
+  const [items, setItems] = useState<string[]>(open ? ["section"] : []);
   return (
-    <details className="agent-room-section" open={open}>
-      <summary>
-        <span className="agent-room-section-title">{title}</span>
-        {value !== undefined && <span className="agent-room-section-value">{value}</span>}
-        <ChevronRight size={14} aria-hidden="true" className="agent-room-section-chevron" />
-      </summary>
-      <div className="agent-room-section-body">{children}</div>
-    </details>
+    <Accordion value={force ? ["section"] : items} onValueChange={next => setItems(next as string[])} className="agent-room-section">
+      <AccordionItem value="section">
+        <AccordionTrigger className="gap-2 bg-secondary-background p-3 text-sm text-foreground">
+          <span className="agent-room-section-title">{title}</span>
+          {value !== undefined && <span className="agent-room-section-value">{value}</span>}
+        </AccordionTrigger>
+        <AccordionContent className="agent-room-section-body">{children}</AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }
 
@@ -226,12 +237,12 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
         {b.kind === "build" ? (
           <>
             <label>Kind of work
-              <select value={b.template} onChange={e => b.setTemplate(e.target.value as Brief["template"])}>
-                <option value="feature">Feature: discuss, plan, build</option>
-                <option value="bugfix">Bug fix: failing test first</option>
-                <option value="refactor">Refactor: behaviour must not change</option>
-                <option value="review">Review only: findings, no edits</option>
-              </select>
+              <NativeSelect className="w-full" value={b.template} onChange={e => b.setTemplate(e.target.value as Brief["template"])}>
+                <NativeSelectOption value="feature">Feature: discuss, plan, build</NativeSelectOption>
+                <NativeSelectOption value="bugfix">Bug fix: failing test first</NativeSelectOption>
+                <NativeSelectOption value="refactor">Refactor: behaviour must not change</NativeSelectOption>
+                <NativeSelectOption value="review">Review only: findings, no edits</NativeSelectOption>
+              </NativeSelect>
             </label>
             <div className="agent-room-kind" role="radiogroup" aria-label="Where">
               <label><input type="radio" name="room-where" checked={!b.inRepo} onChange={() => { b.setWhere("new"); b.setCheck(null); }} /> New project</label>
@@ -239,59 +250,59 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
             </div>
             {b.inRepo && (
               <label>Repository
-                <select value={b.chosenRepo?.dir ?? ""} onChange={e => { b.setRepoDir(e.target.value); b.setCheck(null); }}>
-                  {b.repos.map(r => <option key={r.dir} value={r.dir}>{r.dir}</option>)}
-                </select>
+                <NativeSelect className="w-full" value={b.chosenRepo?.dir ?? ""} onChange={e => { b.setRepoDir(e.target.value); b.setCheck(null); }}>
+                  {b.repos.map(r => <NativeSelectOption key={r.dir} value={r.dir}>{r.dir}</NativeSelectOption>)}
+                </NativeSelect>
               </label>
             )}
             <label title={b.inRepo ? `Works on branch room/<name>-… in its own worktree; ${b.chosenRepo?.dir} is untouched until you merge.` : "Built in D:\\ascend-builds\\<name> as its own git repository."}>
               {b.inRepo ? "Branch name" : "Project name"}
-              <input form={BRIEF_FORM} value={b.project} onChange={e => b.setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder={b.inRepo ? "fix-login" : "todo-system"} />
+              <Input form={BRIEF_FORM} value={b.project} onChange={e => b.setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder={b.inRepo ? "fix-login" : "todo-system"} />
             </label>
             {b.inRepo && b.chosenRepo && <MemoryEditor key={b.chosenRepo.dir} dir={b.chosenRepo.dir} />}
           </>
         ) : (
           <>
             <label>Folder they may read
-              <select form={BRIEF_FORM} value={b.chosenFolder} onChange={e => b.setFolder(e.target.value)} required>
-                {b.folders.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              <NativeSelect className="w-full" form={BRIEF_FORM} value={b.chosenFolder} onChange={e => b.setFolder(e.target.value)} required>
+                {b.folders.map(f => <NativeSelectOption key={f} value={f}>{f}</NativeSelectOption>)}
+              </NativeSelect>
             </label>
             <label>Judge <AgentSelect label="Judge" value={b.judge} options={AGENT_IDS} onChange={b.setJudge} /></label>
           </>
         )}
       </SideSection>
-      <SideSection title="Options" value={options} open={(b.kind === "build" && b.needsCheck && !b.checkCommand.trim()) || undefined}>
+      <SideSection title="Options" value={options} force={b.kind === "build" && b.needsCheck && !b.checkCommand.trim()}>
         {b.kind === "build" && (
           <>
             <label title="Runs in the project folder after each task; a failure sends the task back with the output.">
               Checks after every task{b.needsCheck ? " (required)" : ""}
-              <input value={b.checkCommand} onChange={e => b.setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
+              <Input value={b.checkCommand} onChange={e => b.setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
             </label>
             <fieldset className="agent-room-limits">
               <legend>Models</legend>
-              <label>Codex <input list="room-codex-models" value={b.models.codex} onChange={e => b.setModels(m => ({ ...m, codex: e.target.value }))} placeholder="default" spellCheck={false} /></label>
-              <label>Claude <input list="room-claude-models" value={b.models.claude} onChange={e => b.setModels(m => ({ ...m, claude: e.target.value }))} placeholder="default" spellCheck={false} /></label>
+              <label>Codex <Input className="h-9" list="room-codex-models" value={b.models.codex} onChange={e => b.setModels(m => ({ ...m, codex: e.target.value }))} placeholder="default" spellCheck={false} /></label>
+              <label>Claude <Input className="h-9" list="room-claude-models" value={b.models.claude} onChange={e => b.setModels(m => ({ ...m, claude: e.target.value }))} placeholder="default" spellCheck={false} /></label>
               <datalist id="room-codex-models"><option value="gpt-6-astra" /></datalist>
               <datalist id="room-claude-models"><option value="opus" /><option value="sonnet" /><option value="haiku" /></datalist>
             </fieldset>
             <fieldset className="agent-room-limits" title="The room pauses and asks you when one is reached.">
               <legend>Limits</legend>
-              <label>Minutes <input type="number" min={5} max={720} value={b.limits.minutes} onChange={e => b.setLimits(l => ({ ...l, minutes: Number(e.target.value) }))} /></label>
-              <label>Turns <input type="number" min={1} max={500} value={b.limits.turns} onChange={e => b.setLimits(l => ({ ...l, turns: Number(e.target.value) }))} /></label>
-              <label>Rounds <input type="number" min={1} max={10} value={b.limits.rounds} onChange={e => b.setLimits(l => ({ ...l, rounds: Number(e.target.value) }))} /></label>
+              <label>Minutes <Input className="h-9" type="number" min={5} max={720} value={b.limits.minutes} onChange={e => b.setLimits(l => ({ ...l, minutes: Number(e.target.value) }))} /></label>
+              <label>Turns <Input className="h-9" type="number" min={1} max={500} value={b.limits.turns} onChange={e => b.setLimits(l => ({ ...l, turns: Number(e.target.value) }))} /></label>
+              <label>Rounds <Input className="h-9" type="number" min={1} max={10} value={b.limits.rounds} onChange={e => b.setLimits(l => ({ ...l, rounds: Number(e.target.value) }))} /></label>
             </fieldset>
             {b.template !== "bugfix" && (
               <label className="agent-room-check" title="Independent tasks run at once in their own worktrees, then merge one at a time with checks after each.">
-                <input type="checkbox" checked={b.parallel} onChange={e => b.setParallel(e.target.checked)} /> Parallel tasks (experimental)
+                <Checkbox checked={b.parallel} onCheckedChange={checked => b.setParallel(checked)} /> Parallel tasks (experimental)
               </label>
             )}
-            <label className="agent-room-check"><input type="checkbox" checked={b.ownRoles} onChange={e => b.setOwnRoles(e.target.checked)} /> Set roles myself</label>
+            <label className="agent-room-check"><Checkbox checked={b.ownRoles} onCheckedChange={checked => b.setOwnRoles(checked)} /> Set roles myself</label>
             {b.ownRoles && <RolesEditor value={b.roles} onChange={b.setRoles} />}
           </>
         )}
         <label className="agent-room-check" title="Codex always uses sub-agents; Antigravity has no switch yet.">
-          <input type="checkbox" checked={b.claudeSubagents} onChange={e => b.setClaudeSubagents(e.target.checked)} /> Claude may use sub-agents
+          <Checkbox checked={b.claudeSubagents} onCheckedChange={checked => b.setClaudeSubagents(checked)} /> Claude may use sub-agents
         </label>
       </SideSection>
       {quotaWarning && <p className="agent-room-hint is-problem" role="status">{quotaWarning}</p>}
@@ -304,12 +315,12 @@ export function BriefComposer({ brief: b, act }: { brief: Brief; act: Act }) {
   const build = b.kind === "build";
   return (
     <form id={BRIEF_FORM} className="agent-room-composer" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", b.body); }}>
-      <textarea value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required rows={3}
+      <Textarea className="min-h-[72px] resize-y border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0" value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required rows={3}
         onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && b.canStart) e.currentTarget.form?.requestSubmit(); }}
         placeholder={build ? "What should they build?" : "What should they debate?"} aria-label={build ? "What should they build?" : "What should they debate?"} />
       <div className="agent-room-composer-bar">
         <small>{b.missing.length > 0 ? `Waiting for: ${b.missing.map(id => AGENT_NAMES[id]).join(", ")}` : build ? `${TEMPLATE_LABELS[b.template]} · ${b.inRepo ? "existing repo" : "new project"}` : "Debate · read-only"}</small>
-        <button type="submit" disabled={!b.canStart} title="Ctrl+Enter">Start</button>
+        <Button type="submit" disabled={!b.canStart} title="Ctrl+Enter">Start</Button>
       </div>
     </form>
   );
@@ -327,11 +338,11 @@ export function VerdictPanel({ session }: { session: SessionView }) {
     URL.revokeObjectURL(url);
   };
   return (
-    <section className="agent-room-verdict" aria-label="Verdict">
+    <Card size="sm" className="agent-room-verdict bg-secondary-background px-4" aria-label="Verdict">
       <h2>Verdict</h2>
       <div className="agent-room-verdict-text"><Markdown text={answer} /></div>
-      <button onClick={download}>Download .md</button>
-    </section>
+      <Button variant="neutral" size="sm" className="self-start" onClick={download}>Download .md</Button>
+    </Card>
   );
 }
 
@@ -341,7 +352,7 @@ function RolesGate({ initial, act }: { initial: Roles; act: Act }) {
     <div className="agent-room-gate">
       <p>The agents proposed these roles. Edit them or approve.</p>
       <RolesEditor value={roles} onChange={setRoles} />
-      <button onClick={() => act(GATE, { gate: "roles", decision: "approve", roles })}>Approve roles</button>
+      <Button size="sm" onClick={() => act(GATE, { gate: "roles", decision: "approve", roles })}>Approve roles</Button>
     </div>
   );
 }
@@ -355,11 +366,11 @@ function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]
       <ol className="agent-room-plan-edit">
         {draft.map((t, i) => (
           <li key={i}>
-            <input aria-label={`Task ${i + 1} title`} value={t.title} maxLength={120} onChange={e => update(i, { title: e.target.value })} />
+            <Input className="h-9 w-auto min-w-48 flex-1" aria-label={`Task ${i + 1} title`} value={t.title} maxLength={120} onChange={e => update(i, { title: e.target.value })} />
             <AgentSelect label={`Task ${i + 1} assignee`} value={t.assignee} options={coders} onChange={assignee => update(i, { assignee })} />
             {coders.length > 1 && (
               <label className="agent-room-check" title="Every coder attempts this task in its own worktree; the checks and a judge pick the best attempt.">
-                <input type="checkbox" checked={t.race} onChange={e => update(i, { race: e.target.checked })} /> Race all coders
+                <Checkbox checked={t.race} onCheckedChange={checked => update(i, { race: checked })} /> Race all coders
               </label>
             )}
             {t.after && <small>Starts after task {t.after.join(", ")}</small>}
@@ -367,7 +378,7 @@ function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]
           </li>
         ))}
       </ol>
-      <button onClick={() => act(GATE, { gate: "plan", decision: "approve", plan: { tasks: draft } })}>Approve plan</button>
+      <Button size="sm" onClick={() => act(GATE, { gate: "plan", decision: "approve", plan: { tasks: draft } })}>Approve plan</Button>
     </div>
   );
 }
@@ -378,14 +389,14 @@ function PausePanel({ session, act }: { session: SessionView; act: Act }) {
   return (
     <div className="agent-room-gate" role="alert">
       <p>Paused: {session.pause?.reason}</p>
-      <button onClick={() => act(RESUME, { action: "retry" })}>Retry</button>
+      <Button size="sm" onClick={() => act(RESUME, { action: "retry" })}>Retry</Button>
       {session.stage === "build" && coders.length > 0 && (
         <>
           <AgentSelect label="Reassign to" value={agent} options={coders} onChange={setAgent} />
-          <button onClick={() => act(RESUME, { action: "reassign", agent })}>Reassign</button>
+          <Button size="sm" variant="neutral" onClick={() => act(RESUME, { action: "reassign", agent })}>Reassign</Button>
         </>
       )}
-      <button className="is-danger" onClick={() => act(RESUME, { action: "stop" })}>Stop</button>
+      <Button size="sm" variant="danger" onClick={() => act(RESUME, { action: "stop" })}>Stop</Button>
     </div>
   );
 }
@@ -400,8 +411,8 @@ function MemoryPicker({ proposal, onChange }: { proposal: string[]; onChange: (n
       <legend>Remember for next time (ticked notes are saved when you keep the result)</legend>
       {notes.map((note, i) => (
         <label key={i} className="agent-room-check">
-          <input type="checkbox" checked={note.keep} onChange={e => update(notes.map((n, j) => (j === i ? { ...n, keep: e.target.checked } : n)))} />
-          <input value={note.text} maxLength={200} onChange={e => update(notes.map((n, j) => (j === i ? { ...n, text: e.target.value } : n)))} aria-label={`Note ${i + 1}`} />
+          <Checkbox checked={note.keep} onCheckedChange={checked => update(notes.map((n, j) => (j === i ? { ...n, keep: checked } : n)))} aria-label={`Keep note ${i + 1}`} />
+          <Input className="h-9" value={note.text} maxLength={200} onChange={e => update(notes.map((n, j) => (j === i ? { ...n, text: e.target.value } : n)))} aria-label={`Note ${i + 1}`} />
         </label>
       ))}
     </fieldset>
@@ -416,11 +427,11 @@ function ChangeRequest({ gate, options, act }: { gate: "roles" | "plan"; options
       <p>Or ask the agents to change the {gate}:</p>
       {options.length > 0 && (
         <div className="agent-room-options">
-          {options.map(option => <button key={option} type="button" onClick={() => setNote(option)}>{option}</button>)}
+          {options.map(option => <Button key={option} type="button" variant="neutral" size="xs" onClick={() => setNote(option)}>{option}</Button>)}
         </div>
       )}
-      <textarea aria-label={`What should change in the ${gate}?`} value={note} maxLength={2000} rows={2} onChange={e => setNote(e.target.value)} placeholder="What should change?" />
-      <button type="button" disabled={!note.trim()} onClick={() => act(GATE, { gate, decision: "revise", note: note.trim() })}>Request changes</button>
+      <Textarea aria-label={`What should change in the ${gate}?`} value={note} maxLength={2000} rows={2} onChange={e => setNote(e.target.value)} placeholder="What should change?" />
+      <Button type="button" size="sm" variant="neutral" disabled={!note.trim()} onClick={() => act(GATE, { gate, decision: "revise", note: note.trim() })}>Request changes</Button>
     </div>
   );
 }
@@ -451,12 +462,12 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
         <p>Branch <code>{branch}</code> of <code>{dir}</code>.</p>
         <DiffView commit="all" label="Show all changes on the branch" />
         <MemoryPicker proposal={proposal} onChange={setMemory} />
-        <button onClick={() => act(GATE, { gate: "result", decision: "merge", memory })}>Merge into {baseBranch}</button>
-        <button onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Keep branch</button>
-        <button onClick={() => {
+        <Button size="sm" onClick={() => act(GATE, { gate: "result", decision: "merge", memory })}>Merge into {baseBranch}</Button>
+        <Button size="sm" variant="neutral" onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Keep branch</Button>
+        <Button size="sm" variant="neutral" onClick={() => {
           if (window.confirm(`Push ${branch} to origin and open a pull request into ${baseBranch}?`)) void act(GATE, { gate: "result", decision: "pr", memory });
-        }}>Open pull request</button>
-        <button className="is-danger" onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject and delete branch</button>
+        }}>Open pull request</Button>
+        <Button size="sm" variant="danger" onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject and delete branch</Button>
         <small>Merge only fast-forwards {baseBranch} while your checkout is on it; otherwise keep the branch and merge it yourself.</small>
       </div>
     );
@@ -468,8 +479,8 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
         <p>Work finished in <code>{session.projectDir}</code>. See SUMMARY.md there.</p>
         <DiffView commit="all" label="Show all changes" />
         <MemoryPicker proposal={proposal} onChange={setMemory} />
-        <button onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Accept</button>
-        <button className="is-danger" onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject</button>
+        <Button size="sm" onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Accept</Button>
+        <Button size="sm" variant="danger" onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject</Button>
       </div>
     );
   }

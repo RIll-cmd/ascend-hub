@@ -2,6 +2,9 @@
 import { ChevronLeft, Folder, FolderGit2, GitBranch, Layers, Plus, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { messageLine, plateText, type DeckAgent, type DeckView } from "./deck/deck-view";
+import { Button } from "@/components/neo/button";
+import { Card } from "@/components/neo/card";
+import { NativeSelect, NativeSelectOption } from "@/components/neo/native-select";
 import { useNow } from "../status/use-now";
 import { LimitsBars, RefreshLimits, useLimits } from "./limits-panel";
 import { limitsView } from "./limits-view";
@@ -17,7 +20,7 @@ export function TopBar({ session, view, running, act }: { session: SessionView |
       <span className="agent-room-title">{session ? session.project : "New session"}</span>
       {session && <StageSteps stage={session.stage} paused={Boolean(session.pause)} mode={session.mode} />}
       <span className="agent-room-status"><i aria-hidden="true" />{view.status}</span>
-      {running && <button className="agent-room-stop" onClick={() => act("/api/room/sessions/current/stop")}>Stop</button>}
+      {running && <Button size="sm" variant="danger" onClick={() => act("/api/room/sessions/current/stop")}>Stop</Button>}
     </header>
   );
 }
@@ -34,9 +37,9 @@ export function RoomSidebar({ history, activeId, running, onNew, onOpen, soundOn
     <aside className="room-left" aria-label="Sessions">
       {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- vinext Link does nothing on click in production builds */}
       <a href="/" className="room-left-item"><ChevronLeft size={16} aria-hidden="true" /> Shelf</a>
-      <button type="button" className="room-left-item" onClick={onNew} disabled={running} title={running ? "A session is running" : "Start a new session"}>
-        <Plus size={16} aria-hidden="true" /> New session
-      </button>
+      <Button type="button" className="room-left-new w-full justify-start" onClick={onNew} disabled={running} title={running ? "A session is running" : "Start a new session"}>
+        <Plus aria-hidden="true" /> New session
+      </Button>
       <p className="room-left-label">Sessions</p>
       <ul className="room-history">
         {history.map(h => (
@@ -52,9 +55,9 @@ export function RoomSidebar({ history, activeId, running, onNew, onOpen, soundOn
       <div className="room-left-bottom">
         <span className="room-avatar" aria-hidden="true">A</span>
         <span>Agent Room</span>
-        <button type="button" className="room-icon-button" onClick={onToggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Mute room sound" : "Turn on room sound"}>
-          {soundOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
-        </button>
+        <Button type="button" variant={soundOn ? "default" : "neutral"} size="icon-sm" className="ml-auto" onClick={onToggleSound} aria-pressed={soundOn} aria-label={soundOn ? "Mute room sound" : "Turn on room sound"}>
+          {soundOn ? <Volume2 /> : <VolumeX />}
+        </Button>
       </div>
     </aside>
   );
@@ -112,8 +115,8 @@ export function Inspector({ agent, view, session, pinned, onSelect }: {
   }
   const latest = agent.latest ? messageLine(agent.latest) : null;
   return (
-    <section className="agent-room-inspector" aria-label={`${agent.name} details`} style={{ borderColor: agent.color }}>
-      {pinned && <button type="button" className="room-back" onClick={() => onSelect(agent.id)}><ChevronLeft size={14} aria-hidden="true" /> All agents</button>}
+    <Card size="sm" className="agent-room-inspector gap-1 bg-secondary-background px-4" aria-label={`${agent.name} details`}>
+      {pinned && <Button type="button" variant="neutral" size="xs" className="self-start" onClick={() => onSelect(agent.id)}><ChevronLeft aria-hidden="true" /> All agents</Button>}
       <h2><span className="agent-room-swatch" style={{ background: agent.color }} />{agent.name}</h2>
       <p className="agent-room-badges">{agent.roles.map(role => <span key={role} className="agent-room-badge">{role}</span>)}</p>
       <h3>Current activity</h3>
@@ -134,7 +137,7 @@ export function Inspector({ agent, view, session, pinned, onSelect }: {
         </>
       )}
       {session && session.mode !== "debate" && session.roles?.reviewer === agent.id && <p className="agent-room-hint">Reviews every task.</p>}
-    </section>
+    </Card>
   );
 }
 
@@ -173,11 +176,11 @@ export function TranscriptDrawer({ open, onClose, messages }: { open: boolean; o
     <div className="agent-room-drawer" role="dialog" aria-modal="true" aria-label="Transcript" ref={panel}>
       <div className="agent-room-drawer-bar">
         <b>Transcript</b>
-        <select aria-label="Filter by agent" value={filter} onChange={e => setFilter(e.target.value as AgentId | "all")}>
-          <option value="all">All agents</option>
-          {AGENT_IDS.map(id => <option key={id} value={id}>{AGENT_NAMES[id]}</option>)}
-        </select>
-        <button type="button" onClick={onClose}>Close</button>
+        <NativeSelect size="sm" aria-label="Filter by agent" value={filter} onChange={e => setFilter(e.target.value as AgentId | "all")}>
+          <NativeSelectOption value="all">All agents</NativeSelectOption>
+          {AGENT_IDS.map(id => <NativeSelectOption key={id} value={id}>{AGENT_NAMES[id]}</NativeSelectOption>)}
+        </NativeSelect>
+        <Button type="button" variant="neutral" size="sm" onClick={onClose}>Close</Button>
       </div>
       <Transcript messages={shown} />
     </div>

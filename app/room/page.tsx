@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Button } from "@/components/neo/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/neo/tabs";
 import { DebateView } from "./debate-view";
 import { WorkflowPanel } from "./workflow-panel";
 import { DeckCanvas } from "./deck/DeckCanvas";
@@ -173,11 +175,15 @@ export default function RoomPage() {
         ) : (
           <div className="room-center-body">
             {session && (
-              <div className="agent-room-tabs" role="tablist" aria-label="View">
-                {debate && <button role="tab" aria-selected={shown === "debate"} onClick={() => setTab("debate")}>Debate</button>}
-                <button role="tab" aria-selected={shown === "deck"} onClick={() => setTab("deck")}>Deck</button>
-                <button role="tab" aria-selected={shown === "workflow"} onClick={() => setTab("workflow")}>Workflow</button>
-                <button type="button" className="room-tab-link" onClick={() => setDrawer(true)}>Full transcript</button>
+              <div className="agent-room-tabs">
+                <Tabs value={shown} onValueChange={value => setTab(value as typeof tab)} className="w-auto">
+                  <TabsList aria-label="View">
+                    {debate && <TabsTrigger value="debate">Debate</TabsTrigger>}
+                    <TabsTrigger value="deck">Deck</TabsTrigger>
+                    <TabsTrigger value="workflow">Workflow</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <Button type="button" variant="neutral" size="sm" className="ml-auto" onClick={() => setDrawer(true)}>Full transcript</Button>
               </div>
             )}
             {shown === "debate" && session ? <DebateView session={session} />
