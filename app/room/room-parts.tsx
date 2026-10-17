@@ -79,7 +79,7 @@ export function TaskBoard({ tasks }: { tasks: PlanTask[] }) {
         {tasks.map(t => (
           <li key={t.id} className={`is-${t.status}`}>
             <span>{t.id}. {t.title}</span>
-            <small>{AGENT_NAMES[t.assignee]} · {t.status}{t.attempts ? ` · retry ${t.attempts}` : ""}{t.commit ? ` · ${t.commit}` : ""}</small>
+            <small>{AGENT_NAMES[t.assignee]}{t.role ? ` · ${t.role}` : ""} · {t.status}{t.attempts ? ` · retry ${t.attempts}` : ""}{t.commit ? ` · ${t.commit}` : ""}</small>
           </li>
         ))}
       </ol>
@@ -353,13 +353,18 @@ function RolesGate({ initial, act }: { initial: Roles; act: Act }) {
     <div className="agent-room-gate">
       <p>The agents proposed these roles. Edit them or approve.</p>
       <RolesEditor value={roles} onChange={setRoles} />
+      {roles.wear && (
+        <p className="agent-room-badges" aria-label="Role sets worn">
+          {AGENT_IDS.flatMap(id => (roles.wear?.[id] ?? []).map(set => <Badge key={`${id}-${set}`} variant="neutral">{AGENT_NAMES[id]}: {set}</Badge>))}
+        </p>
+      )}
       <Button size="sm" onClick={() => act(GATE, { gate: "roles", decision: "approve", roles })}>Approve roles</Button>
     </div>
   );
 }
 
 function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]; act: Act }) {
-  const [draft, setDraft] = useState(tasks.map(t => ({ title: t.title, assignee: t.assignee, description: t.description, race: t.race === true, after: t.after })));
+  const [draft, setDraft] = useState(tasks.map(t => ({ title: t.title, assignee: t.assignee, description: t.description, race: t.race === true, after: t.after, role: t.role })));
   const update = (index: number, patch: Partial<(typeof draft)[number]>) => setDraft(d => d.map((t, j) => (j === index ? { ...t, ...patch } : t)));
   return (
     <div className="agent-room-gate">
@@ -369,6 +374,7 @@ function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]
           <li key={i}>
             <Input className="h-9 w-auto min-w-48 flex-1" aria-label={`Task ${i + 1} title`} value={t.title} maxLength={120} onChange={e => update(i, { title: e.target.value })} />
             <AgentSelect label={`Task ${i + 1} assignee`} value={t.assignee} options={coders} onChange={assignee => update(i, { assignee })} />
+            {t.role && <Badge variant="neutral" title="Role set: the coder gets this set's skills">{t.role}</Badge>}
             {coders.length > 1 && (
               <label className="agent-room-check" title="Every coder attempts this task in its own worktree; the checks and a judge pick the best attempt.">
                 <Checkbox checked={t.race} onCheckedChange={checked => update(i, { race: checked })} /> Race all coders

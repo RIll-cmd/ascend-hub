@@ -49,7 +49,7 @@ export function RoleSets() {
           )}
         </div>
       ))}
-      <p className="agent-room-hint">Skill folders go in <code>.sites-runtime/agent-room/skills/&lt;id&gt;/</code>, each with a <code>SKILL.md</code>. Sessions do not use role sets yet.</p>
+      <p className="agent-room-hint">Skill folders go in <code>.sites-runtime/agent-room/skills/&lt;id&gt;/</code>, each with a <code>SKILL.md</code>. A new session takes the sets that are on when it starts.</p>
       {status && <p className="agent-room-hint is-problem" role="status">{status}</p>}
     </SideSection>
   );

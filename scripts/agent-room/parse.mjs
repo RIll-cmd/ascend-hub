@@ -19,7 +19,18 @@ export function extractJsonBlock(text) {
   }
 }
 
-export function validateRoles(v) {
+// Which enabled role sets each agent wears; unknown agents or sets are dropped, never a reason to re-ask.
+function cleanWear(value, setIds) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const wear = {};
+  for (const id of AGENT_IDS) {
+    const sets = Array.isArray(value[id]) ? [...new Set(value[id].filter(s => setIds.includes(s)))] : [];
+    if (sets.length) wear[id] = sets;
+  }
+  return Object.keys(wear).length ? wear : undefined;
+}
+
+export function validateRoles(v, setIds = []) {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return fail('Roles must be an object.');
   if (!isAgent(v.orchestrator)) return fail('orchestrator must be one of codex, claude, agy.');
   if (!Array.isArray(v.coders) || v.coders.length === 0 || !v.coders.every(isAgent) || new Set(v.coders).size !== v.coders.length) {
@@ -27,10 +38,13 @@ export function validateRoles(v) {
   }
   const reviewer = v.reviewer ?? null;
   if (reviewer !== null && !isAgent(reviewer)) return fail('reviewer must be an agent id or null.');
-  return { ok: true, value: { orchestrator: v.orchestrator, coders: [...v.coders], reviewer, options: cleanOptions(v.options) } };
+  const value = { orchestrator: v.orchestrator, coders: [...v.coders], reviewer, options: cleanOptions(v.options) };
+  const wear = cleanWear(v.wear, setIds);
+  if (wear) value.wear = wear;
+  return { ok: true, value };
 }
 
-export function validatePlan(v, coders) {
+export function validatePlan(v, coders, setIds = []) {
   if (!v || !Array.isArray(v.tasks) || v.tasks.length < 1 || v.tasks.length > 20) return fail('tasks must be a list of 1 to 20 tasks.');
   const tasks = [];
   for (const [index, task] of v.tasks.entries()) {
@@ -39,6 +53,10 @@ export function validatePlan(v, coders) {
     if (typeof task.description !== 'string' || task.description.length > 2000) return fail(`Task ${n} needs a description of at most 2000 characters.`);
     if (!coders.includes(task.assignee)) return fail(`Task ${n} assignee must be one of the coders: ${coders.join(', ')}.`);
     const clean = { id: n, title: task.title.replace(/\s+/g, ' ').trim(), assignee: task.assignee, description: task.description.trim() };
+    if (task.role !== undefined && task.role !== null) {
+      if (!setIds.includes(task.role)) return fail(`Task ${n} role must be one of the enabled role sets${setIds.length ? `: ${setIds.join(', ')}` : ' (none are on, so leave role out)'}.`);
+      clean.role = task.role;
+    }
     // A race needs rivals: every coder attempts the task and the best attempt is kept.
     if (task.race === true && coders.length > 1) clean.race = true;
     // Only earlier tasks, so the order is always valid and there can be no cycle.

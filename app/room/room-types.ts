@@ -2,7 +2,8 @@ export type AgentId = "codex" | "claude" | "agy";
 export const AGENT_IDS: AgentId[] = ["codex", "claude", "agy"];
 export const AGENT_NAMES: Record<AgentId, string> = { codex: "Codex", claude: "Claude", agy: "Antigravity" };
 
-export type Roles = { orchestrator: AgentId; coders: AgentId[]; reviewer: AgentId | null };
+// wear: the role sets (frontend, security, ...) each agent wears in this session.
+export type Roles = { orchestrator: AgentId; coders: AgentId[]; reviewer: AgentId | null; wear?: Partial<Record<AgentId, string[]>> };
 export const DEFAULT_ROLES: Roles = { orchestrator: "codex", coders: ["claude", "agy"], reviewer: null };
 
 export type Stage = "discuss" | "roles" | "gate-roles" | "plan" | "gate-plan" | "build" | "finish" | "gate-result"
@@ -15,7 +16,7 @@ export type TaskStatus = "pending" | "running" | "review" | "done" | "skipped";
 export type CheckResult = { ok: boolean; code: number | null; ms: number; output: string };
 // race: every coder attempts the task in its own worktree; raced: how that went and which attempt was kept.
 export type RaceResult = { attempts: { agent: AgentId; ok: boolean; commit: string | null; why: string }[]; winner: AgentId | null; reason: string };
-export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult; race?: boolean; raced?: RaceResult; after?: number[] };
+export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult; race?: boolean; raced?: RaceResult; after?: number[]; role?: string };
 export type Message = {
   at: string; from: AgentId | "room"; text: string;
   seq?: number; to?: AgentId[]; kind?: "assign" | "subagent"; by?: AgentId; sub?: string;

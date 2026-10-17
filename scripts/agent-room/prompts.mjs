@@ -1,4 +1,5 @@
 import { AGENT_IDS } from './parse.mjs';
+import { skillIndex } from './skills.mjs';
 
 export const AGENT_NAMES = { codex: 'Codex', claude: 'Claude', agy: 'Antigravity' };
 export const MAX_PROMPT_CHARS = 28_000;
@@ -33,8 +34,26 @@ export function transcriptTail(messages, { maxMessages = 20, maxChars = 12_000 }
   return lines.join('\n');
 }
 
-function stageRules(stage, agent, roles, extra) {
+// The role sets the owner turned on, one line each, with the agents wearing them.
+function setLines(roleSets, roles) {
+  return roleSets.map(s => {
+    const worn = AGENT_IDS.filter(id => roles?.wear?.[id]?.includes(s.id)).map(id => AGENT_NAMES[id]);
+    return `- ${s.id} (${s.name}): ${s.prompt}${worn.length ? ` Worn by: ${worn.join(', ')}.` : ''}`;
+  }).join('\n');
+}
+
+// A task's role, its skills, and a reminder that the room's rules come first.
+function roleRules(task, roleSets) {
+  const set = task.role && roleSets.find(s => s.id === task.role);
+  if (!set) return '';
+  const head = `ROLE: ${set.name}. ${set.prompt}`;
+  if (!set.skills.length) return head;
+  return `${head}\nSKILLS for this role. Before you start, read the SKILL.md of each one that applies to this task:\n${skillIndex(set)}\nThe skills are guidance; where one conflicts with the room's rules below, the room's rules win.`;
+}
+
+function stageRules(stage, agent, roles, extra, roleSets = []) {
   const coders = roles?.coders ?? [];
+  const sets = setLines(roleSets, roles);
   const team = coders.map(id => `- ${AGENT_NAMES[id]} (${id}) ${CAPABILITIES[id]}`).join('\n');
   switch (stage) {
     case 'discuss':
@@ -47,18 +66,21 @@ function stageRules(stage, agent, roles, extra) {
         'One agent may hold several roles. What each agent can do when coding:',
         ...AGENT_IDS.map(id => `- ${AGENT_NAMES[id]} ${CAPABILITIES[id]}`),
         'You are read-only now: do not edit files or run commands that change anything.',
+        sets ? `The owner turned on these role sets, specialist roles an agent can wear:\n${sets}\nAlso agree which agent wears which set.` : '',
         'Keep your message under 200 words. When you agree with the current proposal, end your message with [READY].',
-      ].join('\n');
+      ].filter(Boolean).join('\n');
     case 'roles':
-      return 'Write the roles the discussion agreed on (or your best proposal) as one fenced json block and nothing else:\n```json\n{"orchestrator": "codex", "coders": ["claude"], "reviewer": "agy", "options": ["Make Claude the reviewer", "Let Antigravity code too"]}\n```\nUse the agent ids codex, claude, agy. reviewer may be null. options lists 2 to 4 short changes the owner might want instead (each under 160 characters). If the owner asked for changes in the conversation, apply them. Do not edit files.';
+      return 'Write the roles the discussion agreed on (or your best proposal) as one fenced json block and nothing else:\n```json\n{"orchestrator": "codex", "coders": ["claude"], "reviewer": "agy", "options": ["Make Claude the reviewer", "Let Antigravity code too"]}\n```\nUse the agent ids codex, claude, agy. reviewer may be null. options lists 2 to 4 short changes the owner might want instead (each under 160 characters). If the owner asked for changes in the conversation, apply them. Do not edit files.'
+        + (sets ? `\nAlso add "wear", saying which agent wears which role set, for example "wear": {"claude": ["${roleSets[0].id}"]}. The role sets are:\n${sets}` : '');
     case 'plan':
-      return `You are the orchestrator. Break the owner's task into 1 to 20 small tasks that coders do one at a time, in order.\nThe coders are:\n${team}\nPlan around what each coder can run. Reply with one fenced json block:\n\`\`\`json\n{"tasks": [{"title": "short title", "assignee": "${coders[0] ?? 'claude'}", "description": "what to do and how to check it"}], "options": ["Merge tasks 1 and 2", "Add a test task"]}\n\`\`\`\noptions lists 2 to 4 short changes the owner might want instead (each under 160 characters). If the owner asked for changes in the conversation, apply them.\n${coders.length > 1 ? 'For at most one hard task where approaches may differ, add "race": true: every coder then attempts it in parallel and the best attempt is kept. Races cost one attempt per coder, so use them sparingly.\n' : ''}Do not edit files.`;
+      return `You are the orchestrator. Break the owner's task into 1 to 20 small tasks that coders do one at a time, in order.\nThe coders are:\n${team}\nPlan around what each coder can run. Reply with one fenced json block:\n\`\`\`json\n{"tasks": [{"title": "short title", "assignee": "${coders[0] ?? 'claude'}", "description": "what to do and how to check it"}], "options": ["Merge tasks 1 and 2", "Add a test task"]}\n\`\`\`\noptions lists 2 to 4 short changes the owner might want instead (each under 160 characters). If the owner asked for changes in the conversation, apply them.\n${coders.length > 1 ? 'For at most one hard task where approaches may differ, add "race": true: every coder then attempts it in parallel and the best attempt is kept. Races cost one attempt per coder, so use them sparingly.\n' : ''}${sets ? `Role sets:\n${sets}\nGive each task that fits a set a "role" with that set's id, and assign it to an agent who wears that set when there is one. Leave "role" out for other tasks.\n` : ''}Do not edit files.`;
     case 'build':
       return [
         `You are a coder. You ${CAPABILITIES[agent]}.`,
         `Do ONLY task ${extra.task.id}: ${extra.task.title}`,
         cap(extra.task.description, 2000),
         extra.task.notes ? `Your previous attempt was not accepted: ${cap(extra.task.notes, 4000)}\nFix that.` : '',
+        roleRules(extra.task, roleSets),
         'Work only inside the current folder. Do not run git commit; the room commits for you.',
         'When you are done, reply with a short summary of what you changed.',
       ].filter(Boolean).join('\n');
@@ -117,13 +139,13 @@ function templateRules(stage, extra) {
   return '';
 }
 
-export function buildPrompt({ stage, agent, roles, task, planText = '', transcript = [], extra = {}, memory = [] }) {
+export function buildPrompt({ stage, agent, roles, task, planText = '', transcript = [], extra = {}, memory = [], roleSets = [] }) {
   const mine = rolesOf(agent, roles);
   const fixed = [
     `Room stage: ${stage}`,
     `You are ${AGENT_NAMES[agent]} (${agent}) in the Ascend Agent Room${mine.length ? `, roles: ${mine.join(', ')}` : ''}.`,
     '',
-    stageRules(stage, agent, roles, extra),
+    stageRules(stage, agent, roles, extra, roleSets),
     templateRules(stage, extra),
     extra.parallel && stage === 'plan' ? 'Tasks run at the same time unless ordered: give a task "after": [numbers of earlier tasks it needs first]. Tasks that change the same files must be ordered, or their merges conflict.' : '',
     memory.length ? `\nPROJECT MEMORY (owner-approved notes from earlier sessions):\n${cap(memory.map(n => `- ${n}`).join('\n'), 3000)}` : '',

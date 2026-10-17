@@ -11,6 +11,7 @@ import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
 import { addNotes, memoryKey, readMemory, splitProposal } from './memory.mjs';
 import { claudeQuota, latestCodexQuota } from './quota.mjs';
+import { activeRoleSets, installSkills } from './skills.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
 export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
@@ -40,6 +41,9 @@ function cleanModels(value) {
   return models;
 }
 
+// Roles without the agent's suggested options; "wear" only when someone wears a set.
+const teamOf = ({ orchestrator, coders, reviewer, wear }) => ({ orchestrator, coders, reviewer, ...(wear ? { wear } : {}) });
+
 export class RoomSession {
   constructor({ dir, settings, runTurn = realRunTurn, state, transcript }) {
     this.dir = dir;
@@ -67,12 +71,13 @@ export class RoomSession {
     if (body.parallel !== undefined && body.parallel !== null && typeof body.parallel !== 'boolean') throw roomError('PARALLEL_INVALID');
     const subagents = subagentChoice(body.subagents);
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
+    // The sets on now are the session's for good; switching one later never changes a running session.
+    const roleSets = activeRoleSets(dataDir);
     let presetRoles = null;
     if (roles !== undefined && roles !== null) {
-      const checked = validateRoles(roles);
+      const checked = validateRoles(roles, roleSets.map(r => r.id));
       if (!checked.ok) throw roomError('ROLES_INVALID', checked.error);
-      const { orchestrator, coders, reviewer } = checked.value;
-      presetRoles = { orchestrator, coders, reviewer };
+      presetRoles = teamOf(checked.value);
     }
     const id = `${Date.now()}-${randomBytes(3).toString('hex')}`;
     let projectDir;
@@ -90,12 +95,13 @@ export class RoomSession {
       mkdirSync(settings.buildsRoot, { recursive: true });
       createProject(projectDir);
     }
+    installSkills(dataDir, roleSets, projectDir);
     const state = {
       id, mode: 'build', subagents, project, projectDir, task: task.trim(), stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
       repo: repoInfo, check: check?.trim() || null, limits, turns: 0, workMs: 0, usage: {}, template, models,
       // A bug fix is a strict red-then-green sequence, so it never runs tasks in parallel.
-      parallel: body.parallel === true && template !== 'bugfix',
+      parallel: body.parallel === true && template !== 'bugfix', roleSets,
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
@@ -271,9 +277,11 @@ export class RoomSession {
     return buildPrompt({
       stage, agent, roles: this.state.roles, task: this.state.task,
       planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript, extra: { template: this.state.template, parallel: this.state.parallel, ...extra },
-      memory: this.projectMemory(),
+      memory: this.projectMemory(), roleSets: this.state.roleSets ?? [],
     });
   }
+
+  get setIds() { return (this.state.roleSets ?? []).map(s => s.id); }
 
   // Sessions live in <dataDir>/sessions/<id>; project memory sits beside them.
   get dataDir() { return dirname(dirname(this.dir)); }
@@ -352,7 +360,7 @@ export class RoomSession {
   }
 
   async rolesStep() {
-    const roles = await this.jsonTurn('codex', this.prompt('roles', 'codex'), 'proposing roles', validateRoles, []);
+    const roles = await this.jsonTurn('codex', this.prompt('roles', 'codex'), 'proposing roles', v => validateRoles(v, this.setIds), []);
     if (!roles) return;
     const { options, ...chosen } = roles;
     this.state.roles = chosen;
@@ -364,7 +372,7 @@ export class RoomSession {
 
   async planStep() {
     const { roles } = this.state;
-    const plan = await this.jsonTurn(roles.orchestrator, this.prompt('plan', roles.orchestrator), 'planning', v => validatePlan(v, roles.coders), []);
+    const plan = await this.jsonTurn(roles.orchestrator, this.prompt('plan', roles.orchestrator), 'planning', v => validatePlan(v, roles.coders, this.setIds), []);
     if (!plan) return;
     this.setPlan(plan.tasks, 'plan: initial plan', plan.options);
     this.state.stage = 'gate-plan';
@@ -488,6 +496,7 @@ export class RoomSession {
         createWorktree(state.projectDir, item.dir, item.branch);
         item.made = true;
         linkDependencies(state.repo?.dir ?? state.projectDir, item.dir);
+        installSkills(this.dataDir, state.roleSets ?? [], item.dir);
         await work(item);
       }));
       const broken = settled.find(r => r.status === 'rejected');
@@ -764,17 +773,16 @@ export class RoomSession {
     if (gate === 'roles') {
       if (decision !== 'approve') throw roomError('DECISION_INVALID');
       if (roles !== undefined) {
-        const checked = validateRoles(roles);
+        const checked = validateRoles(roles, this.setIds);
         if (!checked.ok) throw roomError('ROLES_INVALID', checked.error);
-        const { orchestrator, coders, reviewer } = checked.value;
-        state.roles = { orchestrator, coders, reviewer };
+        state.roles = teamOf(checked.value);
       }
       state.stage = 'plan';
       this.say('room', 'Owner approved the roles.');
     } else if (gate === 'plan') {
       if (decision !== 'approve') throw roomError('DECISION_INVALID');
       if (plan !== undefined) {
-        const checked = validatePlan(plan, state.roles.coders);
+        const checked = validatePlan(plan, state.roles.coders, this.setIds);
         if (!checked.ok) throw roomError('PLAN_INVALID', checked.error);
         this.setPlan(checked.value.tasks, 'plan: owner edits');
       }

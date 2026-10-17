@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { killTree } from './agents.mjs';
 import { roomError } from './paths.mjs';
 
@@ -15,6 +15,15 @@ function git(dir, args) {
   if (result.error) throw roomError(result.error.code === 'ETIMEDOUT' ? 'GIT_TIMEOUT' : 'GIT_UNAVAILABLE', result.error.message);
   if (result.status !== 0) throw roomError('GIT_FAILED', `git ${args[0]}: ${result.stderr.trim()}`);
   return result.stdout;
+}
+
+// Adds one pattern to the repository's local exclude file (shared by all its worktrees); never committed.
+export function excludeFromGit(dir, pattern) {
+  const file = resolve(dir, git(dir, ['rev-parse', '--git-path', 'info/exclude']).trim());
+  const current = existsSync(file) ? readFileSync(file, 'utf8') : '';
+  if (current.split(/\r?\n/).includes(pattern)) return;
+  mkdirSync(dirname(file), { recursive: true });
+  appendFileSync(file, `${current && !current.endsWith('\n') ? '\n' : ''}${pattern}\n`, 'utf8');
 }
 
 export function createProject(dir) {

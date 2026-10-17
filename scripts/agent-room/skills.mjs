@@ -1,6 +1,7 @@
-import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { roomError } from './paths.mjs';
+import { excludeFromGit } from './project.mjs';
 import { readJson, writeJsonAtomic } from './store.mjs';
 
 // Specialist roles an agent can wear. Each set is a list of third-party agent skills (SKILL.md folders);
@@ -106,4 +107,43 @@ export function writeRoleSets(dataDir, body) {
   }
   writeJsonAtomic(storeFile(dataDir), { sets: saved });
   return readRoleSets(dataDir);
+}
+
+// What a new session takes: the sets that are on, each with its switched-on skills found in the library.
+// The session keeps this snapshot, so later switches never change a running session.
+export function activeRoleSets(dataDir) {
+  return readRoleSets(dataDir).filter(s => s.on).map(s => ({
+    id: s.id, name: s.name, prompt: s.prompt,
+    skills: s.skills.filter(k => k.on && k.installed).map(k => ({ id: k.id, name: k.name, description: k.description })),
+  }));
+}
+
+// Copies the sets' skills to <dir>/.ascend/skills/<id>/ so every CLI can read them inside its own folder.
+// .ascend/ is excluded from git, so the room never commits them and rollbacks (git clean without -x) keep them.
+export function installSkills(dataDir, roleSets, dir) {
+  const ids = [...new Set(roleSets.flatMap(s => s.skills.map(k => k.id)))];
+  if (!ids.length) return;
+  excludeFromGit(dir, '.ascend/');
+  for (const id of ids) {
+    // Links inside a skill folder could point anywhere on disk, so they are not copied.
+    cpSync(join(dataDir, 'skills', id), join(dir, '.ascend', 'skills', id), { recursive: true, filter: src => !lstatSync(src).isSymbolicLink() });
+  }
+}
+
+const INDEX_CHARS = 1500;
+
+// A short list of the set's skills for a coder's prompt: the agent reads the SKILL.md files it needs itself.
+export function skillIndex(set) {
+  const lines = [];
+  let used = 0;
+  for (const [i, k] of set.skills.entries()) {
+    const line = `- ${k.name}: ${k.description.slice(0, 160)} (.ascend/skills/${k.id}/SKILL.md)`;
+    if (used + line.length > INDEX_CHARS) {
+      lines.push(`- ${set.skills.length - i} more skills in .ascend/skills/`);
+      break;
+    }
+    lines.push(line);
+    used += line.length + 1;
+  }
+  return lines.join('\n');
 }
