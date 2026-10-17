@@ -182,20 +182,41 @@ export function SideSection({ title, value, open, force, children }: { title: st
 }
 
 // The role sets for this session only; until the owner changes one, they follow the Role sets switches.
+type SetSkill = { id: string; name: string; on: boolean; installed: boolean };
+type SessionSet = { id: string; name: string; on: boolean; skills: SetSkill[] };
+
 function SessionSets({ value, onChange }: { value: string[] | null; onChange: (sets: string[] | null) => void }) {
-  const [sets, setSets] = useState<{ id: string; name: string; on: boolean }[]>([]);
+  const [sets, setSets] = useState<SessionSet[]>([]);
   useEffect(() => {
     fetch("/api/room/role-sets", { cache: "no-store" })
-      .then(r => (r.ok ? (r.json() as Promise<{ sets?: { id: string; name: string; on: boolean }[] }>) : null))
+      .then(r => (r.ok ? (r.json() as Promise<{ sets?: SessionSet[] }>) : null))
       .then(data => setSets(data?.sets ?? []), () => setSets([]));
   }, []);
   if (!sets.length) return null;
   const chosen = value ?? sets.filter(s => s.on).map(s => s.id);
   const toggle = (id: string) => onChange(chosen.includes(id) ? chosen.filter(c => c !== id) : [...chosen, id]);
+  // Skills switched off inside a set are left out; only installed ones reach the agents.
+  const skillsOf = (s: SessionSet) => s.skills.filter(k => k.on);
   return (
     <fieldset className="agent-room-limits agent-room-sets" title="Which role sets this session uses. Agents get these sets' installed skills.">
       <legend>Role sets for this session{value ? "" : " (from the switches)"}</legend>
-      {sets.map(s => <label key={s.id} className="agent-room-check"><Checkbox checked={chosen.includes(s.id)} onCheckedChange={() => toggle(s.id)} /> {s.name}</label>)}
+      {sets.map(s => (
+        <label key={s.id} className="agent-room-check" title={skillsOf(s).map(k => `${k.name}${k.installed ? "" : " (not installed)"}`).join("\n")}>
+          <Checkbox checked={chosen.includes(s.id)} onCheckedChange={() => toggle(s.id)} /> {s.name}
+        </label>
+      ))}
+      {sets.some(s => chosen.includes(s.id)) && (
+        <ul className="agent-room-sets-skills">
+          {sets.filter(s => chosen.includes(s.id)).map(s => (
+            <li key={s.id}>
+              <b>{s.name}:</b>{" "}
+              {skillsOf(s).length ? skillsOf(s).map((k, i) => (
+                <span key={k.id} className={k.installed ? undefined : "is-missing"}>{i ? ", " : ""}{k.name}{k.installed ? "" : " (not installed)"}</span>
+              )) : "no skills switched on"}
+            </li>
+          ))}
+        </ul>
+      )}
       {value && <button type="button" className="agent-room-linkbtn" onClick={() => onChange(null)}>Reset to the Role sets switches</button>}
     </fieldset>
   );

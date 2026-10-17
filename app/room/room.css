@@ -489,3 +489,5 @@
 .room-app .agent-room-section-body .agent-room-limits.is-stacked { flex-direction: column; flex-wrap: nowrap; }
 .room-app .agent-room-section-body .agent-room-limits.is-stacked label { flex: none; }
 .room-app .agent-room-section-body .agent-room-limits.is-stacked input { width: 100%; }
+.room-app .agent-room-sets-skills { grid-column: 1 / -1; list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.35; }
+.room-app .agent-room-sets-skills .is-missing { opacity: 0.6; }
