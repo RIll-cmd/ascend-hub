@@ -35,7 +35,7 @@ Updated 2026-10-17.
 | M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Done (2026-10-14); PRs via `gh` not yet |
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
 | M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Done (2026-10-14) |
-| M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | In progress: M7a to M7c done (2026-10-17) |
+| M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | In progress: M7a to M7d done (2026-10-17) |
 
 **Reliability work alongside:**
 - Room sessions keep a pending gate across restarts.
@@ -136,7 +136,7 @@ Third-party skills are untrusted instructions running inside the agents.
 | M7a | Data model, a library of local folders, role-set switches in the UI (done 2026-10-17) |
 | M7b | Copying skills into the session, the skill index in prompts, `role` on plan tasks, coders getting the skills for their role (done 2026-10-17) |
 | M7c | Specialist review passes: code review, security, UI/UX (done 2026-10-17) |
-| M7d | Add from a GitHub URL: pinned commit, license, diff on update |
+| M7d | Add from a GitHub URL: pinned commit, license, diff on update (done 2026-10-17) |
 | M7e | Which skills were read, shown per task; overrides per session |
 
 **Tests:**
@@ -176,6 +176,14 @@ Third-party skills are untrusted instructions running inside the agents.
 - A failed pass sends the task back with notes such as "security review: ..."; the next attempt runs every pass again. Passes already passed are recorded on the task, so a resumed session does not repeat them.
 - Parallel tasks run the same passes in the merge queue, and a raced task's kept attempt runs them after the judge.
 - **App preview:** under Options the owner may set a start command and a localhost URL. Before a design pass the room starts the app, waits for the URL, takes a 1280x800 screenshot with headless Edge or Chrome (`settings.browser` overrides), stops the app, and points the design reviewer at `.ascend/preview/task-<n>.png`. Only loopback URLs are accepted. A failed capture is reported and the review continues from the diff.
+
+### M7d as built (2026-10-17)
+
+- A **Skill library** drawer (button in the Role sets section) lists installed skills with their commit and license, shows each `SKILL.md` with the room's Markdown renderer, and removes skills.
+- **Add from GitHub** takes a repo, `tree`, `blob` or raw link. The room resolves the ref to a commit, reads the file tree, and downloads that folder from `raw.githubusercontent.com` at the pinned commit into `.sites-runtime/agent-room/skills-staging/<token>/`. A link to a repo with several skills lists them to pick from.
+- Nothing is installed until the owner reads the staged card (name, commit, license, file count, a scripts warning, the `SKILL.md`) and presses **Install**, optionally under another id. Install writes `source.json` (URL, commit, license, fetch time).
+- **Update** fetches the same link again and shows a `git diff --no-index` against the installed copy; it replaces the copy only on Install.
+- Limits: 200 files, 512 kB a file, 1 MB in all; links, submodules and paths with `..` are refused. Only `api.github.com` and `raw.githubusercontent.com` are contacted. Skills named in the role sets but not installed are listed with a Fetch button when their source is a GitHub link.
 
 ## Room ideas backlog (2026-10-16)
 

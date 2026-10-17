@@ -11,7 +11,8 @@ import { finishWorktree, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { readMemory, writeMemory } from './memory.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
-import { readRoleSets, writeRoleSets } from './skills.mjs';
+import { stageSkill } from './github.mjs';
+import { discardStaged, installStaged, listSkills, readRoleSets, removeSkill, viewSkill, writeRoleSets } from './skills.mjs';
 import { readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 import { ensureRoomToken } from './token.mjs';
 
@@ -89,9 +90,9 @@ function readSession(dataDir, id) {
   return state ? { ...state, active: null, attention: null, transcript: readJsonLines(join(dir, 'transcript.jsonl')).slice(-200) } : null;
 }
 
-const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409 };
+const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409, SKILL_PICK: 409, SKILL_FETCH_FAILED: 502 };
 
-export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, port = 5181, idleMs = 30 * 60_000, token = randomBytes(32).toString('hex') }) {
+export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, fetchImpl = globalThis.fetch, port = 5181, idleMs = 30 * 60_000, token = randomBytes(32).toString('hex') }) {
   // The readiness probe is a real turn, so it also refreshes Claude's quota before any session runs.
   const probeOne = probe ?? (id => probeAgent(id, settings, runTurn, event => {
     const value = id === 'claude' ? claudeQuota(event) : null;
@@ -189,6 +190,16 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       if (route === 'POST /memory') return send(200, { key: body?.key, notes: writeMemory(dataDir, body?.key, body?.notes) });
       if (route === 'GET /role-sets') return send(200, { sets: readRoleSets(dataDir) });
       if (route === 'POST /role-sets') return send(200, { sets: writeRoleSets(dataDir, body) });
+      if (route === 'GET /skills') return send(200, { skills: listSkills(dataDir) });
+      if (route === 'GET /skills/view') {
+        const id = new URL(req.url, 'http://room').searchParams.get('id');
+        return send(200, { id, text: viewSkill(dataDir, id) });
+      }
+      // A download from GitHub that the owner started from the skill library; it only stages, never installs.
+      if (route === 'POST /skills/fetch') return send(200, { staged: await stageSkill(dataDir, body.url, { fetchImpl, update: body.update ?? null }) });
+      if (route === 'POST /skills/install') return send(200, { installed: installStaged(dataDir, body.token, body.id ?? undefined), sets: readRoleSets(dataDir) });
+      if (route === 'POST /skills/discard') { discardStaged(dataDir, body.token); return send(200, { ok: true }); }
+      if (route === 'POST /skills/remove') { removeSkill(dataDir, body.id); return send(200, { ok: true }); }
       if (route === 'GET /sessions/current/diff') {
         if (!session) return send(404, { error: 'NO_SESSION' });
         return send(200, session.diff(new URL(req.url, 'http://room').searchParams.get('commit')));
@@ -201,7 +212,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       return send(200, { session: session.summary() });
     } catch (error) {
       const status = STATUS_FOR[error.code] ?? (error.code ? 400 : 500);
-      return send(status, { error: error.code ?? 'INTERNAL', message: error.message });
+      return send(status, { error: error.code ?? 'INTERNAL', message: error.message, ...(error.candidates ? { candidates: error.candidates } : {}) });
     }
   });
 

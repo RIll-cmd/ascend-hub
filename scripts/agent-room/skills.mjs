@@ -1,4 +1,4 @@
-import { cpSync, existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { roomError } from './paths.mjs';
 import { excludeFromGit } from './project.mjs';
@@ -46,10 +46,52 @@ const SKILL_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const SCRIPT_EXT = new Set(['.sh', '.bash', '.ps1', '.psm1', '.bat', '.cmd', '.py', '.js', '.mjs', '.cjs', '.ts', '.rb', '.exe']);
 const isRealDir = path => existsSync(path) && lstatSync(path).isDirectory() && !lstatSync(path).isSymbolicLink();
 
-function frontMatter(text) {
+export const skillId = value => typeof value === 'string' && SKILL_ID.test(value);
+export const hasScriptFiles = paths => paths.some(f => SCRIPT_EXT.has(extname(String(f)).toLowerCase()));
+
+export function frontMatter(text) {
   const block = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text)?.[1] ?? '';
   const field = key => new RegExp(`^${key}:\\s*(.+)$`, 'm').exec(block)?.[1].trim().replace(/^(["'])(.*)\1$/, '$2') ?? '';
   return { name: field('name'), description: field('description') };
+}
+
+function skillDir(dataDir, id) {
+  if (!skillId(id)) throw roomError('SKILL_ID_INVALID', String(id));
+  const dir = join(dataDir, 'skills', id);
+  if (!existsSync(join(dir, 'SKILL.md'))) throw roomError('SKILL_NOT_FOUND', id);
+  return dir;
+}
+
+export const viewSkill = (dataDir, id) => readFileSync(join(skillDir(dataDir, id), 'SKILL.md'), 'utf8');
+
+export function removeSkill(dataDir, id) {
+  rmSync(skillDir(dataDir, id), { recursive: true, force: true });
+}
+
+function stagedDir(dataDir, token) {
+  const dir = join(dataDir, 'skills-staging', String(token));
+  if (!/^[0-9a-f]{16}$/.test(String(token)) || !existsSync(join(dir, 'meta.json'))) throw roomError('SKILL_STAGE_MISSING');
+  return dir;
+}
+
+export function discardStaged(dataDir, token) {
+  rmSync(stagedDir(dataDir, token), { recursive: true, force: true });
+}
+
+// The owner's Install: the staged folder (see github.mjs) replaces any installed copy, with source.json pinning where it came from.
+export function installStaged(dataDir, token, id) {
+  const stage = stagedDir(dataDir, token);
+  const meta = readJson(join(stage, 'meta.json'));
+  const target = id ?? meta.id;
+  if (!skillId(target)) throw roomError('SKILL_ID_INVALID', String(target));
+  const dir = join(dataDir, 'skills', target);
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(join(dataDir, 'skills'), { recursive: true });
+  renameSync(join(stage, 'files'), dir);
+  const { url, owner, repo, path, commit, license } = meta;
+  writeJsonAtomic(join(dir, 'source.json'), { url, owner, repo, path, commit, license, fetchedAt: new Date().toISOString() });
+  rmSync(stage, { recursive: true, force: true });
+  return { id: target };
 }
 
 // The library: <dataDir>/skills/<id>/SKILL.md, plus an optional source.json recording where it came from.
@@ -59,7 +101,7 @@ export function listSkills(dataDir) {
   return readdirSync(root).filter(id => SKILL_ID.test(id) && isRealDir(join(root, id)) && existsSync(join(root, id, 'SKILL.md'))).sort().map(id => {
     const dir = join(root, id);
     const { name, description } = frontMatter(readFileSync(join(dir, 'SKILL.md'), 'utf8'));
-    const hasScripts = readdirSync(dir, { recursive: true }).some(f => SCRIPT_EXT.has(extname(String(f)).toLowerCase()));
+    const hasScripts = hasScriptFiles(readdirSync(dir, { recursive: true }));
     let source = null;
     try { source = readJson(join(dir, 'source.json')); } catch { /* a broken source.json only hides the source */ }
     return { id, name: name || id, description, hasScripts, source };
