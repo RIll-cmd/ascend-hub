@@ -194,6 +194,14 @@ Third-party skills are untrusted instructions running inside the agents.
 
 A real session (`skills-check`: Codex orchestrator and reviewer, Claude coder, sets Code reviewer and Security, Sentry `code-review` fetched from GitHub at `f57ada2`, Apache-2.0) ran to the result gate: the skill was copied to `.ascend/skills/` and never committed, Codex's review opened its `SKILL.md` and the room recorded the read, and both the code and security passes ran. The first fetch hit GitHub's 60-an-hour limit for anonymous requests, which led to the `gh` token fix. The test skill was removed afterwards.
 
+### More role sets (2026-10-17)
+
+- **General** (always on for every coder task when switched on): Superpowers systematic debugging and verification before completion, Ponytail, Context7 `find-docs`, Caveman.
+- **Testing / QA:** Microsoft Playwright CLI (needs `npm install -g @playwright/cli@latest` as well), Superpowers test-driven development, Trail of Bits property-based testing.
+- Added to the existing sets: Emil Kowalski design engineering and animation performance (off by default), Addy Osmani accessibility and performance, Trail of Bits variant analysis and supply chain risk auditor, wshobson error handling patterns, Better Auth best practices (off by default).
+- Every source points at the skill's own folder. Dropped: Anthropic PR review toolkit (sub-agents, no `SKILL.md`). Not available as a skill: Trail of Bits `insecure-defaults` (a command plugin). Impeccable (2.2 MB) and UI UX Pro Max (3.6 MB, Python scripts) exceed the library limits of 1 MB and 512 kB a file.
+- Installed 2026-10-17 after review: 27 skills. Licences: MIT, Apache-2.0 and CC-BY-SA-4.0, except Anthropic frontend design (its own `LICENSE.txt`), the three Vercel skills and Better Auth, which show no licence on GitHub. Scripts reviewed: Semgrep runner, supply-chain collector (public registry APIs), Superpowers `find-polluter.sh`, a FastAPI template.
+
 ## Room ideas backlog (2026-10-16)
 
 Not scheduled.

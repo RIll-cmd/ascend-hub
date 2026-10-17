@@ -128,6 +128,9 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   let claudeProbedAt = 0;
   const watch = s => { if (s) s.onQuota = recordQuota; return s; };
   let lastRequest = Date.now();
+  // gh can be slow to answer the first time, so a token once found is kept; until then each fetch asks again.
+  let ghAuth = null;
+  const githubToken = () => (ghAuth ??= ghToken(settings.gh));
 
   const server = createServer(async (req, res) => {
     lastRequest = Date.now();
@@ -196,7 +199,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         return send(200, { id, text: viewSkill(dataDir, id) });
       }
       // A download from GitHub that the owner started from the skill library; it only stages, never installs.
-      if (route === 'POST /skills/fetch') return send(200, { staged: await stageSkill(dataDir, body.url, { fetchImpl, update: body.update ?? null, id: body.id ?? null, token: ghToken(settings.gh) }) });
+      if (route === 'POST /skills/fetch') return send(200, { staged: await stageSkill(dataDir, body.url, { fetchImpl, update: body.update ?? null, id: body.id ?? null, token: githubToken() }) });
       if (route === 'POST /skills/install') return send(200, { installed: installStaged(dataDir, body.token, body.id ?? undefined), sets: readRoleSets(dataDir) });
       if (route === 'POST /skills/discard') { discardStaged(dataDir, body.token); return send(200, { ok: true }); }
       if (route === 'POST /skills/remove') { removeSkill(dataDir, body.id); return send(200, { ok: true }); }

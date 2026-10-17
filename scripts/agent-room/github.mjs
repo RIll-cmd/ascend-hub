@@ -53,7 +53,7 @@ function diffAgainst(dataDir, id, filesDir) {
 // The gh CLI's login, when there is one, lifts GitHub's limit from 60 to 5,000 requests an hour.
 // The token stays in memory and is sent only to api.github.com.
 export function ghToken(gh = { command: 'gh', prefixArgs: [] }) {
-  const result = spawnSync(gh.command, [...gh.prefixArgs, 'auth', 'token'], { encoding: 'utf8', windowsHide: true, timeout: 10_000 });
+  const result = spawnSync(gh.command, [...gh.prefixArgs, 'auth', 'token'], { encoding: 'utf8', windowsHide: true, timeout: 20_000 });
   const token = result.status === 0 ? result.stdout.trim() : '';
   return /^[A-Za-z0-9_]{20,255}$/.test(token) ? token : null;
 }
