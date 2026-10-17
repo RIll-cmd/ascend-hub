@@ -201,6 +201,7 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [parallel, setParallel] = useState(false);
   const [template, setTemplate] = useState<keyof typeof TEMPLATE_LABELS>("feature");
   const [models, setModels] = useState<{ codex: string; claude: string }>({ codex: "", claude: "" });
+  const [preview, setPreview] = useState({ command: "", url: "" });
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
   const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
   const inRepo = where === "repo" && repos.length > 0;
@@ -213,12 +214,12 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const reviewBody = { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}) };
   const canStart = missing.length === 0 && !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, template, setTemplate, models, setModels, needsCheck, missing, body, canStart, folders, repos,
+    parallel, setParallel, template, setTemplate, models, setModels, preview, setPreview, needsCheck, missing, body, canStart, folders, repos,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -280,6 +281,11 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
               Checks after every task{b.needsCheck ? " (required)" : ""}
               <Input value={b.checkCommand} onChange={e => b.setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
             </label>
+            <fieldset className="agent-room-limits" title="Before a design review the room starts the app, opens the URL in headless Edge or Chrome and gives the reviewer a screenshot. Leave empty to review the diff only.">
+              <legend>App preview for design reviews</legend>
+              <label>Start command <Input className="h-9" value={b.preview.command} onChange={e => b.setPreview(p => ({ ...p, command: e.target.value }))} maxLength={500} placeholder="npm run dev" spellCheck={false} /></label>
+              <label>URL <Input className="h-9" value={b.preview.url} onChange={e => b.setPreview(p => ({ ...p, url: e.target.value }))} placeholder="http://localhost:5173" spellCheck={false} /></label>
+            </fieldset>
             <fieldset className="agent-room-limits">
               <legend>Models</legend>
               <label>Codex <Input className="h-9" list="room-codex-models" value={b.models.codex} onChange={e => b.setModels(m => ({ ...m, codex: e.target.value }))} placeholder="default" spellCheck={false} /></label>

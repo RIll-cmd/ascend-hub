@@ -33,6 +33,7 @@ async function run({ sets, skills = [], roles, tasks, verdicts = () => 'ok', par
     }
     if (stage === 'finish') return { text: '# Done' };
     if (stage === 'reassign') return { text: json({ action: 'skip' }) };
+    if (stage === 'judge') return { text: json({ winner: 'claude', reason: 'simpler' }) };
     throw new Error(stage);
   };
   const session = RoomSession.create({ dataDir, settings: testSettings(buildsRoot), runTurn: fakeRunTurn(respond, calls) },
@@ -105,4 +106,15 @@ test('parallel tasks get the same passes in the merge queue', async () => {
   ] });
   assert.deepEqual(reviews.map(r => r.pass), ['security', 'security']);
   assert.deepEqual(session.state.plan.tasks.map(t => t.status), ['done', 'done']);
+});
+
+test('a raced task goes through the review passes after its winner is kept', async () => {
+  const roles = { orchestrator: 'codex', coders: ['claude', 'agy'], reviewer: null };
+  const { session, reviews } = await run({ sets: ['security'], roles, tasks: [{ title: 'A', assignee: 'claude', description: 'd', race: true }],
+    verdicts: (pass, n) => (n === 1 ? 'changes' : 'ok') });
+  assert.deepEqual(reviews.map(r => `${r.pass}:${r.agent}`), ['security:codex', 'security:codex']);
+  const task = session.state.plan.tasks[0];
+  assert.equal(task.raced.winner, 'claude');
+  assert.equal(task.status, 'done');
+  assert.equal(task.attempts, 1, 'the failed review sent it back once');
 });

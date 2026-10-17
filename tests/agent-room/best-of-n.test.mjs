@@ -51,6 +51,7 @@ test('every coder attempts a race task in its own worktree at once; only attempt
       await wait();
       return { text: `${agent} did it`, files: { 'app.js': agent === 'claude' ? 'good\n' : 'bad\n' } };
     }
+    if (stage === 'review') return { text: json({ verdict: 'ok' }) };
     if (stage === 'finish') return { text: 'Done.' };
     throw new Error(`unexpected ${stage} turn for ${agent}`);
   }, { orchestrator: 'codex', coders: ['claude', 'codex'], reviewer: 'agy' });
@@ -63,6 +64,7 @@ test('every coder attempts a race task in its own worktree at once; only attempt
   assert.equal(new Set(builds.map(c => c.cwd)).size, 2);
   assert.ok(builds.every(c => c.cwd !== projectDir), 'attempts never touch the session worktree');
   assert.ok(!calls.some(c => c.stage === 'judge'), 'a single survivor needs no judge');
+  assert.deepEqual(calls.filter(c => c.stage === 'review').map(c => c.agent), ['agy'], 'the reviewer reviews the kept attempt');
 
   assert.equal(session.state.stage, 'gate-result');
   const task = session.state.plan.tasks[0];

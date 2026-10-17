@@ -174,8 +174,8 @@ Third-party skills are untrusted instructions running inside the agents.
 - The code reviewer gets the Code reviewer set's skills when that set is on; the security and design reviewers get their sets' skills.
 - A security or design pass goes to an agent wearing that set other than the coder, else the reviewer, else the orchestrator.
 - A failed pass sends the task back with notes such as "security review: ..."; the next attempt runs every pass again. Passes already passed are recorded on the task, so a resumed session does not repeat them.
-- Parallel tasks run the same passes in the merge queue. Raced tasks still go only through the checks and the judge.
-- Design reviews read the diff only; app-preview screenshots are a later step.
+- Parallel tasks run the same passes in the merge queue, and a raced task's kept attempt runs them after the judge.
+- **App preview:** under Options the owner may set a start command and a localhost URL. Before a design pass the room starts the app, waits for the URL, takes a 1280x800 screenshot with headless Edge or Chrome (`settings.browser` overrides), stops the app, and points the design reviewer at `.ascend/preview/task-<n>.png`. Only loopback URLs are accepted. A failed capture is reported and the review continues from the diff.
 
 ## Room ideas backlog (2026-10-16)
 

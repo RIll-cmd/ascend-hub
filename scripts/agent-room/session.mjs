@@ -5,13 +5,14 @@ import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { subagentEvent, usageEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, createProject, createWorktree, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, openPullRequest, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, createProject, createWorktree, excludeFromGit, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, openPullRequest, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
 import { addNotes, memoryKey, readMemory, splitProposal } from './memory.mjs';
 import { claudeQuota, latestCodexQuota } from './quota.mjs';
 import { activeRoleSets, installSkills } from './skills.mjs';
+import { capturePreview, findBrowser, validatePreview } from './preview.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
 export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
@@ -71,6 +72,7 @@ export class RoomSession {
     if (body.parallel !== undefined && body.parallel !== null && typeof body.parallel !== 'boolean') throw roomError('PARALLEL_INVALID');
     const subagents = subagentChoice(body.subagents);
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
+    const preview = validatePreview(body.preview);
     // The sets on now are the session's for good; switching one later never changes a running session.
     const roleSets = activeRoleSets(dataDir);
     let presetRoles = null;
@@ -101,7 +103,7 @@ export class RoomSession {
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
       repo: repoInfo, check: check?.trim() || null, limits, turns: 0, workMs: 0, usage: {}, template, models,
       // A bug fix is a strict red-then-green sequence, so it never runs tasks in parallel.
-      parallel: body.parallel === true && template !== 'bugfix', roleSets,
+      parallel: body.parallel === true && template !== 'bugfix', roleSets, preview,
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
@@ -484,12 +486,31 @@ export class RoomSession {
     return passes;
   }
 
+  // A screenshot of the running app for a design review, inside the project so every CLI may open it; null without a preview.
+  // A failed capture never fails the task: the reviewer is told and judges from the diff.
+  async previewFor(task) {
+    const { preview, projectDir } = this.state;
+    if (!preview) return null;
+    const file = `.ascend/preview/task-${task.id}.png`;
+    excludeFromGit(projectDir, '.ascend/');
+    const controller = new AbortController();
+    this.controllers.add(controller);
+    this.say('room', `Starting the app for a preview: ${preview.command}`);
+    const result = await capturePreview({ dir: projectDir, ...preview, outFile: join(projectDir, file), browser: findBrowser(this.settings),
+      timeoutMs: this.settings.previewTimeoutMs ?? 60_000, signal: controller.signal });
+    this.controllers.delete(controller);
+    this.say('room', result.ok ? `Captured the app preview for task ${task.id}.` : `The app preview failed: ${result.error}`);
+    return result.ok ? { file } : { error: result.error };
+  }
+
   // Runs the passes this attempt has not passed yet (a resumed session skips the rest): { ok }, { notes } or null when stopped.
   async runReviews(task) {
     task.passed ??= [];
     for (const pass of this.reviewPasses(task)) {
       if (task.passed.includes(pass.kind)) continue;
-      const prompt = this.prompt('review', pass.agent, { task, pass, diff: lastCommitDiff(this.state.projectDir), check: this.state.check });
+      const screenshot = pass.kind === 'design' ? await this.previewFor(task) : null;
+      if (this.state.stage === 'stopped') return null;
+      const prompt = this.prompt('review', pass.agent, { task, pass, screenshot, diff: lastCommitDiff(this.state.projectDir), check: this.state.check });
       const verdict = await this.jsonTurn(pass.agent, prompt, pass.kind === 'code' ? 'reviewing' : `${pass.kind} review`, validateVerdict, [task.assignee]);
       if (!verdict) return null;
       if (verdict.verdict !== 'ok') {
@@ -605,8 +626,15 @@ export class RoomSession {
     task.assignee = winner.agent;
     task.commit = fastForward(state.projectDir, winner.branch);
     if (winner.check) task.check = winner.check;
-    task.status = 'done';
     this.say('room', `Kept ${AGENT_NAMES[winner.agent]}'s attempt (${task.commit})${task.raced.reason ? `: ${task.raced.reason.replace(/\.$/, '')}` : ''}. The other attempts were deleted.`);
+    // The kept attempt goes through the same review passes as any task; a resumed session continues them from buildStep.
+    task.status = this.reviewPasses(task).length ? 'review' : 'done';
+    this.save();
+    if (task.status === 'done') return;
+    const review = await this.runReviews(task);
+    if (!review) return;
+    if (!review.ok) return this.taskFailed(task, review.notes);
+    task.status = 'done';
     this.save();
   }
 

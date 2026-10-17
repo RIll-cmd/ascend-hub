@@ -100,7 +100,10 @@ function stageRules(stage, agent, roles, extra, roleSets = []) {
     case 'review': {
       const pass = REVIEW_PASSES[extra.pass?.kind ?? 'code'];
       const skills = roleRules(extra.pass?.set, roleSets);
-      return `${pass.head(extra.task)}\n${cap(extra.task.description, 2000)}\n${skills ? `${skills}\n` : ''}${extra.check ? `Checks passed: ${extra.check}\n` : ''}Do not edit files. Reply with one fenced json block:\n\`\`\`json\n{"verdict": "ok", "notes": ""}\n\`\`\`\nUse "changes" with clear notes if ${pass.fail}.\n\nDIFF:\n${cap(extra.diff, 8000)}`;
+      const shot = extra.screenshot?.file
+        ? `A screenshot of the app after this task (1280x800) is at ${extra.screenshot.file}. Open it and judge what is visible as well as the diff.\n`
+        : extra.screenshot?.error ? `The app preview could not be captured (${cap(extra.screenshot.error, 300)}), so judge from the diff.\n` : '';
+      return `${pass.head(extra.task)}\n${cap(extra.task.description, 2000)}\n${skills ? `${skills}\n` : ''}${shot}${extra.check ? `Checks passed: ${extra.check}\n` : ''}Do not edit files. Reply with one fenced json block:\n\`\`\`json\n{"verdict": "ok", "notes": ""}\n\`\`\`\nUse "changes" with clear notes if ${pass.fail}.\n\nDIFF:\n${cap(extra.diff, 8000)}`;
     }
     case 'judge':
       return [
