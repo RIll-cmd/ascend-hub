@@ -183,12 +183,16 @@ Third-party skills are untrusted instructions running inside the agents.
 - **Add from GitHub** takes a repo, `tree`, `blob` or raw link. The room resolves the ref to a commit, reads the file tree, and downloads that folder from `raw.githubusercontent.com` at the pinned commit into `.sites-runtime/agent-room/skills-staging/<token>/`. A link to a repo with several skills lists them to pick from.
 - Nothing is installed until the owner reads the staged card (name, commit, license, file count, a scripts warning, the `SKILL.md`) and presses **Install**, optionally under another id. Install writes `source.json` (URL, commit, license, fetch time).
 - **Update** fetches the same link again and shows a `git diff --no-index` against the installed copy; it replaces the copy only on Install.
-- Limits: 200 files, 512 kB a file, 1 MB in all; links, submodules and paths with `..` are refused. Only `api.github.com` and `raw.githubusercontent.com` are contacted. Skills named in the role sets but not installed are listed with a Fetch button when their source is a GitHub link.
+- Limits: 200 files, 512 kB a file, 1 MB in all; links, submodules and paths with `..` are refused. Only `api.github.com` and `raw.githubusercontent.com` are contacted. When the `gh` CLI is logged in, its token is sent to `api.github.com` only, lifting GitHub's limit from 60 to 5,000 requests an hour; a used-up limit is reported with its reset time. Skills named in the role sets but not installed are listed with a Fetch button when their source is a GitHub link.
 
 ### M7e as built (2026-10-17)
 
 - **Skill reads:** the room watches each turn's event stream for files opened inside `.ascend/skills/<id>/`: Claude's tool calls and Codex's shell commands, never what an agent only says. Each plan task keeps `skillsRead` per agent across its build, race, parallel and review turns, and the Workflow view shows the task's role and "Skills read: …". Antigravity prints no event stream, so its reads are not reported.
 - **Per-session sets:** under Options, "Role sets for this session" starts from the switches; changing it sends `roleSets` with the new session, which then uses exactly those sets (even ones switched off). "Use the switches" goes back.
+
+### M7 live check (2026-10-17)
+
+A real session (`skills-check`: Codex orchestrator and reviewer, Claude coder, sets Code reviewer and Security, Sentry `code-review` fetched from GitHub at `f57ada2`, Apache-2.0) ran to the result gate: the skill was copied to `.ascend/skills/` and never committed, Codex's review opened its `SKILL.md` and the room recorded the read, and both the code and security passes ran. The first fetch hit GitHub's 60-an-hour limit for anonymous requests, which led to the `gh` token fix. The test skill was removed afterwards.
 
 ## Room ideas backlog (2026-10-16)
 

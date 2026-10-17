@@ -11,7 +11,7 @@ import { finishWorktree, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { readMemory, writeMemory } from './memory.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
-import { stageSkill } from './github.mjs';
+import { ghToken, stageSkill } from './github.mjs';
 import { discardStaged, installStaged, listSkills, readRoleSets, removeSkill, viewSkill, writeRoleSets } from './skills.mjs';
 import { readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 import { ensureRoomToken } from './token.mjs';
@@ -196,7 +196,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         return send(200, { id, text: viewSkill(dataDir, id) });
       }
       // A download from GitHub that the owner started from the skill library; it only stages, never installs.
-      if (route === 'POST /skills/fetch') return send(200, { staged: await stageSkill(dataDir, body.url, { fetchImpl, update: body.update ?? null }) });
+      if (route === 'POST /skills/fetch') return send(200, { staged: await stageSkill(dataDir, body.url, { fetchImpl, update: body.update ?? null, token: ghToken(settings.gh) }) });
       if (route === 'POST /skills/install') return send(200, { installed: installStaged(dataDir, body.token, body.id ?? undefined), sets: readRoleSets(dataDir) });
       if (route === 'POST /skills/discard') { discardStaged(dataDir, body.token); return send(200, { ok: true }); }
       if (route === 'POST /skills/remove') { removeSkill(dataDir, body.id); return send(200, { ok: true }); }

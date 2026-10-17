@@ -50,12 +50,30 @@ function diffAgainst(dataDir, id, filesDir) {
   return result.stdout.split(/(?=^diff --git )/m).filter(block => !/^diff --git \S*source\.json /.test(block)).join('').slice(0, 100_000);
 }
 
-export async function stageSkill(dataDir, url, { fetchImpl = globalThis.fetch, update = null } = {}) {
+// The gh CLI's login, when there is one, lifts GitHub's limit from 60 to 5,000 requests an hour.
+// The token stays in memory and is sent only to api.github.com.
+export function ghToken(gh = { command: 'gh', prefixArgs: [] }) {
+  const result = spawnSync(gh.command, [...gh.prefixArgs, 'auth', 'token'], { encoding: 'utf8', windowsHide: true, timeout: 10_000 });
+  const token = result.status === 0 ? result.stdout.trim() : '';
+  return /^[A-Za-z0-9_]{20,255}$/.test(token) ? token : null;
+}
+
+function failure(target, res) {
+  if ((res.status === 403 || res.status === 429) && res.headers.get('x-ratelimit-remaining') === '0') {
+    const reset = new Date(Number(res.headers.get('x-ratelimit-reset')) * 1000);
+    const until = Number.isNaN(reset.getTime()) ? 'later' : reset.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return roomError('SKILL_FETCH_FAILED', `GitHub's request limit is used up until ${until}. Sign in with "gh auth login" to raise it.`);
+  }
+  return roomError('SKILL_FETCH_FAILED', `${target} answered ${res.status}`);
+}
+
+export async function stageSkill(dataDir, url, { fetchImpl = globalThis.fetch, update = null, token: githubToken = null } = {}) {
   const src = parseGithubUrl(url);
   if (update !== null && (!skillId(update) || !existsSync(join(dataDir, 'skills', update, 'SKILL.md')))) throw roomError('SKILL_NOT_FOUND', String(update));
   const get = async (target, kind = 'json') => {
-    const res = await fetchImpl(target, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'ascend-agent-room' }, signal: AbortSignal.timeout(20_000) });
-    if (!res.ok) throw roomError('SKILL_FETCH_FAILED', `${target} answered ${res.status}`);
+    const auth = githubToken && new URL(target).hostname === 'api.github.com' ? { authorization: `Bearer ${githubToken}` } : {};
+    const res = await fetchImpl(target, { headers: { accept: 'application/vnd.github+json', 'user-agent': 'ascend-agent-room', ...auth }, signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) throw failure(target, res);
     return kind === 'json' ? res.json() : Buffer.from(await res.arrayBuffer());
   };
   const api = path => get(`https://api.github.com/repos/${src.owner}/${src.repo}${path}`);

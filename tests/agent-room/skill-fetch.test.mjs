@@ -167,3 +167,17 @@ test('the room server fetches, installs, views and removes skills', async () => 
     await room.close();
   }
 });
+
+test('a gh login token goes to api.github.com only, and a used-up limit says when it resets', async () => {
+  const { dataDir } = tempRoom();
+  const gh = fakeGithub({ 'getsentry/skills': SKILLS_REPO });
+  const seen = [];
+  const fetchImpl = (url, init) => { seen.push([new URL(url).hostname, init?.headers?.authorization ?? null]); return gh.fetchImpl(url, init); };
+  await stageSkill(dataDir, 'https://github.com/getsentry/skills/tree/main/skills/code-review', { fetchImpl, token: 'gho_abc' });
+  assert.ok(seen.filter(([host]) => host === 'api.github.com').every(([, auth]) => auth === 'Bearer gho_abc'));
+  assert.ok(seen.filter(([host]) => host === 'raw.githubusercontent.com').every(([, auth]) => auth === null));
+
+  const limited = async () => new Response('{"message":"API rate limit exceeded"}', { status: 403, headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '1792202638' } });
+  await assert.rejects(stageSkill(dataDir, 'https://github.com/getsentry/skills', { fetchImpl: limited }),
+    err => err.code === 'SKILL_FETCH_FAILED' && /request limit is used up until/.test(err.message) && /gh auth login/.test(err.message));
+});
