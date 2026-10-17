@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { workflowView } from "../../app/room/workflow-view";
+import { skillsReadLine, workflowView } from "../../app/room/workflow-view";
 import type { Message, SessionView } from "../../app/room/room-types";
 
 const t = (s: number) => new Date(Date.UTC(2026, 9, 14, 8, 0, s)).toISOString();
@@ -118,4 +118,10 @@ test("a raced task carries every attempt and the judge's pick", () => {
   const raced = { attempts: [{ agent: "claude", ok: true, commit: "abc1234", why: "" }, { agent: "agy", ok: false, commit: null, why: "the checks failed (exit 1)" }], winner: "claude", reason: "Simpler." };
   const withRace = { ...session, plan: { tasks: [{ ...session.plan!.tasks[0], race: true, raced }] } } as SessionView;
   assert.deepEqual(workflowView(withRace, Date.parse(t(100))).tasks[0].raced, raced);
+});
+
+test("a task's skill reads read as one line per agent, and nothing when none were seen", () => {
+  assert.equal(skillsReadLine({ claude: ["react-best-practices", "magic-ui"], codex: ["code-review"] }), "Codex: code-review · Claude: react-best-practices, magic-ui");
+  assert.equal(skillsReadLine({}), null);
+  assert.equal(skillsReadLine(undefined), null);
 });

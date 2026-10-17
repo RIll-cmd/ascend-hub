@@ -153,8 +153,10 @@ export function writeRoleSets(dataDir, body) {
 
 // What a new session takes: the sets that are on, each with its switched-on skills found in the library.
 // The session keeps this snapshot, so later switches never change a running session.
-export function activeRoleSets(dataDir) {
-  return readRoleSets(dataDir).filter(s => s.on).map(s => ({
+// only: the set ids one session chose for itself, instead of the switches.
+export function activeRoleSets(dataDir, only = null) {
+  if (only !== null && (!Array.isArray(only) || !only.every(id => ROLE_SETS.some(s => s.id === id)))) throw roomError('ROLE_SETS_INVALID');
+  return readRoleSets(dataDir).filter(s => (only ? only.includes(s.id) : s.on)).map(s => ({
     id: s.id, name: s.name, prompt: s.prompt,
     skills: s.skills.filter(k => k.on && k.installed).map(k => ({ id: k.id, name: k.name, description: k.description })),
   }));

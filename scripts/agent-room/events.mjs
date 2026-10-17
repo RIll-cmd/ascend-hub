@@ -37,6 +37,20 @@ export function usageEvent(agentId, event) {
   return null;
 }
 
+// A file inside .ascend/skills/<id>/ (either slash, JSON-escaped or not); a bare listing of the folder does not count.
+const SKILL_FILE = /\.ascend[\\/]+skills[\\/]+([a-z0-9][a-z0-9-]{0,63})[\\/]+[^\s"'\\/]/g;
+
+// The skills an agent opened in one stream event. Only tool calls (Claude) and shell commands (Codex) count, never
+// what the agent says; Antigravity prints no event stream, so its reads are unknown.
+export function skillReads(agentId, event) {
+  let parts = [];
+  if (agentId === 'claude' && event.type === 'assistant') {
+    parts = (event.message?.content ?? []).filter(b => b?.type === 'tool_use').map(b => JSON.stringify(b.input ?? {}));
+  }
+  if (agentId === 'codex' && event.item?.type === 'command_execution' && typeof event.item.command === 'string') parts = [event.item.command];
+  return [...new Set(parts.flatMap(p => [...p.matchAll(SKILL_FILE)].map(m => m[1])))];
+}
+
 export function claudeResultText(event) {
   return event.type === 'result' && typeof event.result === 'string' ? event.result : null;
 }

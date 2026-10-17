@@ -1,10 +1,10 @@
 import { BUILD_STEPS, DEBATE_STEPS, stepStates } from "./deck/deck-view";
-import { AGENT_IDS, type AgentId, type Message, type PlanTask, type SessionView } from "./room-types";
+import { AGENT_IDS, AGENT_NAMES, type AgentId, type Message, type PlanTask, type SessionView } from "./room-types";
 
 export type WorkflowStage = { label: string; state: "done" | "current" | "todo"; ms: number | null };
 export type WorkflowTask = {
   id: number; title: string; assignee: AgentId; status: PlanTask["status"]; commit: string | null; notes: string; check?: PlanTask["check"]; raced?: PlanTask["raced"];
-  rounds: number; reviews: number; ms: number | null; messages: Message[];
+  rounds: number; reviews: number; ms: number | null; messages: Message[]; role?: string; skillsRead?: PlanTask["skillsRead"];
   roundGroups: Message[][]; needsAttention: boolean; tokens: number;
 };
 export type RunSummary = {
@@ -24,6 +24,12 @@ export const LOOPING = 3;
 
 const TASK_OF = /^Task (\d+):/;
 const ACTIVE = new Set(["running", "review"]);
+
+// "Codex: code-review · Claude: react-best-practices", in agent order; null when no reads were seen.
+export function skillsReadLine(read?: PlanTask["skillsRead"]): string | null {
+  const parts = AGENT_IDS.filter(id => read?.[id]?.length).map(id => `${AGENT_NAMES[id]}: ${read![id]!.join(", ")}`);
+  return parts.length ? parts.join(" · ") : null;
+}
 
 // Pure view of where the time went: per step, then per task with its coder ↔ reviewer rounds.
 export function workflowView(session: SessionView, now: number): WorkflowView {
@@ -66,6 +72,7 @@ export function workflowView(session: SessionView, now: number): WorkflowView {
     const rounds = messages.filter(m => m.kind === "assign").length;
     return {
       id: task.id, title: task.title, assignee: task.assignee, status: task.status, commit: task.commit, notes: task.notes, check: task.check, raced: task.raced,
+      role: task.role, skillsRead: task.skillsRead,
       rounds, roundGroups,
       needsAttention: task.status === "skipped" || rounds >= LOOPING || messages.some(isProblem) || task.check?.ok === false,
       tokens: messages.reduce((sum, m) => sum + (m.usage?.tokens ?? 0), 0),

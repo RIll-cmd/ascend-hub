@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
-import { subagentEvent, usageEvent } from './events.mjs';
+import { skillReads, subagentEvent, usageEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
 import { branchDiff, commitAll, commitDiff, createProject, createWorktree, excludeFromGit, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, openPullRequest, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
@@ -55,6 +55,7 @@ export class RoomSession {
     // One per running turn or check; a race runs several at once.
     this.controllers = new Set();
     this.turnUsage = {};
+    this.turnReads = {};
     this.loop = null;
     this.lastSave = 0;
     this.startLabels = new Map();
@@ -74,7 +75,7 @@ export class RoomSession {
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
     const preview = validatePreview(body.preview);
     // The sets on now are the session's for good; switching one later never changes a running session.
-    const roleSets = activeRoleSets(dataDir);
+    const roleSets = activeRoleSets(dataDir, body.roleSets ?? null);
     let presetRoles = null;
     if (roles !== undefined && roles !== null) {
       const checked = validateRoles(roles, roleSets.map(r => r.id));
@@ -179,6 +180,7 @@ export class RoomSession {
   onAgentEvent(agent, event) {
     const used = usageEvent(agent, event);
     if (used) this.turnUsage[agent] = used;
+    for (const id of skillReads(agent, event)) this.turnReads[agent]?.add(id);
     const quota = agent === 'claude' ? claudeQuota(event) : null;
     if (quota) this.onQuota?.('claude', quota);
     // Codex writes its windows to its own session log; refresh after each Codex turn.
@@ -293,7 +295,8 @@ export class RoomSession {
   }
 
   // A side turn (race or parallel task) runs in its own worktree (cwd), leaves the deck's active agent alone and reports failure instead of pausing.
-  async turn(agent, mode, prompt, activity, to = [], { cwd = this.state.projectDir, side = false } = {}) {
+  // task: the plan task this turn works on, so the skills the agent opens are recorded on it.
+  async turn(agent, mode, prompt, activity, to = [], { cwd = this.state.projectDir, side = false, task = null } = {}) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       if (this.state.stage === 'stopped') return null;
       const hit = sessionLimitHit(this.state);
@@ -303,6 +306,7 @@ export class RoomSession {
       }
       if (!side) this.setActive(agent, activity);
       this.turnUsage[agent] = null;
+      this.turnReads[agent] = new Set();
       const controller = new AbortController();
       this.controllers.add(controller);
       const chosen = this.state.models?.[agent];
@@ -315,6 +319,7 @@ export class RoomSession {
       const onEvent = event => this.onAgentEvent(agent, event);
       const result = await this.runTurn(invocation, { cwd, timeoutMs, signal: controller.signal, onEvent });
       this.controllers.delete(controller);
+      if (task) this.noteReads(task, agent);
       if (this.state.stage === 'stopped' || result.aborted) return null;
       if (!side) this.setActive(null);
       this.countTurn(agent, result.durationMs);
@@ -336,13 +341,20 @@ export class RoomSession {
     return block.ok ? validate(block.value) : block;
   }
 
-  async jsonTurn(agent, prompt, activity, validate, to = []) {
-    let text = await this.turn(agent, 'read', prompt, activity, to);
+  noteReads(task, agent) {
+    const read = [...(this.turnReads[agent] ?? [])];
+    if (!read.length) return;
+    task.skillsRead ??= {};
+    task.skillsRead[agent] = [...new Set([...(task.skillsRead[agent] ?? []), ...read])];
+  }
+
+  async jsonTurn(agent, prompt, activity, validate, to = [], options = {}) {
+    let text = await this.turn(agent, 'read', prompt, activity, to, options);
     if (text === null) return null;
     let parsed = this.parseWith(text, validate);
     if (parsed.ok) return parsed.value;
     this.say('room', `Invalid answer: ${parsed.error} Asking once more.`);
-    text = await this.turn(agent, 'read', `${prompt}\n\nYour previous answer was rejected: ${parsed.error}\nReply again with only the corrected json block.`, activity, to);
+    text = await this.turn(agent, 'read', `${prompt}\n\nYour previous answer was rejected: ${parsed.error}\nReply again with only the corrected json block.`, activity, to, options);
     if (text === null) return null;
     parsed = this.parseWith(text, validate);
     if (parsed.ok) return parsed.value;
@@ -429,7 +441,7 @@ export class RoomSession {
       if (task.race && state.roles.coders.length > 1 && !(state.template === 'bugfix' && task.id === 1)) return this.raceTask(task, before);
       this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
       const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task }), 'editing',
-        state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator]);
+        state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator], { task });
       if (text === null) return;
       const message = `task-${task.id}: ${task.title}`;
       // Codex and agy can run git commit themselves; their commits count as the task's changes.
@@ -511,7 +523,7 @@ export class RoomSession {
       const screenshot = pass.kind === 'design' ? await this.previewFor(task) : null;
       if (this.state.stage === 'stopped') return null;
       const prompt = this.prompt('review', pass.agent, { task, pass, screenshot, diff: lastCommitDiff(this.state.projectDir), check: this.state.check });
-      const verdict = await this.jsonTurn(pass.agent, prompt, pass.kind === 'code' ? 'reviewing' : `${pass.kind} review`, validateVerdict, [task.assignee]);
+      const verdict = await this.jsonTurn(pass.agent, prompt, pass.kind === 'code' ? 'reviewing' : `${pass.kind} review`, validateVerdict, [task.assignee], { task });
       if (!verdict) return null;
       if (verdict.verdict !== 'ok') {
         return { notes: pass.kind === 'code' ? verdict.notes || 'the reviewer requested changes' : `${pass.kind} review: ${verdict.notes || 'changes requested'}` };
@@ -580,7 +592,7 @@ export class RoomSession {
     this.setActive(coders[0], `racing ${coders.length} attempts`);
     try {
       await this.inWorktrees(attempts, async attempt => {
-        const text = await this.turn(attempt.agent, 'edit', prompts[attempt.agent], 'racing', to, { cwd: attempt.dir, side: true });
+        const text = await this.turn(attempt.agent, 'edit', prompts[attempt.agent], 'racing', to, { cwd: attempt.dir, side: true, task });
         if (text === null) return Object.assign(attempt, { ok: false, why: 'the turn failed' });
         attempt.summary = text;
         attempt.commit = this.sideCommit(attempt.dir, base, message);
@@ -673,7 +685,7 @@ export class RoomSession {
     try {
       await this.inWorktrees(items, async item => {
         const { task } = item;
-        const text = await this.turn(task.assignee, 'edit', prompts[task.id], 'editing', to, { cwd: item.dir, side: true });
+        const text = await this.turn(task.assignee, 'edit', prompts[task.id], 'editing', to, { cwd: item.dir, side: true, task });
         if (text === null) return void (item.why = 'the turn failed');
         if (!this.sideCommit(item.dir, base, `task-${task.id}: ${task.title}`)) item.why = 'no changes were made';
       }, async () => {

@@ -16,7 +16,9 @@ export type TaskStatus = "pending" | "running" | "review" | "done" | "skipped";
 export type CheckResult = { ok: boolean; code: number | null; ms: number; output: string };
 // race: every coder attempts the task in its own worktree; raced: how that went and which attempt was kept.
 export type RaceResult = { attempts: { agent: AgentId; ok: boolean; commit: string | null; why: string }[]; winner: AgentId | null; reason: string };
-export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult; race?: boolean; raced?: RaceResult; after?: number[]; role?: string };
+export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult; race?: boolean; raced?: RaceResult; after?: number[]; role?: string;
+  // The skill folders each agent opened while working on or reviewing this task (Antigravity's reads are not reported).
+  skillsRead?: Partial<Record<AgentId, string[]>> };
 export type Message = {
   at: string; from: AgentId | "room"; text: string;
   seq?: number; to?: AgentId[]; kind?: "assign" | "subagent"; by?: AgentId; sub?: string;

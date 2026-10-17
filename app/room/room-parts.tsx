@@ -181,7 +181,27 @@ export function SideSection({ title, value, open, force, children }: { title: st
   );
 }
 
-export const TEMPLATE_LABELS = { feature: "Feature", bugfix: "Bug fix", refactor: "Refactor", review: "Review only" } as const;
+// The role sets for this session only; until the owner changes one, they follow the Role sets switches.
+function SessionSets({ value, onChange }: { value: string[] | null; onChange: (sets: string[] | null) => void }) {
+  const [sets, setSets] = useState<{ id: string; name: string; on: boolean }[]>([]);
+  useEffect(() => {
+    fetch("/api/room/role-sets", { cache: "no-store" })
+      .then(r => (r.ok ? (r.json() as Promise<{ sets?: { id: string; name: string; on: boolean }[] }>) : null))
+      .then(data => setSets(data?.sets ?? []), () => setSets([]));
+  }, []);
+  if (!sets.length) return null;
+  const chosen = value ?? sets.filter(s => s.on).map(s => s.id);
+  const toggle = (id: string) => onChange(chosen.includes(id) ? chosen.filter(c => c !== id) : [...chosen, id]);
+  return (
+    <fieldset className="agent-room-limits" title="Which role sets this session uses. Agents get these sets' installed skills.">
+      <legend>Role sets for this session{value ? "" : " (from the switches)"}</legend>
+      {sets.map(s => <label key={s.id} className="agent-room-check"><Checkbox checked={chosen.includes(s.id)} onCheckedChange={() => toggle(s.id)} /> {s.name}</label>)}
+      {value && <Button type="button" size="sm" variant="neutral" onClick={() => onChange(null)}>Use the switches</Button>}
+    </fieldset>
+  );
+}
+
+export const TEMPLATE_LABELS ={ feature: "Feature", bugfix: "Bug fix", refactor: "Refactor", review: "Review only" } as const;
 
 // Everything a new session needs. The settings live in the side panel, the task in the composer under the chat.
 export function useBrief(agents?: Record<AgentId, Availability>, folders: string[] = [], repos: RepoChoice[] = []) {
@@ -202,6 +222,8 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [template, setTemplate] = useState<keyof typeof TEMPLATE_LABELS>("feature");
   const [models, setModels] = useState<{ codex: string; claude: string }>({ codex: "", claude: "" });
   const [preview, setPreview] = useState({ command: "", url: "" });
+  // null: the session takes the role sets switched on in the Role sets section.
+  const [sessionSets, setSessionSets] = useState<string[] | null>(null);
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
   const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
   const inRepo = where === "repo" && repos.length > 0;
@@ -214,12 +236,12 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const reviewBody = { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
   const canStart = missing.length === 0 && !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, template, setTemplate, models, setModels, preview, setPreview, needsCheck, missing, body, canStart, folders, repos,
+    parallel, setParallel, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -281,6 +303,7 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
               Checks after every task{b.needsCheck ? " (required)" : ""}
               <Input value={b.checkCommand} onChange={e => b.setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
             </label>
+            <SessionSets value={b.sessionSets} onChange={b.setSessionSets} />
             <fieldset className="agent-room-limits" title="Before a design review the room starts the app, opens the URL in headless Edge or Chrome and gives the reviewer a screenshot. Leave empty to review the diff only.">
               <legend>App preview for design reviews</legend>
               <label>Start command <Input className="h-9" value={b.preview.command} onChange={e => b.setPreview(p => ({ ...p, command: e.target.value }))} maxLength={500} placeholder="npm run dev" spellCheck={false} /></label>

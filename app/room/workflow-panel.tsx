@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useNow } from "../status/use-now";
 import { AGENT_COLORS, messageLine } from "./deck/deck-view";
 import { AGENT_IDS, AGENT_NAMES, type SessionView } from "./room-types";
-import { formatMs, formatTokens, LOOPING, workflowView, type Lanes, type RunSummary, type WorkflowTask } from "./workflow-view";
+import { formatMs, formatTokens, LOOPING, skillsReadLine, workflowView, type Lanes, type RunSummary, type WorkflowTask } from "./workflow-view";
 
 export function DiffView({ commit, label }: { commit: string; label?: string }) {
   const [state, setState] = useState<{ text?: string; error?: string; loading?: boolean }>({});
@@ -61,6 +61,12 @@ function TaskNode({ task }: { task: WorkflowTask }) {
           <p className="agent-room-hint">
             Raced: {task.raced.attempts.map(a => `${AGENT_NAMES[a.agent]} ${a.ok ? "✓" : `✗ (${a.why})`}`).join(", ")}.
             {task.raced.winner && ` Kept ${AGENT_NAMES[task.raced.winner]}${task.raced.reason ? `: ${task.raced.reason}` : "."}`}
+          </p>
+        )}
+        {(task.role || task.skillsRead) && (
+          <p className="agent-room-hint">
+            {task.role && <>Role: {task.role}. </>}
+            {skillsReadLine(task.skillsRead) ? `Skills read: ${skillsReadLine(task.skillsRead)}.` : task.role ? "No skill reads seen (Antigravity does not report them)." : ""}
           </p>
         )}
         {task.notes && <p className="agent-room-hint">Last note: {task.notes}</p>}

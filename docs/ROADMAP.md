@@ -35,7 +35,7 @@ Updated 2026-10-17.
 | M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Done (2026-10-14); PRs via `gh` not yet |
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
 | M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Done (2026-10-14) |
-| M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | In progress: M7a to M7d done (2026-10-17) |
+| M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | Done (2026-10-17) |
 
 **Reliability work alongside:**
 - Room sessions keep a pending gate across restarts.
@@ -137,7 +137,7 @@ Third-party skills are untrusted instructions running inside the agents.
 | M7b | Copying skills into the session, the skill index in prompts, `role` on plan tasks, coders getting the skills for their role (done 2026-10-17) |
 | M7c | Specialist review passes: code review, security, UI/UX (done 2026-10-17) |
 | M7d | Add from a GitHub URL: pinned commit, license, diff on update (done 2026-10-17) |
-| M7e | Which skills were read, shown per task; overrides per session |
+| M7e | Which skills were read, shown per task; overrides per session (done 2026-10-17) |
 
 **Tests:**
 - plan role validation;
@@ -184,6 +184,11 @@ Third-party skills are untrusted instructions running inside the agents.
 - Nothing is installed until the owner reads the staged card (name, commit, license, file count, a scripts warning, the `SKILL.md`) and presses **Install**, optionally under another id. Install writes `source.json` (URL, commit, license, fetch time).
 - **Update** fetches the same link again and shows a `git diff --no-index` against the installed copy; it replaces the copy only on Install.
 - Limits: 200 files, 512 kB a file, 1 MB in all; links, submodules and paths with `..` are refused. Only `api.github.com` and `raw.githubusercontent.com` are contacted. Skills named in the role sets but not installed are listed with a Fetch button when their source is a GitHub link.
+
+### M7e as built (2026-10-17)
+
+- **Skill reads:** the room watches each turn's event stream for files opened inside `.ascend/skills/<id>/`: Claude's tool calls and Codex's shell commands, never what an agent only says. Each plan task keeps `skillsRead` per agent across its build, race, parallel and review turns, and the Workflow view shows the task's role and "Skills read: …". Antigravity prints no event stream, so its reads are not reported.
+- **Per-session sets:** under Options, "Role sets for this session" starts from the switches; changing it sends `roleSets` with the new session, which then uses exactly those sets (even ones switched off). "Use the switches" goes back.
 
 ## Room ideas backlog (2026-10-16)
 
