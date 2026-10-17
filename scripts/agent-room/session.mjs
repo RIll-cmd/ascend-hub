@@ -453,7 +453,7 @@ export class RoomSession {
           if (!result.ok) return this.taskFailed(task, `the checks failed (${state.check}):\n${result.output.slice(-3000)}`);
         }
       }
-      if (!state.roles.reviewer) {
+      if (!this.reviewPasses(task).length) {
         task.status = 'done';
         this.save();
         return;
@@ -461,15 +461,44 @@ export class RoomSession {
       task.status = 'review';
       this.save();
     }
-    const reviewer = state.roles.reviewer;
-    const verdict = await this.jsonTurn(reviewer, this.prompt('review', reviewer, { task, diff: lastCommitDiff(state.projectDir), check: state.check }), 'reviewing', validateVerdict, [task.assignee]);
-    if (!verdict) return;
-    if (verdict.verdict === 'ok') {
+    const review = await this.runReviews(task);
+    if (!review) return;
+    if (review.ok) {
       task.status = 'done';
       this.save();
       return;
     }
-    return this.taskFailed(task, verdict.notes || 'the reviewer requested changes');
+    return this.taskFailed(task, review.notes);
+  }
+
+  // A task's review passes, in order: the code review (with a reviewer), then security and design when their sets are on.
+  // A pass goes to an agent wearing its set other than the coder, else the reviewer, else the orchestrator.
+  reviewPasses(task) {
+    const { roles } = this.state;
+    const on = new Set(this.setIds);
+    const pick = set => AGENT_IDS.find(id => id !== task.assignee && roles.wear?.[id]?.includes(set)) ?? roles.reviewer ?? roles.orchestrator;
+    const passes = [];
+    if (roles.reviewer) passes.push({ kind: 'code', agent: roles.reviewer, set: on.has('code-reviewer') ? 'code-reviewer' : null });
+    if (on.has('security')) passes.push({ kind: 'security', agent: pick('security'), set: 'security' });
+    if (on.has('ui-ux') && ['frontend', 'ui-ux'].includes(task.role)) passes.push({ kind: 'design', agent: pick('ui-ux'), set: 'ui-ux' });
+    return passes;
+  }
+
+  // Runs the passes this attempt has not passed yet (a resumed session skips the rest): { ok }, { notes } or null when stopped.
+  async runReviews(task) {
+    task.passed ??= [];
+    for (const pass of this.reviewPasses(task)) {
+      if (task.passed.includes(pass.kind)) continue;
+      const prompt = this.prompt('review', pass.agent, { task, pass, diff: lastCommitDiff(this.state.projectDir), check: this.state.check });
+      const verdict = await this.jsonTurn(pass.agent, prompt, pass.kind === 'code' ? 'reviewing' : `${pass.kind} review`, validateVerdict, [task.assignee]);
+      if (!verdict) return null;
+      if (verdict.verdict !== 'ok') {
+        return { notes: pass.kind === 'code' ? verdict.notes || 'the reviewer requested changes' : `${pass.kind} review: ${verdict.notes || 'changes requested'}` };
+      }
+      task.passed.push(pass.kind);
+      this.save();
+    }
+    return { ok: true };
   }
 
   // The owner's check command, stoppable like an agent turn; null means the session stopped meanwhile.
@@ -642,6 +671,7 @@ export class RoomSession {
     const undo = () => {
       resetTo(state.projectDir, before);
       task.commit = null;
+      task.passed = [];
     };
     const merged = squashMerge(state.projectDir, branch, message);
     if (merged.conflict) return this.taskFailed(task, `its changes conflict with work merged before it (${merged.conflict.join(', ')}). Redo it on top of the current code.`);
@@ -658,14 +688,11 @@ export class RoomSession {
       }
       this.say('room', `Checks passed after merging task ${task.id} (${Math.round(result.ms / 1000)}s).`);
     }
-    const reviewer = state.roles.reviewer;
-    if (reviewer) {
-      const verdict = await this.jsonTurn(reviewer, this.prompt('review', reviewer, { task, diff: lastCommitDiff(state.projectDir), check: state.check }), 'reviewing', validateVerdict, [task.assignee]);
-      if (!verdict) return undo();
-      if (verdict.verdict !== 'ok') {
-        undo();
-        return this.taskFailed(task, verdict.notes || 'the reviewer requested changes');
-      }
+    const review = await this.runReviews(task);
+    if (!review) return undo();
+    if (!review.ok) {
+      undo();
+      return this.taskFailed(task, review.notes);
     }
     task.status = 'done';
     this.save();
@@ -673,6 +700,7 @@ export class RoomSession {
 
   async taskFailed(task, reason) {
     task.attempts += 1;
+    task.passed = [];
     task.notes = reason;
     this.say('room', `Task ${task.id} attempt ${task.attempts} not accepted: ${reason}`);
     // The loop guard stops another round (a retry or a reassignment), never a skip: a task going in circles waits for the owner.

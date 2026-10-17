@@ -42,14 +42,27 @@ function setLines(roleSets, roles) {
   }).join('\n');
 }
 
-// A task's role, its skills, and a reminder that the room's rules come first.
-function roleRules(task, roleSets) {
-  const set = task.role && roleSets.find(s => s.id === task.role);
+// A role set's prompt, its skills, and a reminder that the room's rules come first.
+function roleRules(setId, roleSets) {
+  const set = setId && roleSets.find(s => s.id === setId);
   if (!set) return '';
   const head = `ROLE: ${set.name}. ${set.prompt}`;
   if (!set.skills.length) return head;
   return `${head}\nSKILLS for this role. Before you start, read the SKILL.md of each one that applies to this task:\n${skillIndex(set)}\nThe skills are guidance; where one conflicts with the room's rules below, the room's rules win.`;
 }
+
+// The code review always runs with a reviewer; security and design reviews come with their role sets.
+const REVIEW_PASSES = {
+  code: { head: t => `You are the reviewer. Review task ${t.id}: ${t.title}`, fail: 'the task is not done correctly' },
+  security: {
+    head: t => `You are the security reviewer. Review task ${t.id}: ${t.title}, for security flaws only: injection, unsafe input handling, leaked secrets, missing auth or access checks, unsafe dependencies.`,
+    fail: 'you find a security flaw',
+  },
+  design: {
+    head: t => `You are the design reviewer. Review the interface changes of task ${t.id}: ${t.title}, for layout, hierarchy, accessibility and visual polish.`,
+    fail: 'the interface needs changes',
+  },
+};
 
 function stageRules(stage, agent, roles, extra, roleSets = []) {
   const coders = roles?.coders ?? [];
@@ -80,12 +93,15 @@ function stageRules(stage, agent, roles, extra, roleSets = []) {
         `Do ONLY task ${extra.task.id}: ${extra.task.title}`,
         cap(extra.task.description, 2000),
         extra.task.notes ? `Your previous attempt was not accepted: ${cap(extra.task.notes, 4000)}\nFix that.` : '',
-        roleRules(extra.task, roleSets),
+        roleRules(extra.task.role, roleSets),
         'Work only inside the current folder. Do not run git commit; the room commits for you.',
         'When you are done, reply with a short summary of what you changed.',
       ].filter(Boolean).join('\n');
-    case 'review':
-      return `You are the reviewer. Review task ${extra.task.id}: ${extra.task.title}\n${cap(extra.task.description, 2000)}\n${extra.check ? `Checks passed: ${extra.check}\n` : ''}Do not edit files. Reply with one fenced json block:\n\`\`\`json\n{"verdict": "ok", "notes": ""}\n\`\`\`\nUse "changes" with clear notes if the task is not done correctly.\n\nDIFF:\n${cap(extra.diff, 8000)}`;
+    case 'review': {
+      const pass = REVIEW_PASSES[extra.pass?.kind ?? 'code'];
+      const skills = roleRules(extra.pass?.set, roleSets);
+      return `${pass.head(extra.task)}\n${cap(extra.task.description, 2000)}\n${skills ? `${skills}\n` : ''}${extra.check ? `Checks passed: ${extra.check}\n` : ''}Do not edit files. Reply with one fenced json block:\n\`\`\`json\n{"verdict": "ok", "notes": ""}\n\`\`\`\nUse "changes" with clear notes if ${pass.fail}.\n\nDIFF:\n${cap(extra.diff, 8000)}`;
+    }
     case 'judge':
       return [
         `You judge a race. Every coder attempted task ${extra.task.id} (${extra.task.title}) on its own, and every attempt below passed the checks.`,

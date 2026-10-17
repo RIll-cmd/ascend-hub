@@ -35,7 +35,7 @@ Updated 2026-10-17.
 | M4 | Room on real repositories | Each session works in a git worktree and branch of an existing repo. Tests, lint and build run after every task, a red result blocks "done", and the finish gate shows the diff, then merges or opens a PR. | Done (2026-10-14); PRs via `gh` not yet |
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
 | M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Done (2026-10-14) |
-| M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | In progress: M7a and M7b done (2026-10-17) |
+| M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | In progress: M7a to M7c done (2026-10-17) |
 
 **Reliability work alongside:**
 - Room sessions keep a pending gate across restarts.
@@ -135,7 +135,7 @@ Third-party skills are untrusted instructions running inside the agents.
 | --- | --- |
 | M7a | Data model, a library of local folders, role-set switches in the UI (done 2026-10-17) |
 | M7b | Copying skills into the session, the skill index in prompts, `role` on plan tasks, coders getting the skills for their role (done 2026-10-17) |
-| M7c | Specialist review passes: code review, security, UI/UX |
+| M7c | Specialist review passes: code review, security, UI/UX (done 2026-10-17) |
 | M7d | Add from a GitHub URL: pinned commit, license, diff on update |
 | M7e | Which skills were read, shown per task; overrides per session |
 
@@ -167,6 +167,15 @@ Third-party skills are untrusted instructions running inside the agents.
 - Discussion, roles and plan prompts list the enabled sets. The roles JSON may add `wear` (which agent wears which set); the plan may give a task a `role`, which must be an enabled set. The roles gate shows the worn sets, and the plan gate and Plan board show each task's role.
 - A coder's build prompt for a task with a role gets the role, a skill index of about 1,500 characters (name, description, path), and a line saying the room's rules win any conflict. Tasks without a role get nothing extra.
 - Matching is guidance: the orchestrator is asked to give a role's tasks to an agent wearing it, but the plan is not rejected when it doesn't.
+
+### M7c as built (2026-10-17)
+
+- Each task runs up to three read-only review passes, in order: the code review (when there is a reviewer), a security review (when Security is on), and a design review (when UI/UX is on and the task's role is frontend or ui-ux).
+- The code reviewer gets the Code reviewer set's skills when that set is on; the security and design reviewers get their sets' skills.
+- A security or design pass goes to an agent wearing that set other than the coder, else the reviewer, else the orchestrator.
+- A failed pass sends the task back with notes such as "security review: ..."; the next attempt runs every pass again. Passes already passed are recorded on the task, so a resumed session does not repeat them.
+- Parallel tasks run the same passes in the merge queue. Raced tasks still go only through the checks and the judge.
+- Design reviews read the diff only; app-preview screenshots are a later step.
 
 ## Room ideas backlog (2026-10-16)
 
