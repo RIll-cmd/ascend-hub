@@ -67,8 +67,10 @@ function failure(target, res) {
   return roomError('SKILL_FETCH_FAILED', `${target} answered ${res.status}`);
 }
 
-export async function stageSkill(dataDir, url, { fetchImpl = globalThis.fetch, update = null, token: githubToken = null } = {}) {
+// id: what to install it as (a role set's own id); otherwise the folder's name.
+export async function stageSkill(dataDir, url, { fetchImpl = globalThis.fetch, update = null, token: githubToken = null, id = null } = {}) {
   const src = parseGithubUrl(url);
+  if (id !== null && !skillId(id)) throw roomError('SKILL_ID_INVALID', String(id));
   if (update !== null && (!skillId(update) || !existsSync(join(dataDir, 'skills', update, 'SKILL.md')))) throw roomError('SKILL_NOT_FOUND', String(update));
   const get = async (target, kind = 'json') => {
     const auth = githubToken && new URL(target).hostname === 'api.github.com' ? { authorization: `Bearer ${githubToken}` } : {};
@@ -115,7 +117,7 @@ export async function stageSkill(dataDir, url, { fetchImpl = globalThis.fetch, u
     const { name, description } = frontMatter(skillMd);
     const base = (src.path ? posix.basename(src.path) : src.repo).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
     const meta = {
-      id: update ?? (base || 'skill'), name: name || base, description, url, owner: src.owner, repo: src.repo, path: src.path, commit, license,
+      id: update ?? id ?? (base || 'skill'), name: name || base, description, url, owner: src.owner, repo: src.repo, path: src.path, commit, license,
       hasScripts: hasScriptFiles(files.map(f => f.rel)), files: files.map(f => f.rel), update,
     };
     writeJsonAtomic(join(stage, 'meta.json'), meta);

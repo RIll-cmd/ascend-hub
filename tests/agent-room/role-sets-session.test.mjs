@@ -132,3 +132,31 @@ test('in a repo session the skills go into the worktree, the exclude into the re
   assert.deepEqual(git('ls-files').stdout.trim().split('\n'), ['app.js']);
   assert.equal(readFileSync(join(repo, 'app.js'), 'utf8'), 'good\n');
 });
+
+const GENERAL = { id: 'general', name: 'General', always: true, prompt: 'Habits for every task.', skills: [
+  { id: 'systematic-debugging', name: 'Superpowers systematic debugging', description: 'Find the root cause first.' },
+] };
+
+test('an always set reaches every coder task, with or without a role, and is never offered as a task role', () => {
+  const roles = { orchestrator: 'codex', coders: ['claude'], reviewer: null };
+  const build = task => buildPrompt({ stage: 'build', agent: 'claude', roles, task: 't', extra: { task }, roleSets: [GENERAL, FRONTEND] });
+  const plain = build({ id: 1, title: 'Docs', description: 'd' });
+  assert.match(plain, /GENERAL SKILLS for every task/);
+  assert.match(plain, /\.ascend\/skills\/systematic-debugging\/SKILL\.md/);
+  assert.equal(plain.includes('ROLE:'), false);
+  const both = build({ id: 2, title: 'Page', description: 'd', role: 'frontend' });
+  assert.match(both, /ROLE: Frontend/);
+  assert.match(both, /GENERAL SKILLS for every task/);
+  assert.ok(both.indexOf('GENERAL SKILLS') < both.indexOf('Work only inside the current folder'), 'the room rules still come last');
+  const plan = buildPrompt({ stage: 'plan', agent: 'codex', roles, task: 't', roleSets: [GENERAL, FRONTEND] });
+  assert.equal(plan.includes('general (General)'), false);
+  assert.match(plan, /frontend \(Frontend\)/);
+  assert.equal(buildPrompt({ stage: 'plan', agent: 'codex', roles, task: 't', roleSets: [GENERAL] }).includes('"role"'), false, 'no role sets to give tasks');
+});
+
+test('the session snapshot keeps which sets are always on', () => {
+  const { dataDir } = tempRoom();
+  addSkill(dataDir, 'ponytail', 'Smallest change.');
+  writeRoleSets(dataDir, { sets: { general: { on: true } } });
+  assert.deepEqual(activeRoleSets(dataDir).map(s => [s.id, s.always, s.skills.map(k => k.id)]), [['general', true, ['ponytail']]]);
+});

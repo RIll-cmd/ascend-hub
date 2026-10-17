@@ -6,39 +6,65 @@ import { readJson, writeJsonAtomic } from './store.mjs';
 
 // Specialist roles an agent can wear. Each set is a list of third-party agent skills (SKILL.md folders);
 // the owner turns sets and single skills on or off, and only skills found in the library are used.
+// Each source is the skill's own folder on GitHub, so the library's Fetch button lands on it directly.
 const skill = (id, name, source, on = true) => ({ id, name, source, on });
-const ANTHROPIC_SKILLS = 'https://github.com/anthropics/skills';
-const VERCEL_SKILLS = 'https://github.com/vercel-labs/agent-skills';
-const WSHOBSON = 'https://github.com/wshobson/agents/tree/main/plugins/backend-development/skills';
-const TRAIL_OF_BITS = 'https://github.com/trailofbits/skills';
-const GUIDELINES = skill('web-interface-guidelines', 'Vercel web interface guidelines', 'https://github.com/vercel-labs/web-interface-guidelines');
+const gh = (repo, path, branch = 'main') => `https://github.com/${repo}/tree/${branch}/${path}`;
+const VERCEL = name => gh('vercel-labs/agent-skills', `skills/${name}`);
+const ADDY = name => gh('addyosmani/web-quality-skills', `skills/${name}`);
+const EMIL = name => gh('emilkowalski/skills', `skills/${name}`);
+const SUPERPOWERS = name => gh('obra/superpowers', `skills/${name}`);
+const TRAIL_OF_BITS = (plugin, name = plugin) => gh('trailofbits/skills', `plugins/${plugin}/skills/${name}`);
+const WSHOBSON = (plugin, name) => gh('wshobson/agents', `plugins/${plugin}/skills/${name}`);
+const GUIDELINES = skill('web-interface-guidelines', 'Vercel web interface guidelines', VERCEL('web-design-guidelines'));
 
+// always: the set's skills go to every coder task, not only tasks with its role.
 export const ROLE_SETS = [
+  { id: 'general', name: 'General', always: true, prompt: 'Habits for every task: find the root cause, verify before claiming done, keep changes small, check current docs.', skills: [
+    skill('systematic-debugging', 'Superpowers systematic debugging', SUPERPOWERS('systematic-debugging')),
+    skill('verification-before-completion', 'Superpowers verification before completion', SUPERPOWERS('verification-before-completion')),
+    skill('ponytail', 'Ponytail (smallest complete change)', gh('dietrichgebert/ponytail', 'skills/ponytail')),
+    skill('context7', 'Context7 docs lookup', gh('upstash/context7', 'skills/find-docs', 'master')),
+    skill('caveman', 'Caveman (terse replies)', gh('JuliusBrussee/caveman', 'skills/caveman')),
+  ] },
   { id: 'ui-ux', name: 'UI/UX', prompt: 'You own the design: layout, hierarchy, accessibility and visual polish.', skills: [
-    skill('impeccable', 'Impeccable', 'https://impeccable.style/'),
-    skill('frontend-design', 'Anthropic frontend design', ANTHROPIC_SKILLS),
-    skill('ui-ux-pro-max', 'UI UX Pro Max', 'https://github.com/nextlevelbuilder/ui-ux-pro-max-skill'),
+    skill('impeccable', 'Impeccable', gh('pbakaus/impeccable', 'plugin/skills/impeccable')),
+    skill('frontend-design', 'Anthropic frontend design', gh('anthropics/skills', 'skills/frontend-design')),
+    skill('emil-design-eng', 'Emil Kowalski design engineering', EMIL('emil-design-eng')),
+    skill('accessibility', 'Addy Osmani accessibility', ADDY('accessibility')),
     GUIDELINES,
+    // 3.6 MB with Python scripts: over the library's limits, so it cannot be fetched as it is.
+    skill('ui-ux-pro-max', 'UI UX Pro Max', gh('nextlevelbuilder/ui-ux-pro-max-skill', '.claude/skills/ui-ux-pro-max'), false),
+    skill('animation-performance', 'Emil Kowalski animation performance', EMIL('animation-performance'), false),
   ] },
   { id: 'frontend', name: 'Frontend', prompt: 'You build the interface in code: components, state, performance and accessibility.', skills: [
-    skill('react-best-practices', 'Vercel React best practices', VERCEL_SKILLS),
-    skill('composition-patterns', 'Vercel composition patterns', VERCEL_SKILLS),
+    skill('react-best-practices', 'Vercel React best practices', VERCEL('react-best-practices')),
+    skill('composition-patterns', 'Vercel composition patterns', VERCEL('composition-patterns')),
+    skill('performance', 'Addy Osmani performance', ADDY('performance')),
     GUIDELINES,
-    skill('magic-ui', 'Magic UI', 'https://github.com/magicuidesign/magicui/tree/main/skills/magic-ui'),
+    skill('magic-ui', 'Magic UI', gh('magicuidesign/magicui', 'skills/magic-ui')),
   ] },
   { id: 'code-reviewer', name: 'Code reviewer', prompt: 'You review changes for bugs, risky patterns and missing tests.', skills: [
-    skill('code-review', 'Sentry code review', 'https://github.com/getsentry/skills'),
-    skill('pr-review-toolkit', 'Anthropic PR review toolkit', 'https://github.com/anthropics/claude-plugins-official/tree/main/plugins/pr-review-toolkit'),
+    skill('code-review', 'Sentry code review', gh('getsentry/skills', 'skills/code-review')),
+    skill('variant-analysis', 'Trail of Bits variant analysis', TRAIL_OF_BITS('variant-analysis')),
   ] },
   { id: 'backend', name: 'Backend', prompt: 'You build the server side: APIs, data models and architecture.', skills: [
-    skill('api-design-principles', 'API design principles', WSHOBSON),
-    skill('architecture-patterns', 'Architecture patterns', WSHOBSON),
-    skill('supabase-postgres', 'Supabase Postgres best practices', 'https://github.com/supabase/agent-skills', false),
+    skill('api-design-principles', 'API design principles', WSHOBSON('backend-development', 'api-design-principles')),
+    skill('architecture-patterns', 'Architecture patterns', WSHOBSON('backend-development', 'architecture-patterns')),
+    skill('error-handling-patterns', 'Error handling patterns', WSHOBSON('developer-essentials', 'error-handling-patterns')),
+    skill('supabase-postgres', 'Supabase Postgres best practices', gh('supabase/agent-skills', 'skills/supabase-postgres-best-practices'), false),
+    skill('better-auth', 'Better Auth best practices', gh('better-auth/skills', 'better-auth/best-practices'), false),
   ] },
   // Semgrep and CodeQL are optional: the review skills still work without them.
   { id: 'security', name: 'Security', prompt: 'You look for security flaws in the changes and say how to fix them.', skills: [
-    skill('differential-review', 'Trail of Bits differential review', TRAIL_OF_BITS),
-    skill('static-analysis', 'Trail of Bits static analysis', TRAIL_OF_BITS),
+    skill('differential-review', 'Trail of Bits differential review', TRAIL_OF_BITS('differential-review')),
+    skill('static-analysis', 'Trail of Bits Semgrep', TRAIL_OF_BITS('static-analysis', 'semgrep')),
+    skill('supply-chain-risk-auditor', 'Trail of Bits supply chain risk auditor', TRAIL_OF_BITS('supply-chain-risk-auditor')),
+  ] },
+  { id: 'testing', name: 'Testing / QA', prompt: 'You prove the work: tests first, real browser checks, and edge cases.', skills: [
+    // The skill drives the playwright-cli program, which is installed separately (npm install -g @playwright/cli).
+    skill('playwright-cli', 'Microsoft Playwright CLI', gh('microsoft/playwright-cli', 'skills/playwright-cli')),
+    skill('test-driven-development', 'Superpowers test-driven development', SUPERPOWERS('test-driven-development')),
+    skill('property-based-testing', 'Trail of Bits property-based testing', TRAIL_OF_BITS('property-based-testing')),
   ] },
 ];
 
@@ -116,7 +142,7 @@ export function readRoleSets(dataDir) {
   const library = new Map(listSkills(dataDir).map(s => [s.id, s]));
   const saved = stored(dataDir);
   return ROLE_SETS.map(set => ({
-    id: set.id, name: set.name, prompt: set.prompt, on: saved[set.id]?.on ?? false,
+    id: set.id, name: set.name, prompt: set.prompt, always: Boolean(set.always), on: saved[set.id]?.on ?? false,
     skills: set.skills.map(k => ({
       id: k.id, name: k.name, source: k.source, on: saved[set.id]?.skills?.[k.id] ?? k.on,
       installed: library.has(k.id), description: library.get(k.id)?.description ?? '', hasScripts: library.get(k.id)?.hasScripts ?? false,
@@ -157,7 +183,7 @@ export function writeRoleSets(dataDir, body) {
 export function activeRoleSets(dataDir, only = null) {
   if (only !== null && (!Array.isArray(only) || !only.every(id => ROLE_SETS.some(s => s.id === id)))) throw roomError('ROLE_SETS_INVALID');
   return readRoleSets(dataDir).filter(s => (only ? only.includes(s.id) : s.on)).map(s => ({
-    id: s.id, name: s.name, prompt: s.prompt,
+    id: s.id, name: s.name, prompt: s.prompt, always: s.always,
     skills: s.skills.filter(k => k.on && k.installed).map(k => ({ id: k.id, name: k.name, description: k.description })),
   }));
 }

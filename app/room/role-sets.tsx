@@ -7,7 +7,7 @@ import { SideSection } from "./room-parts";
 import { SkillLibrary } from "./skill-library";
 
 type RoleSkill = { id: string; name: string; source: string; on: boolean; installed: boolean; description: string; hasScripts: boolean };
-type RoleSet = { id: string; name: string; prompt: string; on: boolean; skills: RoleSkill[] };
+type RoleSet = { id: string; name: string; prompt: string; on: boolean; always?: boolean; skills: RoleSkill[] };
 type Change = { on?: boolean; skills?: Record<string, boolean> };
 
 // Specialist roles (UI/UX, frontend, ...) and the skills each one brings; the switches are kept by the room.
@@ -38,6 +38,7 @@ export function RoleSets() {
           <div key={set.id} className="agent-room-roleset">
             <label className="agent-room-check" title={set.prompt}>
               <Checkbox checked={set.on} onCheckedChange={checked => void save(set.id, { on: checked })} /> {set.name}
+              {set.always && <Badge variant="neutral" title="Its skills go to every coder task, whatever the role.">every task</Badge>}
               <small>{set.skills.filter(k => k.installed).length} of {set.skills.length} skills installed</small>
             </label>
             {set.on && (

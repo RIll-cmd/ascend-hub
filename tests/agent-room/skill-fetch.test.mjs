@@ -181,3 +181,11 @@ test('a gh login token goes to api.github.com only, and a used-up limit says whe
   await assert.rejects(stageSkill(dataDir, 'https://github.com/getsentry/skills', { fetchImpl: limited }),
     err => err.code === 'SKILL_FETCH_FAILED' && /request limit is used up until/.test(err.message) && /gh auth login/.test(err.message));
 });
+
+test('a fetch may name the id it installs under, so a role set skill lands on its own id', async () => {
+  const { dataDir } = tempRoom();
+  const gh = fakeGithub({ 'getsentry/skills': SKILLS_REPO });
+  const staged = await stageSkill(dataDir, 'https://github.com/getsentry/skills/tree/main/skills/static-analysis', { fetchImpl: gh.fetchImpl, id: 'semgrep-rules' });
+  assert.equal(staged.id, 'semgrep-rules');
+  await assert.rejects(stageSkill(dataDir, 'https://github.com/getsentry/skills/tree/main/skills/static-analysis', { fetchImpl: gh.fetchImpl, id: 'Bad Id' }), /SKILL_ID_INVALID/);
+});

@@ -35,8 +35,9 @@ export function transcriptTail(messages, { maxMessages = 20, maxChars = 12_000 }
 }
 
 // The role sets the owner turned on, one line each, with the agents wearing them.
+// Always-on sets are habits for everyone, not roles, so they are never offered here.
 function setLines(roleSets, roles) {
-  return roleSets.map(s => {
+  return roleSets.filter(s => !s.always).map(s => {
     const worn = AGENT_IDS.filter(id => roles?.wear?.[id]?.includes(s.id)).map(id => AGENT_NAMES[id]);
     return `- ${s.id} (${s.name}): ${s.prompt}${worn.length ? ` Worn by: ${worn.join(', ')}.` : ''}`;
   }).join('\n');
@@ -48,7 +49,15 @@ function roleRules(setId, roleSets) {
   if (!set) return '';
   const head = `ROLE: ${set.name}. ${set.prompt}`;
   if (!set.skills.length) return head;
-  return `${head}\nSKILLS for this role. Before you start, read the SKILL.md of each one that applies to this task:\n${skillIndex(set)}\nThe skills are guidance; where one conflicts with the room's rules below, the room's rules win.`;
+  return `${head}\nSKILLS for this role. Before you start, read the SKILL.md of each one that applies to this task:\n${skillIndex(set)}\n${ROOM_WINS}`;
+}
+
+const ROOM_WINS = "The skills are guidance; where one conflicts with the room's rules below, the room's rules win.";
+
+// The always-on sets' skills, for every coder task whatever its role.
+function generalRules(roleSets, role) {
+  const indexes = roleSets.filter(s => s.always && s.id !== role && s.skills.length).map(s => skillIndex(s));
+  return indexes.length ? `GENERAL SKILLS for every task. Read the SKILL.md of each one that applies before you start:\n${indexes.join('\n')}` : '';
 }
 
 // The code review always runs with a reviewer; security and design reviews come with their role sets.
@@ -94,6 +103,8 @@ function stageRules(stage, agent, roles, extra, roleSets = []) {
         cap(extra.task.description, 2000),
         extra.task.notes ? `Your previous attempt was not accepted: ${cap(extra.task.notes, 4000)}\nFix that.` : '',
         roleRules(extra.task.role, roleSets),
+        generalRules(roleSets, extra.task.role),
+        generalRules(roleSets, extra.task.role) && !roleRules(extra.task.role, roleSets).includes(ROOM_WINS) ? ROOM_WINS : '',
         'Work only inside the current folder. Do not run git commit; the room commits for you.',
         'When you are done, reply with a short summary of what you changed.',
       ].filter(Boolean).join('\n');

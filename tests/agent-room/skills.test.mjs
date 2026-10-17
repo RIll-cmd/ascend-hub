@@ -17,7 +17,9 @@ function addSkill(dataDir, id, files) {
 const skillMd = (name, description) => `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n`;
 
 test('the starting role sets name only known skills, all off until the owner turns a set on', () => {
-  assert.deepEqual(ROLE_SETS.map(s => s.id), ['ui-ux', 'frontend', 'code-reviewer', 'backend', 'security']);
+  assert.deepEqual(ROLE_SETS.map(s => s.id), ['general', 'ui-ux', 'frontend', 'code-reviewer', 'backend', 'security', 'testing']);
+  assert.equal(new Set(ROLE_SETS.flatMap(s => s.skills.map(k => k.source))).size, new Set(ROLE_SETS.flatMap(s => s.skills.map(k => k.id))).size, 'one source per skill id');
+  assert.ok(ROLE_SETS.flatMap(s => s.skills).every(k => k.source.startsWith('https://github.com/')), 'every source can be fetched');
   const { dataDir } = tempRoom();
   const sets = readRoleSets(dataDir);
   assert.ok(sets.every(s => s.on === false));
@@ -72,7 +74,7 @@ test('the room server reads and writes the role sets', async () => {
     method, headers: { authorization: `Bearer ${room.token}`, 'content-type': 'application/json' }, body: body && JSON.stringify(body),
   });
   try {
-    assert.equal((await (await call('GET')).json()).sets.length, 5);
+    assert.equal((await (await call('GET')).json()).sets.length, 7);
     const saved = await (await call('POST', { sets: { 'code-reviewer': { on: true } } })).json();
     assert.equal(saved.sets.find(s => s.id === 'code-reviewer').on, true);
     assert.equal((await call('POST', { sets: { nope: { on: true } } })).status, 400);

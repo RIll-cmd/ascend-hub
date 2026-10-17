@@ -75,12 +75,12 @@ export function SkillLibrary({ open, onClose, onChange, missing }: { open: boole
   if (!open) return null;
 
   // Fetching downloads the folder from GitHub into a staging area; the owner still has to press Install.
-  const fetchSkill = async (link: string, update: string | null = null) => {
+  const fetchSkill = async (link: string, update: string | null = null, id: string | null = null) => {
     setBusy(true);
     setStatus(update ? `Checking ${update} for updates…` : "Fetching from GitHub…");
     setCandidates([]);
     setStaged(null);
-    const r = await post<{ staged: Staged }>("fetch", { url: link, ...(update ? { update } : {}) });
+    const r = await post<{ staged: Staged }>("fetch", { url: link, ...(update ? { update } : {}), ...(id ? { id } : {}) });
     setBusy(false);
     if (r.ok) { setStaged(r.data.staged); setStatus(""); return; }
     setStatus(r.message);
@@ -143,7 +143,7 @@ export function SkillLibrary({ open, onClose, onChange, missing }: { open: boole
                 <li key={m.id}>
                   <span><b>{m.name}</b> <small>{m.id}</small></span>
                   <a href={m.source} target="_blank" rel="noreferrer">source</a>
-                  {m.source.startsWith("https://github.com/") && <Button size="sm" variant="neutral" disabled={busy} onClick={() => { setUrl(m.source); void fetchSkill(m.source); }}>Fetch</Button>}
+                  {m.source.startsWith("https://github.com/") && <Button size="sm" variant="neutral" disabled={busy} onClick={() => { setUrl(m.source); void fetchSkill(m.source, null, m.id); }}>Fetch</Button>}
                 </li>
               ))}
             </ul>
