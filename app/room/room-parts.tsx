@@ -193,10 +193,10 @@ function SessionSets({ value, onChange }: { value: string[] | null; onChange: (s
   const chosen = value ?? sets.filter(s => s.on).map(s => s.id);
   const toggle = (id: string) => onChange(chosen.includes(id) ? chosen.filter(c => c !== id) : [...chosen, id]);
   return (
-    <fieldset className="agent-room-limits" title="Which role sets this session uses. Agents get these sets' installed skills.">
+    <fieldset className="agent-room-limits agent-room-sets" title="Which role sets this session uses. Agents get these sets' installed skills.">
       <legend>Role sets for this session{value ? "" : " (from the switches)"}</legend>
       {sets.map(s => <label key={s.id} className="agent-room-check"><Checkbox checked={chosen.includes(s.id)} onCheckedChange={() => toggle(s.id)} /> {s.name}</label>)}
-      {value && <Button type="button" size="sm" variant="neutral" onClick={() => onChange(null)}>Use the switches</Button>}
+      {value && <button type="button" className="agent-room-linkbtn" onClick={() => onChange(null)}>Reset to the Role sets switches</button>}
     </fieldset>
   );
 }
@@ -304,7 +304,7 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
               <Input value={b.checkCommand} onChange={e => b.setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
             </label>
             <SessionSets value={b.sessionSets} onChange={b.setSessionSets} />
-            <fieldset className="agent-room-limits" title="Before a design review the room starts the app, opens the URL in headless Edge or Chrome and gives the reviewer a screenshot. Leave empty to review the diff only.">
+            <fieldset className="agent-room-limits is-stacked" title="Before a design review the room starts the app, opens the URL in headless Edge or Chrome and gives the reviewer a screenshot. Leave empty to review the diff only.">
               <legend>App preview for design reviews</legend>
               <label>Start command <Input className="h-9" value={b.preview.command} onChange={e => b.setPreview(p => ({ ...p, command: e.target.value }))} maxLength={500} placeholder="npm run dev" spellCheck={false} /></label>
               <label>URL <Input className="h-9" value={b.preview.url} onChange={e => b.setPreview(p => ({ ...p, url: e.target.value }))} placeholder="http://localhost:5173" spellCheck={false} /></label>

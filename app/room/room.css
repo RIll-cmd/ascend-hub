@@ -477,3 +477,15 @@
 .agent-room .agent-room-skill-staged h3, .agent-room .agent-room-skill-staged p { margin: 0; }
 .agent-room .agent-room-skill-md { flex-basis: 100%; max-height: 40vh; overflow-y: auto; padding: 8px; border: 2px solid #000; border-radius: 5px; background: var(--paper-light); color: var(--ink); }
 .agent-room .agent-room-skill-diff { max-height: 40vh; overflow: auto; margin: 0; padding: 8px; border: 2px solid #000; border-radius: 5px; background: var(--code-bg); color: var(--code-text); font-size: 12px; }
+
+/* Options: role sets in an even two-column grid, the preview fields one per row */
+.room-app .agent-room-section-body .agent-room-limits.agent-room-sets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+.room-app .agent-room-section-body .agent-room-sets legend { grid-column: 1 / -1; }
+.room-app .agent-room-section-body .agent-room-sets label.agent-room-check { white-space: nowrap; }
+.room-app .agent-room-section-body button.agent-room-linkbtn, .room-app .agent-room-section-body button.agent-room-linkbtn:hover, .room-app .agent-room-section-body button.agent-room-linkbtn:active {
+  grid-column: 1 / -1; justify-self: start; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; transform: none;
+  color: inherit; font: inherit; font-size: 12px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; opacity: 0.8; }
+.room-app .agent-room-section-body button.agent-room-linkbtn:hover { opacity: 1; }
+.room-app .agent-room-section-body .agent-room-limits.is-stacked { flex-direction: column; flex-wrap: nowrap; }
+.room-app .agent-room-section-body .agent-room-limits.is-stacked label { flex: none; }
+.room-app .agent-room-section-body .agent-room-limits.is-stacked input { width: 100%; }
