@@ -131,13 +131,24 @@ function MemoryEditor({ dir }: { dir: string }) {
   const save = async () => {
     const res = await fetch("/api/room/memory", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key, notes: (text ?? "").split("\n") }) });
     setStatus(res.ok ? "Saved." : "Could not save.");
+    return res.ok;
+  };
+  // Saves first, so the pull request carries exactly the notes shown here.
+  const offer = async () => {
+    if (!window.confirm(`Save these notes, push a new branch of ${key} to origin and open a pull request that adds them to its AGENTS.md?`)) return;
+    if (!(await save())) return;
+    setStatus("Opening the pull request…");
+    const res = await fetch("/api/room/memory/pr", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ repo: dir }) });
+    const data = await res.json().catch(() => ({})) as { url?: string; message?: string };
+    setStatus(res.ok && data.url ? `Pull request opened: ${data.url}` : `Could not open the pull request. ${data.message ?? ""}`.trim());
   };
   if (text === null) return null;
   return (
     <details className="agent-room-memory">
       <summary>Project memory for {key} ({text ? text.split("\n").filter(Boolean).length : 0} notes)</summary>
       <Textarea value={text} rows={5} onChange={e => { setText(e.target.value); setStatus(""); }} aria-label={`Project memory for ${key}`} placeholder="One note per line. Agents read these at the start of every session in this repo." />
-      <Button type="button" size="sm" onClick={() => void save()}>Save memory</Button> <small>{status}</small>
+      <Button type="button" size="sm" onClick={() => void save()}>Save memory</Button>{" "}
+      <Button type="button" size="sm" variant="neutral" disabled={!text.trim()} onClick={() => void offer()}>Open pull request to AGENTS.md</Button> <small>{status}</small>
     </details>
   );
 }
@@ -240,6 +251,7 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [check, setCheck] = useState<string | null>(null);
   const [limits, setLimits] = useState({ minutes: 120, turns: 80, rounds: 3 });
   const [parallel, setParallel] = useState(false);
+  const [raceGate, setRaceGate] = useState(false);
   const [template, setTemplate] = useState<keyof typeof TEMPLATE_LABELS>("feature");
   const [models, setModels] = useState<{ codex: string; claude: string }>({ codex: "", claude: "" });
   const [preview, setPreview] = useState({ command: "", url: "" });
@@ -257,12 +269,12 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const reviewBody = { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
   const canStart = missing.length === 0 && !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
+    parallel, setParallel, raceGate, setRaceGate, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -348,6 +360,9 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
                 <Checkbox checked={b.parallel} onCheckedChange={checked => b.setParallel(checked)} /> Parallel tasks (experimental)
               </label>
             )}
+            <label className="agent-room-check" title="When several coders race a task and more than one attempt passes, the room shows their changes side by side and waits for you to keep one.">
+              <Checkbox checked={b.raceGate} onCheckedChange={checked => b.setRaceGate(checked)} /> Let me pick race winners
+            </label>
             <label className="agent-room-check"><Checkbox checked={b.ownRoles} onCheckedChange={checked => b.setOwnRoles(checked)} /> Set roles myself</label>
             {b.ownRoles && <RolesEditor value={b.roles} onChange={b.setRoles} />}
           </>
@@ -458,6 +473,30 @@ function PausePanel({ session, act }: { session: SessionView; act: Act }) {
   );
 }
 
+// The passing attempts of a raced task, side by side; the judge's pick is marked and kept by default.
+function RaceGate({ task, act }: { task: PlanTask; act: Act }) {
+  const { pick, pending } = task.raced ?? {};
+  if (!pending) return null;
+  return (
+    <div className="agent-room-gate">
+      <p>Task {task.id}, {task.title}: {pending.attempts.length} attempts passed. Keep one; the others are deleted.</p>
+      <div className="agent-room-race">
+        {pending.attempts.map(a => (
+          <section key={a.agent} aria-label={`${AGENT_NAMES[a.agent]}'s attempt`}>
+            <h3>{AGENT_NAMES[a.agent]} {a.agent === pick && <Badge>Judge&apos;s pick</Badge>}</h3>
+            {a.check && <small>Checks {a.check.ok ? "passed" : "failed"} ({Math.round(a.check.ms / 1000)}s)</small>}
+            <DiffView commit={`attempt:${a.agent}`} label="Show changes" />
+            <Button size="sm" variant={a.agent === pick ? "default" : "neutral"}
+              onClick={() => act(GATE, a.agent === pick ? { gate: "race", decision: "approve" } : { gate: "race", decision: "pick", agent: a.agent })}>
+              Keep {AGENT_NAMES[a.agent]}&apos;s attempt
+            </Button>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Notes the orchestrator proposes for project memory; only the ticked (and possibly edited) ones are kept.
 function MemoryPicker({ proposal, onChange }: { proposal: string[]; onChange: (notes: string[]) => void }) {
   const [notes, setNotes] = useState(() => proposal.map(text => ({ text, keep: true })));
@@ -510,6 +549,10 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
   }
   if (session.stage === "gate-plan" && session.plan) {
     return <>{summary}<PlanGate key={session.id} tasks={session.plan.tasks} coders={session.roles?.coders ?? []} act={act} /><ChangeRequest key={`${session.id}-plan`} gate="plan" options={options} act={act} /></>;
+  }
+  if (session.stage === "gate-race" && session.plan) {
+    const task = session.plan.tasks.find(t => t.id === session.raceTask);
+    return task ? <>{summary}<RaceGate task={task} act={act} /></> : null;
   }
   if (session.stage === "gate-result" && session.repo) {
     const { branch, baseBranch, dir } = session.repo;

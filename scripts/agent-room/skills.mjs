@@ -32,7 +32,7 @@ export const ROLE_SETS = [
     skill('emil-design-eng', 'Emil Kowalski design engineering', EMIL('emil-design-eng')),
     skill('accessibility', 'Addy Osmani accessibility', ADDY('accessibility')),
     GUIDELINES,
-    // 3.6 MB with Python scripts: over the library's limits, so it cannot be fetched as it is.
+    // 3.6 MB of data files plus Python scripts the agent runs; read them before switching it on.
     skill('ui-ux-pro-max', 'UI UX Pro Max', gh('nextlevelbuilder/ui-ux-pro-max-skill', '.claude/skills/ui-ux-pro-max'), false),
     skill('animation-performance', 'Emil Kowalski animation performance', EMIL('animation-performance'), false),
   ] },
@@ -42,6 +42,9 @@ export const ROLE_SETS = [
     skill('performance', 'Addy Osmani performance', ADDY('performance')),
     GUIDELINES,
     skill('magic-ui', 'Magic UI', gh('magicuidesign/magicui', 'skills/magic-ui')),
+    // Both drive the 21st CLI (npx @21st-dev/cli), which needs a 21st.dev login or API key on this machine.
+    skill('21st-ui-build', '21st.dev UI build', gh('21st-dev/skill', 'skills/21st-ui-build'), false),
+    skill('21st-cli-use', '21st.dev CLI (search and install components)', gh('21st-dev/skill', 'skills/21st-cli-use'), false),
   ] },
   { id: 'code-reviewer', name: 'Code reviewer', prompt: 'You review changes for bugs, risky patterns and missing tests.', skills: [
     skill('code-review', 'Sentry code review', gh('getsentry/skills', 'skills/code-review')),

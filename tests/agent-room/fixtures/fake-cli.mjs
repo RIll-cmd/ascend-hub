@@ -17,6 +17,12 @@ if (prompt.includes('EMPTY')) process.exit(0);
 const reply = `ECHO:${prompt}|ARGS:${JSON.stringify(args)}`;
 // Mimic the JSON streams: Claude's stream-json (reply in the result event) and Codex's --json (reply still in -o).
 const line = value => process.stdout.write(`${JSON.stringify(value)}\n`);
+// Antigravity's stream-json: step updates, then the reply in the result event.
+if (printArg && args.includes('stream-json')) {
+  line({ event: 'step_update', step_update: { step_type: 'agent_response', state: 'ACTIVE', text_delta: 'partial' } });
+  line({ event: 'result', result: { status: 'SUCCESS', response: reply, usage: { total_tokens: 42 } } });
+  process.exit(0);
+}
 if (args.includes('stream-json')) {
   process.stdout.write('not json, ignored\n');
   if (prompt.includes('SUBAGENT')) {

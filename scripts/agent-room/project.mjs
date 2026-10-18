@@ -147,9 +147,13 @@ export function suggestCheck(repo, checks = {}) {
   return existsSync(join(repo, 'pytest.ini')) ? 'python -m pytest -q' : '';
 }
 
-export function branchDiff(dir, base, maxChars = 150_000) {
-  const text = git(dir, ['diff', '--stat', '--patch', '--no-color', `${base}..HEAD`, '--']);
+export function branchDiff(dir, base, maxChars = 150_000, head = 'HEAD') {
+  const text = git(dir, ['diff', '--stat', '--patch', '--no-color', `${base}..${head}`, '--']);
   return text.length > maxChars ? `${text.slice(0, maxChars)}\n... diff cut at ${maxChars} characters` : text;
+}
+
+export function deleteBranch(dir, branch) {
+  git(dir, ['branch', '-D', branch]);
 }
 
 // Pushes the session branch to origin and opens a pull request with gh; the gate stays open if either step fails.

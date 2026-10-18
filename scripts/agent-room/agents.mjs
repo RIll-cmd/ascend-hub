@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import { claudeResultText, parseJsonLine } from './events.mjs';
+import { parseJsonLine, streamResultText } from './events.mjs';
 import { roomError } from './paths.mjs';
 
 export const CLAUDE_ALLOWED_TOOLS = ['Bash(node:*)', 'Bash(npm:*)', 'Bash(npx:*)', 'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)'];
@@ -63,8 +63,8 @@ export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile,
       stream: 'claude',
     };
   }
-  // agy does not read the prompt from stdin; it must be attached to --print.
-  return { command: agent.command, args: [...agent.prefixArgs, '--mode', edit ? 'accept-edits' : 'plan', `--print=${prompt}`], stdin: null, outFile: null, stream: null };
+  // agy does not read the prompt from stdin; it must be attached to --print. Its stream-json carries tool calls and the reply.
+  return { command: agent.command, args: [...agent.prefixArgs, '--mode', edit ? 'accept-edits' : 'plan', '--output-format', 'stream-json', `--print=${prompt}`], stdin: null, outFile: null, stream: 'agy' };
 }
 
 export function killTree(child) {
@@ -91,7 +91,7 @@ export function runTurn(invocation, { cwd, timeoutMs, signal, onEvent } = {}) {
     const readLine = text => {
       const event = parseJsonLine(text);
       if (!event) return;
-      if (invocation.stream === 'claude') resultText = claudeResultText(event) ?? resultText;
+      resultText = streamResultText(invocation.stream, event) ?? resultText;
       onEvent?.(event);
     };
     child.stdout.on('data', chunk => {
@@ -112,7 +112,7 @@ export function runTurn(invocation, { cwd, timeoutMs, signal, onEvent } = {}) {
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
       if (invocation.stream && partial) readLine(partial);
-      let text = invocation.stream === 'claude' ? resultText ?? '' : stdout;
+      let text = invocation.stream === 'claude' || invocation.stream === 'agy' ? resultText ?? '' : stdout;
       if (invocation.outFile && existsSync(invocation.outFile)) text = readFileSync(invocation.outFile, 'utf8');
       text = text.trim();
       resolve({

@@ -1,7 +1,7 @@
 import { splitProposal } from './memory.mjs';
 import { AGENT_NAMES } from './prompts.mjs';
 
-export const GATES = { 'gate-roles': 'roles', 'gate-plan': 'plan', 'gate-result': 'result' };
+export const GATES = { 'gate-roles': 'roles', 'gate-plan': 'plan', 'gate-race': 'race', 'gate-result': 'result' };
 
 const names = ids => {
   const list = ids.map(id => AGENT_NAMES[id]);
@@ -23,6 +23,15 @@ export function attention(state, transcript = []) {
     const list = tasks.map((t, i) => `${i + 1}, ${t.title}, ${t.race ? 'raced by every coder' : `for ${AGENT_NAMES[t.assignee]}`}.`).join(' ');
     const summary = `The plan has ${tasks.length} task${tasks.length === 1 ? '' : 's'}. ${list}`;
     return { kind: 'gate', gate, summary, options: state.plan.options ?? [], decisions: ['approve', 'revise'] };
+  }
+  if (gate === 'race') {
+    // Voice can only keep the judge's pick; picking another attempt needs the Hub page and its diffs.
+    const task = state.plan.tasks.find(t => t.id === state.raceTask);
+    const { pick, reason, pending } = task.raced;
+    const rest = names(pending.attempts.map(a => a.agent).filter(a => a !== pick));
+    const why = reason ? `: ${reason.replace(/\.$/, '')}.` : '.';
+    const summary = `Task ${task.id}, ${task.title}, was raced. The judge picked ${AGENT_NAMES[pick]}'s attempt${why} ${rest} also passed. Approve keeps the judge's pick; pick another on the Hub page.`;
+    return { kind: 'gate', gate, summary, options: [], decisions: ['approve'] };
   }
   const final = transcript.findLast(m => m.from === state.roles?.orchestrator);
   const text = splitProposal(final?.text ?? 'The work is finished.').summary.replace(/\s+/g, ' ').trim();

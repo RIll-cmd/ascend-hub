@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { claudeResultText, parseJsonLine, subagentEvent } from '../../scripts/agent-room/events.mjs';
+import { claudeResultText, parseJsonLine, streamResultText, subagentEvent, usageEvent } from '../../scripts/agent-room/events.mjs';
 
 // Trimmed from real `claude -p --output-format stream-json --verbose` and `codex exec --json` output (spike, 2026-10-13).
 const CLAUDE = {
@@ -42,4 +42,14 @@ test('Claude final text comes from the result event', () => {
   assert.equal(claudeResultText(CLAUDE.result), 'alpha and beta');
   assert.equal(claudeResultText(CLAUDE.progress), null);
   assert.equal(claudeResultText({ type: 'result', subtype: 'error_max_turns' }), null);
+});
+
+test('Antigravity final text and tokens come from its result event, only on success', () => {
+  const result = (status, response) => ({ event: 'result', result: { status, response, usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 } } });
+  assert.equal(streamResultText('agy', result('SUCCESS', 'done')), 'done');
+  assert.equal(streamResultText('agy', result('ERROR', 'partial')), null);
+  assert.equal(streamResultText('agy', CLAUDE.result), null);
+  assert.equal(streamResultText('claude', CLAUDE.result), 'alpha and beta');
+  assert.deepEqual(usageEvent('agy', result('SUCCESS', 'done')), { tokens: 15, costUsd: null });
+  assert.equal(usageEvent('agy', { event: 'step_update', step_update: {} }), null);
 });

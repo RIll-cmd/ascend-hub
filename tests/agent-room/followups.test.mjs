@@ -89,3 +89,34 @@ test('stopped repo sessions list their leftover worktrees, and cleaning removes 
     await room.close();
   }
 });
+
+test('project memory becomes a pull request that adds or replaces the room section of AGENTS.md', async () => {
+  const { withMemorySection, writeMemory } = await import('../../scripts/agent-room/memory.mjs');
+  const once = withMemorySection('# Rules\r\n\r\nBe kind.\r\n', ['Use node --test']);
+  assert.match(once, /^# Rules\r\n\r\nBe kind\.\r\n\r\n<!-- agent-room-memory:start -->\r\n/, 'keeps the file and its line endings');
+  const twice = withMemorySection(once, ['Never edit dist/']);
+  assert.equal((twice.match(/agent-room-memory:start/g) ?? []).length, 1, 'a later PR replaces the section');
+  assert.match(twice, /- Never edit dist\//);
+  assert.doesNotMatch(twice, /Use node --test/);
+
+  const { startRoomServer } = await import('../../scripts/agent-room/server.mjs');
+  const ctx = setup();
+  const room = await startRoomServer({ ...ctx.opts, probe: async () => ({ state: 'ready' }), port: 0 });
+  try {
+    const pr = () => fetch(`http://127.0.0.1:${room.port}/memory/pr`, { method: 'POST', headers: { authorization: `Bearer ${room.token}` }, body: JSON.stringify({ repo: ctx.repo }) });
+    assert.equal((await (await pr()).json()).error, 'MEMORY_EMPTY');
+    writeMemory(ctx.opts.dataDir, 'myrepo', ['Use node --test']);
+    const made = await (await pr()).json();
+    assert.equal(made.url, 'https://github.com/me/myrepo/pull/7');
+    assert.equal(made.created, true);
+    assert.match(git(join(ctx.base, 'origin.git'), 'show', `${made.branch}:AGENTS.md`).stdout, /- Use node --test/);
+    const args = JSON.parse(readFileSync(ctx.ghLog, 'utf8'));
+    assert.deepEqual(args.slice(0, 6), ['pr', 'create', '--base', 'main', '--head', made.branch]);
+    assert.equal(git(ctx.repo, 'status', '--porcelain').stdout, '', "the owner's checkout is untouched");
+    assert.equal(existsSync(join(ctx.opts.settings.buildsRoot, 'worktrees', `myrepo-memory-${made.branch.split('-').at(-1)}`)), false, 'the worktree goes');
+    const outside = await fetch(`http://127.0.0.1:${room.port}/memory/pr`, { method: 'POST', headers: { authorization: `Bearer ${room.token}` }, body: JSON.stringify({ repo: 'C:\Windows' }) });
+    assert.equal((await outside.json()).error, 'REPO_INVALID');
+  } finally {
+    await room.close();
+  }
+});

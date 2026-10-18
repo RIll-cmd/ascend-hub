@@ -17,7 +17,12 @@ test('skill reads come from tool calls and commands, never from what an agent me
   assert.deepEqual(skillReads('claude', { type: 'assistant', message: { content: [{ type: 'text', text: 'I will read .ascend/skills/x/SKILL.md' }] } }), []);
   assert.deepEqual(skillReads('codex', { type: 'item.completed', item: { type: 'agent_message', text: '.ascend/skills/x/SKILL.md' } }), []);
   assert.deepEqual(skillReads('codex', codexCommand('ls .ascend/skills/')), [], 'listing the folder is not reading a skill');
-  assert.deepEqual(skillReads('agy', claudeRead('.ascend/skills/x/SKILL.md')), [], 'Antigravity has no event stream');
+  assert.deepEqual(skillReads('agy', claudeRead('.ascend/skills/x/SKILL.md')), [], 'Antigravity events have their own shape');
+  const agyTool = (state, parameters) => ({ event: 'step_update', step_update: { step_type: 'tool', state, tool_name: 'view_file', tool_info: { name: 'view_file', parameters } } });
+  assert.deepEqual(skillReads('agy', agyTool('ACTIVE', { AbsolutePath: 'C:\\b\\app\\.ascend\\skills\\code-review\\SKILL.md' })), ['code-review']);
+  assert.deepEqual(skillReads('agy', agyTool('DONE', { CommandLine: 'cat .ascend/skills/magic-ui/SKILL.md' })), ['magic-ui']);
+  assert.deepEqual(skillReads('agy', agyTool('DONE', { DirectoryPath: 'C:\\b\\app\\.ascend\\skills' })), [], 'listing the folder is not reading a skill');
+  assert.deepEqual(skillReads('agy', { event: 'step_update', step_update: { step_type: 'agent_response', text_delta: '.ascend/skills/x/SKILL.md' } }), []);
 });
 
 function addSkill(dataDir, id) {

@@ -135,7 +135,7 @@ test('an update is fetched again, shown as a diff against the installed copy, an
 
 test('missing repos, oversized skills and paths outside the folder are refused', async () => {
   const { dataDir } = tempRoom();
-  const big = { branch: 'main', head: SHA, commits: { [SHA]: { 'SKILL.md': md('big'), 'huge.md': 'x'.repeat(600_000) } } };
+  const big = { branch: 'main', head: SHA, commits: { [SHA]: { 'SKILL.md': md('big'), 'huge.md': 'x'.repeat(2_100_000) } } };
   const gh = fakeGithub({ 'o/big': big });
   await assert.rejects(stageSkill(dataDir, 'https://github.com/o/missing', { fetchImpl: gh.fetchImpl }), /SKILL_FETCH_FAILED/);
   await assert.rejects(stageSkill(dataDir, 'https://github.com/o/big', { fetchImpl: gh.fetchImpl }), /SKILL_TOO_LARGE/);

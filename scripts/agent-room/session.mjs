@@ -5,7 +5,7 @@ import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { skillReads, subagentEvent, usageEvent } from './events.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, createProject, createWorktree, excludeFromGit, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, openPullRequest, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, openPullRequest, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
@@ -71,6 +71,7 @@ export class RoomSession {
     const limits = cleanLimits(body.limits, settings.limits ?? DEFAULT_LIMITS);
     if (check !== undefined && check !== null && (typeof check !== 'string' || check.length > 500)) throw roomError('CHECK_INVALID');
     if (body.parallel !== undefined && body.parallel !== null && typeof body.parallel !== 'boolean') throw roomError('PARALLEL_INVALID');
+    if (body.raceGate !== undefined && body.raceGate !== null && typeof body.raceGate !== 'boolean') throw roomError('RACE_GATE_INVALID');
     const subagents = subagentChoice(body.subagents);
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
     const preview = validatePreview(body.preview);
@@ -105,6 +106,8 @@ export class RoomSession {
       repo: repoInfo, check: check?.trim() || null, limits, turns: 0, workMs: 0, usage: {}, template, models,
       // A bug fix is a strict red-then-green sequence, so it never runs tasks in parallel.
       parallel: body.parallel === true && template !== 'bugfix', roleSets, preview,
+      // The owner picks among race attempts that pass, instead of the judge's pick merging at once.
+      raceGate: body.raceGate === true,
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
@@ -147,6 +150,14 @@ export class RoomSession {
   }
 
   diff(commit) {
+    // An attempt waiting at the race gate: its whole branch against where the race started.
+    const attempt = /^attempt:(codex|claude|agy)$/.exec(String(commit));
+    if (attempt) {
+      const pending = this.state.stage === 'gate-race' ? this.racedTask()?.raced?.pending : null;
+      const tried = pending?.attempts.find(a => a.agent === attempt[1]);
+      if (!tried) throw roomError('DIFF_INVALID');
+      return { commit, text: branchDiff(this.state.projectDir, pending.base, 150_000, tried.branch) };
+    }
     if (commit === 'all') {
       const base = this.state.repo?.base ?? rootCommit(this.state.projectDir);
       return { commit, text: branchDiff(this.state.projectDir, base) };
@@ -565,7 +576,8 @@ export class RoomSession {
       if (broken) throw broken.reason;
       return await done();
     } finally {
-      for (const item of items) if (item.made) finishWorktree(state.projectDir, item.dir, item.branch, null, 'reject');
+      // keep: an attempt waiting at the race gate keeps its branch; its worktree still goes.
+      for (const item of items) if (item.made) finishWorktree(state.projectDir, item.dir, item.branch, null, item.keep ? 'keep' : 'reject');
     }
   }
 
@@ -603,7 +615,7 @@ export class RoomSession {
         }
         attempt.diff = branchDiff(attempt.dir, base, 20_000);
         attempt.ok = true;
-      }, () => this.pickWinner(task, attempts));
+      }, () => this.pickWinner(task, attempts, base));
     } finally {
       if (state.active?.activity?.startsWith('racing')) this.setActive(null);
       if (task.status === 'running') {
@@ -613,7 +625,7 @@ export class RoomSession {
     }
   }
 
-  async pickWinner(task, attempts) {
+  async pickWinner(task, attempts, base) {
     const state = this.state;
     this.setActive(null);
     if (state.stage === 'stopped' || state.pause) return;
@@ -633,14 +645,10 @@ export class RoomSession {
       if (!pick) return;
       winner = survivors.find(a => a.agent === pick.winner);
       task.raced.reason = pick.reason;
+      if (state.raceGate) return this.awaitRacePick(task, survivors, winner, base);
     }
-    task.raced.winner = winner.agent;
-    task.assignee = winner.agent;
-    task.commit = fastForward(state.projectDir, winner.branch);
-    if (winner.check) task.check = winner.check;
+    this.keepWinner(task, winner);
     this.say('room', `Kept ${AGENT_NAMES[winner.agent]}'s attempt (${task.commit})${task.raced.reason ? `: ${task.raced.reason.replace(/\.$/, '')}` : ''}. The other attempts were deleted.`);
-    // The kept attempt goes through the same review passes as any task; a resumed session continues them from buildStep.
-    task.status = this.reviewPasses(task).length ? 'review' : 'done';
     this.save();
     if (task.status === 'done') return;
     const review = await this.runReviews(task);
@@ -648,6 +656,37 @@ export class RoomSession {
     if (!review.ok) return this.taskFailed(task, review.notes);
     task.status = 'done';
     this.save();
+  }
+
+  // The kept attempt goes through the same review passes as any task; a resumed session continues them from buildStep.
+  keepWinner(task, winner) {
+    task.raced.winner = winner.agent;
+    task.assignee = winner.agent;
+    task.commit = fastForward(this.state.projectDir, winner.branch);
+    if (winner.check) task.check = winner.check;
+    task.status = this.reviewPasses(task).length ? 'review' : 'done';
+  }
+
+  // The race gate: the passing attempts' branches stay (their worktrees go) until the owner keeps one.
+  awaitRacePick(task, survivors, pick, base) {
+    const state = this.state;
+    for (const a of survivors) a.keep = true;
+    task.raced.pick = pick.agent;
+    task.raced.pending = { base, attempts: survivors.map(a => ({ agent: a.agent, branch: a.branch, commit: a.commit, check: a.check ?? null })) };
+    state.raceTask = task.id;
+    state.stage = 'gate-race';
+    this.save();
+    this.say('room', `The judge picked ${AGENT_NAMES[pick.agent]}'s attempt for task ${task.id}. Waiting for the owner to keep it or pick another.`);
+  }
+
+  racedTask() { return this.state.plan?.tasks.find(t => t.id === this.state.raceTask) ?? null; }
+
+  dropRaceBranches(task) {
+    for (const a of task.raced?.pending?.attempts ?? []) {
+      try { deleteBranch(this.state.projectDir, a.branch); } catch { /* already gone */ }
+    }
+    delete task.raced.pending;
+    delete this.state.raceTask;
   }
 
   // Pending tasks whose earlier tasks are finished, at most one per coder; a race always runs on its own.
@@ -827,10 +866,10 @@ export class RoomSession {
     this.say('room', 'Verdict saved.');
   }
 
-  gate({ gate, decision, roles, plan, note, memory } = {}) {
+  gate({ gate, decision, roles, plan, note, memory, agent } = {}) {
     const state = this.state;
     if (GATES[state.stage] !== gate || state.pause) throw roomError('GATE_NOT_OPEN');
-    if (decision === 'revise' && gate !== 'result') {
+    if (decision === 'revise' && (gate === 'roles' || gate === 'plan')) {
       if (typeof note !== 'string' || !note.trim() || note.length > 2000) throw roomError('NOTE_INVALID');
       // The agents read the conversation, so the note in the transcript is how they learn what to change.
       state.stage = gate;
@@ -856,6 +895,16 @@ export class RoomSession {
       }
       state.stage = 'build';
       this.say('room', 'Owner approved the plan. Building.');
+    } else if (gate === 'race') {
+      const task = this.racedTask();
+      const chosen = decision === 'approve' ? task?.raced?.pick : decision === 'pick' ? agent : null;
+      const kept = task?.raced?.pending?.attempts.find(a => a.agent === chosen);
+      if (!kept) throw roomError('DECISION_INVALID');
+      this.keepWinner(task, kept);
+      this.dropRaceBranches(task);
+      state.stage = 'build';
+      const over = chosen === task.raced.pick ? '' : ` over the judge's pick (${AGENT_NAMES[task.raced.pick]})`;
+      this.say('room', `Owner kept ${AGENT_NAMES[chosen]}'s attempt for task ${task.id} (${task.commit})${over}. The other attempts were deleted.`);
     } else if (state.repo) {
       // "pr" pushes to a remote, so Hub offers it behind a confirmation and voice gates never do (see attention.mjs).
       if (!['merge', 'pr', 'accept', 'reject'].includes(decision)) throw roomError('DECISION_INVALID');
@@ -925,6 +974,8 @@ export class RoomSession {
     this.say('room', 'Owner stopped the session.');
     this.save();
     await this.loop;
+    const raced = this.state.plan?.tasks.find(t => t.raced?.pending);
+    if (raced) this.dropRaceBranches(raced);
     // A debate folder is the owner's own repo: never reset or clean it.
     if (this.state.mode === 'debate') return;
     // Committed work stays; anything half-written by the killed turn goes.

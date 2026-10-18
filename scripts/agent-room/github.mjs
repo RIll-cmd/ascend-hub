@@ -9,9 +9,10 @@ import { writeJsonAtomic } from './store.mjs';
 // Fetches one skill folder from GitHub at a pinned commit into a staging folder. Nothing reaches the library
 // until the owner reads it and presses Install (installStaged in skills.mjs).
 const NAME = /^[A-Za-z0-9_.-]{1,100}$/;
+// Big enough for Impeccable (2.2 MB, a 1.1 MB font index) and UI UX Pro Max (3.6 MB of data files).
 const MAX_FILES = 200;
-const MAX_FILE_BYTES = 512_000;
-const MAX_TOTAL_BYTES = 1_000_000;
+const MAX_FILE_BYTES = 2_000_000;
+const MAX_TOTAL_BYTES = 8_000_000;
 const invalid = detail => roomError('SKILL_URL_INVALID', detail ?? 'Use a https://github.com/<owner>/<repo>[/tree/<ref>/<folder>] link.');
 
 export function parseGithubUrl(text) {
@@ -95,7 +96,7 @@ export async function stageSkill(dataDir, url, { fetchImpl = globalThis.fetch, u
   }
   const files = blobs.filter(b => b.path.startsWith(prefix)).map(b => ({ rel: b.path.slice(prefix.length), size: b.size ?? 0 }));
   if (files.length > MAX_FILES || files.some(f => f.size > MAX_FILE_BYTES) || files.reduce((n, f) => n + f.size, 0) > MAX_TOTAL_BYTES) {
-    throw roomError('SKILL_TOO_LARGE', `A skill may have at most ${MAX_FILES} files, ${MAX_FILE_BYTES / 1000} kB each and ${MAX_TOTAL_BYTES / 1_000_000} MB in all.`);
+    throw roomError('SKILL_TOO_LARGE', `A skill may have at most ${MAX_FILES} files, ${MAX_FILE_BYTES / 1_000_000} MB each and ${MAX_TOTAL_BYTES / 1_000_000} MB in all.`);
   }
   if (!files.every(f => safeRel(f.rel))) throw roomError('SKILL_PATH_INVALID');
 

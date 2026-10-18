@@ -6,10 +6,10 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildInvocation, defaultSettings, mergeSettings, runTurn as realRunTurn } from './agents.mjs';
 import { AGENT_IDS } from './parse.mjs';
-import { listDebateFolders, listRepos, roomDataDir, roomError } from './paths.mjs';
+import { listDebateFolders, listRepos, resolveRepo, roomDataDir, roomError } from './paths.mjs';
 import { finishWorktree, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
-import { readMemory, writeMemory } from './memory.mjs';
+import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
 import { ghToken, stageSkill } from './github.mjs';
 import { discardStaged, installStaged, listSkills, readRoleSets, removeSkill, viewSkill, writeRoleSets } from './skills.mjs';
@@ -191,6 +191,8 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         return send(200, { key, notes: readMemory(dataDir, key) });
       }
       if (route === 'POST /memory') return send(200, { key: body?.key, notes: writeMemory(dataDir, body?.key, body?.notes) });
+      // Pushes a branch and opens a pull request, so Hub asks the owner first.
+      if (route === 'POST /memory/pr') return send(200, memoryPullRequest(dataDir, resolveRepo(body?.repo, settings), settings));
       if (route === 'GET /role-sets') return send(200, { sets: readRoleSets(dataDir) });
       if (route === 'POST /role-sets') return send(200, { sets: writeRoleSets(dataDir, body) });
       if (route === 'GET /skills') return send(200, { skills: listSkills(dataDir) });

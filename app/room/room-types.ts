@@ -6,16 +6,18 @@ export const AGENT_NAMES: Record<AgentId, string> = { codex: "Codex", claude: "C
 export type Roles = { orchestrator: AgentId; coders: AgentId[]; reviewer: AgentId | null; wear?: Partial<Record<AgentId, string[]>> };
 export const DEFAULT_ROLES: Roles = { orchestrator: "codex", coders: ["claude", "agy"], reviewer: null };
 
-export type Stage = "discuss" | "roles" | "gate-roles" | "plan" | "gate-plan" | "build" | "finish" | "gate-result"
+export type Stage = "discuss" | "roles" | "gate-roles" | "plan" | "gate-plan" | "build" | "gate-race" | "finish" | "gate-result"
   | "opening" | "critique" | "verdict" | "done" | "rejected" | "stopped";
 export type SessionMode = "build" | "debate";
 export const TERMINAL_STAGES: Stage[] = ["done", "rejected", "stopped"];
-export const BOARD_STAGES: Stage[] = ["build", "finish", "gate-result", "done", "rejected", "stopped"];
+export const BOARD_STAGES: Stage[] = ["build", "gate-race", "finish", "gate-result", "done", "rejected", "stopped"];
 
 export type TaskStatus = "pending" | "running" | "review" | "done" | "skipped";
 export type CheckResult = { ok: boolean; code: number | null; ms: number; output: string };
 // race: every coder attempts the task in its own worktree; raced: how that went and which attempt was kept.
-export type RaceResult = { attempts: { agent: AgentId; ok: boolean; commit: string | null; why: string }[]; winner: AgentId | null; reason: string };
+// pick and pending: the judge's choice and the passing attempts while the race gate waits for the owner.
+export type RaceResult = { attempts: { agent: AgentId; ok: boolean; commit: string | null; why: string }[]; winner: AgentId | null; reason: string;
+  pick?: AgentId; pending?: { base: string; attempts: { agent: AgentId; branch: string; commit: string; check: CheckResult | null }[] } };
 export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult; race?: boolean; raced?: RaceResult; after?: number[]; role?: string;
   // The skill folders each agent opened while working on or reviewing this task (Antigravity's reads are not reported).
   skillsRead?: Partial<Record<AgentId, string[]>> };
@@ -60,7 +62,9 @@ export type SessionView = {
   stageLog?: { stage: Stage; at: string }[];
   repo?: { dir: string; branch: string; base: string; baseBranch: string; prUrl?: string } | null;
   check?: string | null;
-  attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "result"; summary: string; options: string[]; decisions: string[]; memory?: string[] } | null;
+  raceGate?: boolean;
+  raceTask?: number;
+  attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "race" | "result"; summary: string; options: string[]; decisions: string[]; memory?: string[] } | null;
 };
 
 export function rolesOf(agent: AgentId, roles: Roles | null): string[] {

@@ -161,6 +161,11 @@
 .agent-room .agent-room-diff { max-height: 360px; overflow: auto; font-size: 11px; background: #1d1813; color: #efe3cc; padding: 8px; border-radius: 6px; white-space: pre; }
 .agent-room .agent-room-diff .is-add { color: #8fd18f; }
 .agent-room .agent-room-diff .is-del { color: #f08a7a; }
+/* Race gate: one column per attempt, stacked on narrow screens. */
+.agent-room-race { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.agent-room-race > section { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.agent-room-race h3 { margin: 0; display: flex; gap: 8px; align-items: center; }
+.agent-room-race .agent-room-diff { align-self: stretch; }
 .agent-room .agent-room-wf-summary { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; margin: 0 0 10px; font-size: 13px; }
 .agent-room .is-problem { color: #c0392b; font-weight: 600; }
 .agent-room .agent-room-wf-lanes { margin: 0 0 12px; display: grid; gap: 4px; }

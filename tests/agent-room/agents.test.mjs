@@ -51,10 +51,10 @@ test('role mode maps to each CLI permission flag', () => {
   assert.equal(buildInvocation('claude', 'read', 'hi', opts).stream, 'claude');
   assert.deepEqual(buildInvocation('claude', 'edit', 'hi', { ...opts, subagents: false }).args,
     ['-p', ...stream, '--permission-mode', 'acceptEdits', '--disallowedTools', 'PowerShell', 'Agent', '--allowedTools', ...CLAUDE_ALLOWED_TOOLS]);
-  assert.equal(buildInvocation('agy', 'read', 'hi', opts).stream, null);
+  assert.equal(buildInvocation('agy', 'read', 'hi', opts).stream, 'agy');
   assert.deepEqual(CLAUDE_ALLOWED_TOOLS, ['Bash(node:*)', 'Bash(npm:*)', 'Bash(npx:*)', 'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)']);
   const tricky = 'say "hi" --mode edit\nline2 & del *';
-  assert.deepEqual(buildInvocation('agy', 'read', tricky, opts), { command: s.agents.agy.command, args: ['--mode', 'plan', `--print=${tricky}`], stdin: null, outFile: null, stream: null });
+  assert.deepEqual(buildInvocation('agy', 'read', tricky, opts), { command: s.agents.agy.command, args: ['--mode', 'plan', '--output-format', 'stream-json', `--print=${tricky}`], stdin: null, outFile: null, stream: 'agy' });
   assert.equal(buildInvocation('agy', 'edit', 'x', opts).args[1], 'accept-edits');
   assert.throws(() => buildInvocation('gpt', 'read', 'x', opts), { code: 'AGENT_UNKNOWN' });
   assert.throws(() => buildInvocation('codex', 'write', 'x', opts), { code: 'MODE_INVALID' });

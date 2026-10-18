@@ -1,6 +1,6 @@
 # Ascend roadmap — Hub and Vision
 
-Updated 2026-10-17.
+Updated 2026-10-18.
 
 **Goals:**
 - **Hub:** the owner's main coding tool, where Codex, Claude and Antigravity plan, build and review together.
@@ -199,8 +199,14 @@ A real session (`skills-check`: Codex orchestrator and reviewer, Claude coder, s
 - **General** (always on for every coder task when switched on): Superpowers systematic debugging and verification before completion, Ponytail, Context7 `find-docs`, Caveman.
 - **Testing / QA:** Microsoft Playwright CLI (needs `npm install -g @playwright/cli@latest` as well), Superpowers test-driven development, Trail of Bits property-based testing.
 - Added to the existing sets: Emil Kowalski design engineering and animation performance (off by default), Addy Osmani accessibility and performance, Trail of Bits variant analysis and supply chain risk auditor, wshobson error handling patterns, Better Auth best practices (off by default).
-- Every source points at the skill's own folder. Dropped: Anthropic PR review toolkit (sub-agents, no `SKILL.md`). Not available as a skill: Trail of Bits `insecure-defaults` (a command plugin). Impeccable (2.2 MB) and UI UX Pro Max (3.6 MB, Python scripts) exceed the library limits of 1 MB and 512 kB a file.
+- Every source points at the skill's own folder. Dropped: Anthropic PR review toolkit (sub-agents, no `SKILL.md`). Not available as a skill: Trail of Bits `insecure-defaults` (a command plugin).
 - Installed 2026-10-17 after review: 27 skills. Licences: MIT, Apache-2.0 and CC-BY-SA-4.0, except Anthropic frontend design (its own `LICENSE.txt`), the three Vercel skills and Better Auth, which show no licence on GitHub. Scripts reviewed: Semgrep runner, supply-chain collector (public registry APIs), Superpowers `find-polluter.sh`, a FastAPI template.
+
+### M7 follow-ups (2026-10-18)
+
+- **Library limits:** 2 MB a file and 8 MB in all (was 512 kB and 1 MB), so Impeccable (57 files, 2.2 MB, Apache-2.0) and UI UX Pro Max (73 files, 3.6 MB, MIT) can be fetched. Both include scripts; live fetches staged in about 34 s each, inside the proxy's 120 s.
+- **21st.dev:** the skills are in [21st-dev/skill](https://github.com/21st-dev/skill) (Apache-2.0). `21st-ui-build` and `21st-cli-use` are in the Frontend set, off by default: they drive `npx @21st-dev/cli`, which needs a 21st.dev login or API key.
+- **Antigravity skill reads:** `agy` now runs with `--output-format stream-json`. Its reply comes from the `result` event, its `view_file` and `run_command` tool steps count as skill reads, and its token totals reach the usage meter. Its prompt still goes through `--print`, so the 28,000-character cap stays.
 
 ## Room ideas backlog (2026-10-16)
 
@@ -305,7 +311,7 @@ Each slice ships on its own, with tests and a live run, in this order.
 - Notes live in `<room data>/memory/<repo folder or project>.md`, never in the repo. They are deduplicated and capped at 60 lines, and the newest notes win.
 - Every later build session for that repo or project gets them as a "PROJECT MEMORY" prompt section, capped at 3,000 characters. Debates do not.
 - The start form shows the chosen repo's memory and lets the owner edit or prune it (`GET`/`POST /api/room/memory`).
-- Not done: the offer to copy notes into the repo's `AGENTS.md` as a PR.
+- **AGENTS.md pull request (done 2026-10-18):** the start form's memory editor has **Open pull request to AGENTS.md**. After a confirmation it saves the notes, cuts `room/memory-<time>` from the checkout's HEAD in its own worktree, writes them into a marked section of the committed `AGENTS.md` (a later PR replaces that section; a repo without one gets a new file), pushes and runs `gh pr create` (`memoryPullRequest` in `memory.mjs`, `POST /memory/pr`, proxy `app/api/room/memory/pr`). The owner's checkout is never touched. Hub and Vision keep an untracked root `AGENTS.md`, so a PR there adds a tracked file that clashes with it on the next pull.
 
 - **Problem:** each session starts cold.
 - **At the result gate**, the orchestrator proposes 0–5 short entries: decisions, gotchas, commands that work. The owner approves or edits them, and only approved entries are kept.
@@ -328,7 +334,7 @@ Each slice ships on its own, with tests and a live run, in this order.
 - The winner fast-forwards into the session branch, and every attempt worktree and branch is deleted. The Workflow tab shows each attempt and the judge's reason.
 - No survivor counts as one failed attempt, and round limits apply. Bug fix task 1 never races, because it must go red.
 - **Live:** Claude on haiku and Codex both passed the checks. Codex judged and kept Claude's attempt, and no worktrees were left behind.
-- Not done: an owner override gate with side-by-side diffs. The losing attempts are deleted right after judging.
+- **Race gate (done 2026-10-18):** the start form's "Let me pick race winners" sets the session's `raceGate`. When two or more attempts pass, the judge still picks, then the session waits at `gate-race`: the attempt branches stay (their worktrees go), the gate shows each attempt's whole diff side by side (`diff('attempt:<agent>')`) with the judge's pick marked, and **Keep** fast-forwards the chosen one and deletes the others. Voice can only approve the judge's pick. The gate survives a restart; Stop deletes the waiting branches. Off by default, so races run unattended as before.
 
 - **Option:** for one hard task, 2–3 coders each attempt it in their own worktree, with the same prompt (guidance: start with 2–3).
 - **Gates:** the checks are the automatic gate.
