@@ -91,7 +91,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Feature | What it gives | Source | Size |
 | --- | --- | --- | --- |
 | Live diff panel | The current task's diff while it is being written | Backlog | Done (2026-10-24): **Changes** tab, `GET /sessions/current/live-diff`; not for parallel or race worktrees |
-| File tree and read-only viewer | Browse the session worktree | Backlog | M |
+| File tree and read-only viewer | Browse the session worktree | Backlog | Done (2026-10-24): **Files** tab; only files git tracks or would track, never ignored ones |
 | Terminal pane for check output | The full output of each check run | Backlog | Done (2026-10-24): **Checks** tab; runs in `state.checkRuns`, output in `checks/<n>.log` |
 | Search across sessions | Full-text search over past sessions in the history column | Backlog; Hermes FTS5 search | Done (2026-10-24): `GET /sessions?q=`, a plain scan of task, transcript and verdict, at most 50 results |
 | Transcript and summary export | Markdown export of a session | Backlog | Done (2026-10-24): **Export .md** on the Session card, from `GET /sessions/<id>/export` with the full transcript |

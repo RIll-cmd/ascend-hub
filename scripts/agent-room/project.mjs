@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { killTree } from './agents.mjs';
 import { roomError } from './paths.mjs';
 
@@ -189,6 +189,30 @@ export function workingDiff(dir, maxChars = 150_000) {
   const more = untracked.length > NEW_FILES ? `... and ${untracked.length - NEW_FILES} more new files\n` : '';
   const text = [tracked, ...untracked.slice(0, NEW_FILES).map(f => newFilePatch(dir, f)), more].filter(Boolean).join('\n');
   return { files: changed.length + untracked.length, text: text.length > maxChars ? `${text.slice(0, maxChars)}\n... diff cut at ${maxChars} characters` : text };
+}
+
+const MAX_FILES = 5000;
+const MAX_VIEW_BYTES = 512 * 1024;
+
+// The files git knows in a session folder: tracked ones plus new ones that are not ignored, so .env files, node_modules and
+// other ignored output never show. Sorted, at most MAX_FILES.
+export function projectFiles(dir) {
+  const files = git(dir, ['--no-optional-locks', 'ls-files', '--cached', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean);
+  const present = [...new Set(files)].filter(f => existsSync(join(dir, f))).sort();
+  return { files: present.slice(0, MAX_FILES), more: Math.max(0, present.length - MAX_FILES) };
+}
+
+// One file for the read-only viewer. Only a path projectFiles lists, that is a regular file (never a link) whose real path is
+// inside dir; binary or large files come back without their text.
+export function projectFile(dir, file) {
+  if (typeof file !== 'string' || !projectFiles(dir).files.includes(file)) throw roomError('FILE_NOT_LISTED');
+  const path = join(dir, file);
+  const info = lstatSync(path);
+  const root = realpathSync(dir);
+  if (!info.isFile() || !realpathSync(path).startsWith(`${root}${sep}`)) throw roomError('FILE_NOT_LISTED');
+  if (info.size > MAX_VIEW_BYTES) return { path: file, size: info.size, tooLarge: true };
+  const buf = readFileSync(path);
+  return buf.includes(0) ? { path: file, size: info.size, binary: true } : { path: file, size: info.size, text: buf.toString('utf8') };
 }
 
 export function branchDiff(dir, base, maxChars = 150_000, head = 'HEAD') {

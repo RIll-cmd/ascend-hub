@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildInvocation, defaultSettings, mergeSettings, runTurn as realRunTurn } from './agents.mjs';
 import { AGENT_IDS } from './parse.mjs';
 import { listDebateFolders, listRepos, resolveRepo, roomDataDir, roomError } from './paths.mjs';
-import { finishWorktree, suggestCheck } from './project.mjs';
+import { finishWorktree, projectFile, projectFiles, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
 import { attentionNotifier } from './notify.mjs';
@@ -116,6 +116,15 @@ export function searchSessions(dataDir, q) {
     if (found.length === 50) break;
   }
   return found;
+}
+
+// A build session's folder (its project or worktree), while it still exists. A debate's folder is the owner's own checkout,
+// so the file viewer never opens it.
+function buildFolder(dataDir, id) {
+  if (!SESSION_ID.test(id)) throw roomError('SESSION_ID_INVALID');
+  const state = readJson(join(dataDir, 'sessions', id, 'state.json'));
+  if (!state || state.mode === 'debate') return null;
+  return existsSync(state.projectDir) ? state.projectDir : null;
 }
 
 // One check run's facts and full output, as runChecks saved them.
@@ -237,6 +246,12 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       if (route === 'GET /sessions') {
         const q = new URL(req.url, 'http://room').searchParams.get('q');
         return send(200, { sessions: q ? searchSessions(dataDir, q) : listSessions(dataDir) });
+      }
+      const files = req.method === 'GET' && /^\/sessions\/([^/]+)\/(files|file)$/.exec(new URL(req.url, 'http://room').pathname);
+      if (files) {
+        const dir = buildFolder(dataDir, files[1]);
+        if (!dir) return send(404, { error: 'NO_FOLDER', message: 'This session has no folder on disk any more.' });
+        return send(200, files[2] === 'files' ? { dir, ...projectFiles(dir) } : projectFile(dir, new URL(req.url, 'http://room').searchParams.get('path')));
       }
       const checkRun = req.method === 'GET' && /^\/sessions\/([^/]+)\/checks\/(\d{1,6})$/.exec(new URL(req.url, 'http://room').pathname);
       if (checkRun) {
