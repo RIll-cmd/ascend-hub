@@ -91,7 +91,7 @@ function readSession(dataDir, id) {
   return state ? { ...state, active: null, attention: null, transcript: readJsonLines(join(dir, 'transcript.jsonl')).slice(-200) } : null;
 }
 
-const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409, SKILL_PICK: 409, SKILL_FETCH_FAILED: 502 };
+const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409, SKILL_PICK: 409, SKILL_FETCH_FAILED: 502, GITHUB_FAILED: 502, REVIEW_POSTED: 409 };
 
 export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, fetchImpl = globalThis.fetch, port = 5181, idleMs = 30 * 60_000, token = randomBytes(32).toString('hex') }) {
   // The readiness probe is a real turn, so it also refreshes Claude's quota before any session runs.
@@ -217,9 +217,10 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         if (!session) return send(404, { error: 'NO_SESSION' });
         return send(200, session.diff(new URL(req.url, 'http://room').searchParams.get('commit')));
       }
-      if (!['POST /sessions/current/gate', 'POST /sessions/current/resume', 'POST /sessions/current/stop'].includes(route)) return send(404, { error: 'NOT_FOUND' });
+      if (!['POST /sessions/current/gate', 'POST /sessions/current/resume', 'POST /sessions/current/stop', 'POST /sessions/current/post-review'].includes(route)) return send(404, { error: 'NOT_FOUND' });
       if (!session) return send(404, { error: 'NO_SESSION' });
       if (route === 'POST /sessions/current/gate') session.gate(body);
+      else if (route === 'POST /sessions/current/post-review') session.postReview();
       else if (route === 'POST /sessions/current/resume') session.resume(body);
       else await session.stop();
       return send(200, { session: session.summary() });

@@ -194,6 +194,7 @@ export function buildPrompt({ stage, agent, roles, task, planText = '', transcri
     DEBATE_STAGES.has(stage) ? 'QUESTION:' : 'OWNER TASK:',
     cap(task, 4000),
     planText ? `\nPLAN.md:\n${cap(planText, 6000)}` : '',
+    extra.diff && (stage === 'opening' || stage === 'critique') ? `\nPULL REQUEST DIFF:\n${cap(extra.diff, 12_000)}` : '',
   ].join('\n');
   const budget = Math.max(0, Math.min(12_000, MAX_PROMPT_CHARS - fixed.length - 40));
   const tail = transcriptTail(transcript, { maxChars: budget });

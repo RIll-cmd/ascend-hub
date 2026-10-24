@@ -96,6 +96,8 @@ The page has three columns: past sessions on the left, the 3D room and the chat 
 - **Project memory:** at the result gate the orchestrator proposes up to five notes for next time. You tick and edit the ones to keep, and later sessions for that repo read them.
 - **Best-of-N races:** mark a hard task as a race and every coder attempts it at once in its own worktree. The checks filter the attempts, a judge picks the best, and only the winner is kept.
 - **Parallel tasks (experimental):** independent tasks run at the same time, then merge one by one through a merge queue, with checks after each merge.
+- **Start from a GitHub issue:** in a repo session, put an issue number or link in *GitHub issue*. The room reads it (and its last five comments) with `gh` and adds it to the task, marked as text written by others, not instructions. The prompt box may then stay empty.
+- **Review a pull request:** with *Review only* and a *Pull request* number, every agent reviews the PR's diff (`gh pr diff`, the first 12,000 characters per prompt) and Codex writes the verdict. **Post to PR** then adds the verdict to the PR as a comment-only review, after you confirm. Nothing is posted by itself, and it posts once.
 - **Debate a question:** the agents answer on their own, critique each other, and a judge writes the combined answer with *Where they agree*, *Where they disagree* and *Recommendation*. Debates are read-only.
 - **See everything:** the *Workflow* tab shows stage timings, swim lanes per agent, each task's rounds, reviews, checks, tokens and diffs. The *Deck* shows the 3D room, Claude's sub-agents and an optional sound layer.
 - **Usage:** tokens per agent and task, plus cost where the CLI reports it.
@@ -200,6 +202,7 @@ Then double-click **Ascend Hub** on the desktop. Closing the launcher window whi
    - **Roles:** edit the roles or approve them.
    - **Plan:** rename tasks, change who does each, tick **Race all coders** on a hard task, then approve. Or ask for changes with a note.
    - **Result:** read the summary and diff, tick the memory notes worth keeping, then merge, keep the branch, open a pull request (pushes to `origin` and uses the GitHub CLI `gh`), or reject.
+   - **Pull-request review:** read the verdict, then **Post to PR** if it should go on GitHub.
 7. Follow progress in the *Deck* and *Workflow* tabs. **Stop** in the top bar ends the session at any time; committed work stays. A stopped repo session keeps its worktree for inspection until you press **Remove worktrees** in the right column; its branch stays either way.
 
 > [!TIP]

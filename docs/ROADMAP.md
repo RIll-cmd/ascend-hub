@@ -40,7 +40,7 @@ Updated 2026-10-24. M1–M7 are done; the open work is under [Next: M8–M13](#n
 | M9 | Unattended sessions | Sessions that wait out a limit window, queue up, run on a schedule and keep going until the checks pass. | Not started |
 | M10 | GitHub in and out | Start from an issue or PR, review a PR and post comments, resolve merge-queue conflicts, several repos in one session. | Not started |
 | M11 | Seeing the work | Live diff, file viewer, check output, search and export across sessions, lint per task, richer prompt attachments. | Not started |
-| M12 | More agents and connectors | Hermes Agent as a fourth agent and a fifth shelf TV, MCP connectors, a self-maintaining skill library, safety guards. | Not started |
+| M12 | More agents and connectors | MCP connectors, a self-maintaining skill library, safety guards. | Not started |
 | M13 | Hub and Vision polish | Spotify controls, reacting mascots, a launcher start-up checklist, a Vision wake word, a lighter voice. | Not started |
 
 **Reliability work alongside:**
@@ -81,8 +81,8 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 
 | Feature | What it gives | Source | Size |
 | --- | --- | --- | --- |
-| Start from an issue or PR | Paste an issue or PR number; its text and diff become the task | Backlog | M |
-| PR review mode | A *Review a PR* template: `gh pr diff` in, comments posted with `gh pr review` after the owner approves | Backlog; Hermes PR-review guide | M |
+| Start from an issue or PR | Paste an issue or PR number; its text and diff become the task | Backlog | Done (2026-10-24): issues start repo builds; PRs start reviews (below) |
+| PR review mode | A *Review a PR* template: `gh pr diff` in, comments posted with `gh pr review` after the owner approves | Backlog; Hermes PR-review guide | Done (2026-10-24): *Review only* with a PR; one comment-only review after a confirmation. Diffs over 12,000 characters are cut per prompt |
 | Merge-conflict arbiter | A conflicted merge in the M6f merge queue gets one arbiter turn before it fails | Hermes optional skill | S |
 | Several repos in one session | One plan with tasks across repos, one worktree each | Backlog | L |
 
@@ -103,10 +103,10 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 
 | Feature | What it gives | Source | Size |
 | --- | --- | --- | --- |
-| Hermes Agent spike | Install, run `hermes chat --oneshot -q "2+2" --format stream-json`, record the real events and exit codes | Hermes feature map | Partly done (2026-10-24): installed, failure events recorded; a successful turn needs a model provider (see the feature map) |
-| Hermes as a fourth room agent | Hermes plans, codes, reviews or judges with any model it is set to; `--query-file` avoids the 28,000-character prompt cap | Hermes feature map, path A | M |
-| Hermes status TV (CH 05) | A status adapter from Hermes hooks to Core's `POST /api/status/events`; the shelf already shows unknown services | Handoff; Hermes path B | S–M |
-| Hermes on the Limits pill | Read `hermes usage --json` | Hermes | S |
+| Hermes Agent spike | Install, run `hermes chat --oneshot -q "2+2" --format stream-json`, record the real events and exit codes | Hermes feature map | Stopped (2026-10-24): installed, failure events recorded; no successful turn, Hermes agent work dropped |
+| Hermes as a fourth room agent | Hermes plans, codes, reviews or judges with any model it is set to; `--query-file` avoids the 28,000-character prompt cap | Hermes feature map, path A | Dropped (2026-10-24): the owner chose not to run Hermes as an agent |
+| Hermes status TV (CH 05) | A status adapter from Hermes hooks to Core's `POST /api/status/events`; the shelf already shows unknown services | Handoff; Hermes path B | Dropped (2026-10-24): the owner chose not to run Hermes as an agent |
+| Hermes on the Limits pill | Read `hermes usage --json` | Hermes | Dropped (2026-10-24): the owner chose not to run Hermes as an agent |
 | MCP connectors for agents | A curated list of MCP servers per session, with only the needed environment variables passed | Backlog; Hermes MCP catalogue | M |
 | Hermes skills as a library source | Add `NousResearch/hermes-agent` skills through M7d | Hermes | S |
 | Skills the agents write | The orchestrator proposes a new skill at the result gate; the owner approves it | Hermes self-written skills | M |
@@ -121,7 +121,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | --- | --- | --- | --- |
 | Spotify controls | Play, pause, skip and queue on the music TV; needs the `user-modify-playback-state` scope | Hermes Spotify plugin | S–M |
 | Reacting mascots | A Bangboo on each status TV or desk that reacts to idle, working, stuck and done (check sprite licences) | Hermes pets | S–M |
-| Hermes dashboard channel | A TV channel that embeds `127.0.0.1:9119` when Hermes is installed | Hermes web dashboard | S |
+| Hermes dashboard channel | A TV channel that embeds `127.0.0.1:9119` when Hermes is installed | Hermes web dashboard | Dropped (2026-10-24): the owner chose not to run Hermes as an agent |
 | Launcher start-up checklist | The mini console checks Core, the CLI logins and free disk space | Hermes `BOOT.md` | S |
 | Vision wake word | A wake word before gate answers, so stray speech is ignored | Hermes wake word | M |
 | Lighter Vision voice | A smaller Kokoro model, when the owner decides (see M5) | M6 follow-ups | S |
@@ -142,7 +142,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 
 1. M8 phone push, M9 requeue on rate limit, the dangerous-command guard and the `mergeSettings` fix: small, and they make long sessions safer.
 2. M9 auto-continue and keep-going mode: sessions that finish without the owner.
-3. M12 Hermes spike, then the Hermes status TV and fourth agent if the spike holds.
+3. ~~M12 Hermes spike~~: dropped on 2026-10-24. Hermes ideas stay; Hermes as an agent does not (see the spike results in the feature map).
 4. M10 PR review mode and start from an issue.
 5. M11 search, diff panel and export.
 6. M13 polish when there is time.

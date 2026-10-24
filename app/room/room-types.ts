@@ -64,6 +64,8 @@ export type SessionView = {
   check?: string | null;
   raceGate?: boolean;
   keepGoing?: boolean;
+  issue?: { number: number; title: string; url: string };
+  pr?: { number: number; title: string; url: string; base: string; head: string; posted: string | null };
   raceTask?: number;
   attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "race" | "result"; summary: string; options: string[]; decisions: string[]; memory?: string[] } | null;
 };

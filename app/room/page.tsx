@@ -203,7 +203,7 @@ export default function RoomPage() {
         {session && <SessionCard session={session} />}
         <LimitsCard quota={status?.quota} />
         <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} />
-        {session && <VerdictPanel session={session} />}
+        {session && <VerdictPanel session={session} act={isLive ? act : undefined} />}
         {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
         {composing && <WorktreeCleanup />}
         {composing && <BriefSettings brief={brief} quotaWarning={status?.quotaWarning} />}

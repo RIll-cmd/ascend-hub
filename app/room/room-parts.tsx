@@ -253,6 +253,8 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [parallel, setParallel] = useState(false);
   const [raceGate, setRaceGate] = useState(false);
   const [keepGoing, setKeepGoing] = useState(false);
+  // A GitHub issue (repo builds) or pull request (Review only), as a number or link; the room reads it with gh.
+  const [github, setGithub] = useState("");
   const [template, setTemplate] = useState<keyof typeof TEMPLATE_LABELS>("feature");
   const [models, setModels] = useState<{ codex: string; claude: string }>({ codex: "", claude: "" });
   const [preview, setPreview] = useState({ command: "", url: "" });
@@ -267,15 +269,18 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const needsCheck = template === "bugfix" || template === "refactor";
   const chosenModels = Object.fromEntries(Object.entries(models).filter(([, m]) => m.trim()).map(([a, m]) => [a, m.trim()]));
   // "Review only" runs through the read-only debate flow on the chosen repo, so nothing in it can change.
-  const reviewBody = { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
+  const githubRef = github.trim();
+  const reviewBody = githubRef && inRepo
+    ? { mode: "debate", question: task, pr: githubRef, folder: chosenRepo?.dir, judge: "codex", subagents: { claude: claudeSubagents } }
+    : { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
   const canStart = missing.length === 0 && !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
+    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -317,6 +322,12 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
               {b.inRepo ? "Branch name" : "Project name"}
               <Input form={BRIEF_FORM} value={b.project} onChange={e => b.setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder={b.inRepo ? "fix-login" : "todo-system"} />
             </label>
+            {b.inRepo && (
+              <label title={b.template === "review" ? "The agents review this pull request's diff. Afterwards you can post their verdict to it as a comment." : "The room reads this issue with gh and adds it to the task. The prompt box may then stay empty."}>
+                {b.template === "review" ? "Pull request (optional)" : "GitHub issue (optional)"}
+                <Input value={b.github} onChange={e => b.setGithub(e.target.value)} placeholder={b.template === "review" ? "42 or a github.com/…/pull/42 link" : "17 or a github.com/…/issues/17 link"} />
+              </label>
+            )}
             {b.inRepo && b.chosenRepo && <MemoryEditor key={b.chosenRepo.dir} dir={b.chosenRepo.dir} />}
           </>
         ) : (
@@ -385,7 +396,7 @@ export function BriefComposer({ brief: b, act }: { brief: Brief; act: Act }) {
   const build = b.kind === "build";
   return (
     <form id={BRIEF_FORM} className="agent-room-composer" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", b.body); }}>
-      <Textarea className="min-h-[72px] resize-y border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0" value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required rows={3}
+      <Textarea className="min-h-[72px] resize-y border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0" value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required={!(build && b.inRepo && b.github.trim())} rows={3}
         onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && b.canStart) e.currentTarget.form?.requestSubmit(); }}
         placeholder={build ? "What should they build?" : "What should they debate?"} aria-label={build ? "What should they build?" : "What should they debate?"} />
       <div className="agent-room-composer-bar">
@@ -396,7 +407,8 @@ export function BriefComposer({ brief: b, act }: { brief: Brief; act: Act }) {
   );
 }
 
-export function VerdictPanel({ session }: { session: SessionView }) {
+// act is given only for the live session, so a pull-request review can be posted from it once.
+export function VerdictPanel({ session, act }: { session: SessionView; act?: Act }) {
   if (session.mode !== "debate" || !session.answer) return null;
   const answer = session.answer;
   const download = () => {
@@ -411,7 +423,15 @@ export function VerdictPanel({ session }: { session: SessionView }) {
     <Card size="sm" className="agent-room-verdict bg-secondary-background px-4" aria-label="Verdict">
       <h2>Verdict</h2>
       <div className="agent-room-verdict-text"><Markdown text={answer} /></div>
-      <Button variant="neutral" size="sm" className="self-start" onClick={download}>Download .md</Button>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="neutral" size="sm" onClick={download}>Download .md</Button>
+        {session.pr && act && !session.pr.posted && (
+          <Button size="sm" onClick={() => { if (window.confirm(`Post this verdict to pull request #${session.pr?.number} on GitHub as a comment (not an approval)?`)) void act("/api/room/sessions/current/post-review", {}); }}>
+            Post to PR #{session.pr.number}
+          </Button>
+        )}
+        {session.pr?.posted && <a className="self-center underline" href={session.pr.url} target="_blank" rel="noreferrer">Posted to PR #{session.pr.number}</a>}
+      </div>
     </Card>
   );
 }

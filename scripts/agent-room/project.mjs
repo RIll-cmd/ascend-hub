@@ -174,6 +174,43 @@ export function openPullRequest(repo, branch, baseBranch, { title, body, gh = { 
   return result.stdout.trim().split('\n').at(-1);
 }
 
+const GH_KINDS = { issue: 'issues', pr: 'pull' };
+
+// "123", "#123" or a github.com issue / pull link of the matching kind; anything else is refused before gh runs.
+export function githubRef(kind, ref) {
+  const text = String(ref ?? '').trim();
+  const number = /^#?(\d{1,7})$/.exec(text)?.[1];
+  if (number) return number;
+  const link = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/(issues|pull)\/(\d{1,7})\/?$/.exec(text);
+  if (link && link[1] === GH_KINDS[kind]) return link[0];
+  throw roomError('GITHUB_REF_INVALID', `Give the ${kind === 'pr' ? 'pull request' : 'issue'} as a number or its github.com link.`);
+}
+
+function gh(repo, args, settings) {
+  const { command, prefixArgs } = settings ?? { command: 'gh', prefixArgs: [] };
+  const result = spawnSync(command, [...prefixArgs, ...args], { cwd: repo, encoding: 'utf8', windowsHide: true, timeout: 60_000, maxBuffer: 20 * 1024 * 1024 });
+  if (result.error || result.status !== 0) throw roomError('GITHUB_FAILED', (result.stderr || result.error?.message || `gh ${args[0]} ${args[1]} failed`).trim().slice(-300));
+  return result.stdout;
+}
+
+// An issue or pull request of the repo's GitHub remote, read with gh; a pull request also brings its diff.
+export function githubItem(repo, kind, ref, settings) {
+  const target = githubRef(kind, ref);
+  const fields = kind === 'pr' ? 'number,title,body,url,baseRefName,headRefName' : 'number,title,body,url,comments';
+  const item = JSON.parse(gh(repo, [kind, 'view', target, '--json', fields], settings));
+  const comments = (item.comments ?? []).slice(-5).map(c => `${c.author?.login ?? 'someone'}: ${String(c.body ?? '').trim()}`).join('\n\n');
+  return {
+    number: item.number, title: String(item.title ?? ''), url: item.url, body: String(item.body ?? '').trim(),
+    ...(comments ? { comments } : {}),
+    ...(kind === 'pr' ? { base: item.baseRefName, head: item.headRefName, diff: gh(repo, ['pr', 'diff', target], settings) } : {}),
+  };
+}
+
+// A comment-only review (never approve or request changes); the body travels as a file, so nothing is shell-quoted.
+export function postPrReview(repo, number, bodyFile, settings) {
+  gh(repo, ['pr', 'review', String(number), '--comment', '--body-file', bodyFile], settings);
+}
+
 // merge: fast-forward the base branch only if the owner's checkout still sits on it; keep: leave the branch; reject: delete it.
 export function finishWorktree(repo, dir, branch, baseBranch, decision) {
   if (decision === 'merge') {
