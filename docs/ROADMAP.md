@@ -83,7 +83,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | --- | --- | --- | --- |
 | Start from an issue or PR | Paste an issue or PR number; its text and diff become the task | Backlog | Done (2026-10-24): issues start repo builds; PRs start reviews (below) |
 | PR review mode | A *Review a PR* template: `gh pr diff` in, comments posted with `gh pr review` after the owner approves | Backlog; Hermes PR-review guide | Done (2026-10-24): *Review only* with a PR; one comment-only review after a confirmation. Diffs over 12,000 characters are cut per prompt |
-| Merge-conflict arbiter | A conflicted merge in the M6f merge queue gets one arbiter turn before it fails | Hermes optional skill | S |
+| Merge-conflict arbiter | A conflicted merge in the M6f merge queue gets one arbiter turn before it fails | Hermes optional skill | Done (2026-10-24): the task's coder resolves the markers in place; checks and review judge it |
 | Several repos in one session | One plan with tasks across repos, one worktree each | Backlog | L |
 
 ### M11 — Seeing the work

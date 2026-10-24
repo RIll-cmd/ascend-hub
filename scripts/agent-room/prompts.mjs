@@ -135,6 +135,17 @@ function stageRules(stage, agent, roles, extra, roleSets = []) {
         '```json\n{"verdict": "continue", "note": "one sentence telling the coder what to try next"}\n```',
         'Use "stuck" when another round would repeat the same failure.',
       ].join('\n');
+    case 'arbiter':
+      return [
+        `You resolve a merge conflict. You ${CAPABILITIES[agent]}.`,
+        `Task ${extra.task.id} (${extra.task.title}) was built in parallel with other tasks. Merging it on top of the work merged before it conflicted in: ${extra.files.join(', ')}.`,
+        'Those files now hold git conflict markers. Between <<<<<<< and ======= is the code already merged; between ======= and >>>>>>> is this task\'s change.',
+        'Edit only those files so both changes work together, keeping the intent of each, and remove every conflict marker line.',
+        'Do not run git commit, git merge, git checkout or git reset; the room commits for you. The checks and the review run on your result.',
+        `What task ${extra.task.id} was for:`,
+        cap(extra.task.description, 2000),
+        'When you are done, reply with a short summary of how you resolved each file.',
+      ].join('\n');
     case 'reassign':
       return `You are the orchestrator. Task ${extra.task.id} (${extra.task.title}) failed twice with ${AGENT_NAMES[extra.task.assignee]}. Last reason: ${cap(extra.reason, 2000)}\nThe coders are:\n${team}\nReply with one fenced json block, either {"action": "reassign", "to": "<coder id>"} with a different coder, or {"action": "skip"}.`;
     case 'finish':

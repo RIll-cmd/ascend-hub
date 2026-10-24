@@ -62,16 +62,22 @@ export function fastForward(dir, branch) {
 }
 
 // One merge-queue step: the task branch lands as a single commit; a conflict leaves the session worktree as it was.
-export function squashMerge(dir, branch, message) {
+// keepConflict leaves a conflicted merge in place (markers in the files) for an arbiter; otherwise it is rolled back.
+export function squashMerge(dir, branch, message, { keepConflict = false } = {}) {
   try {
     git(dir, ['merge', '--squash', '-q', branch]);
   } catch (error) {
     const files = git(dir, ['diff', '--name-only', '--diff-filter=U']).split('\n').filter(Boolean);
-    rollback(dir);
+    if (!files.length || !keepConflict) rollback(dir);
     if (!files.length) throw error;
     return { conflict: files };
   }
   return { commit: commitAll(dir, message) };
+}
+
+// The files that still hold a git conflict marker line; a deleted file counts as resolved.
+export function conflictMarkers(dir, files) {
+  return files.filter(file => existsSync(join(dir, file)) && /^(<{7}|={7}|>{7})(?: |$)/m.test(readFileSync(join(dir, file), 'utf8')));
 }
 
 export function lastCommitDiff(dir) {

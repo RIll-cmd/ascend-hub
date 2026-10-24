@@ -6,7 +6,7 @@ import { errorText, RATE_LIMITED, shellCommands, skillReads, subagentEvent, usag
 import { dangerousCommand } from './guard.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateProgress, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, conflictMarkers, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
@@ -874,8 +874,13 @@ export class RoomSession {
       task.commit = null;
       task.passed = [];
     };
-    const merged = squashMerge(state.projectDir, branch, message);
-    if (merged.conflict) return this.taskFailed(task, `its changes conflict with work merged before it (${merged.conflict.join(', ')}). Redo it on top of the current code.`);
+    const merged = squashMerge(state.projectDir, branch, message, { keepConflict: true });
+    if (merged.conflict) {
+      const resolved = await this.arbitrate(task, merged.conflict, message, before);
+      if (resolved === null) return;
+      if (!resolved.commit) return this.taskFailed(task, `its changes conflict with work merged before it (${merged.conflict.join(', ')}) and ${resolved.why}. Redo it on top of the current code.`);
+      merged.commit = resolved.commit;
+    }
     if (!merged.commit) return this.taskFailed(task, 'nothing was left to merge');
     task.commit = merged.commit;
     this.say('room', `Merged task ${task.id} as ${task.commit} "${message}".`);
@@ -897,6 +902,29 @@ export class RoomSession {
     }
     task.status = 'done';
     this.save();
+  }
+
+  // One arbiter turn for a conflicted merge-queue merge: the task's coder resolves the markers in place, and the checks and
+  // review that follow judge the result. { commit }, { why } when it did not resolve, or null when the session paused or stopped.
+  async arbitrate(task, files, message, before) {
+    const { projectDir } = this.state;
+    const agent = task.assignee;
+    this.say('room', `Task ${task.id} conflicts with work merged before it (${files.join(', ')}). ${AGENT_NAMES[agent]} gets one turn to resolve it.`,
+      { kind: 'assign', by: this.state.roles.orchestrator, to: [agent] });
+    const text = await this.turn(agent, 'edit', this.prompt('arbiter', agent, { task, files }), 'resolving a conflict', [], { task });
+    const undo = why => {
+      rollback(projectDir);
+      resetTo(projectDir, before);
+      return why;
+    };
+    if (text === null) return undo(null);
+    const left = conflictMarkers(projectDir, files);
+    if (left.length) return undo({ why: `the arbiter left conflict markers in ${left.join(', ')}` });
+    // Codex and Antigravity may commit themselves; that commit is the resolution.
+    const commit = commitAll(projectDir, message) ?? (headCommit(projectDir) !== before ? headCommit(projectDir) : null);
+    if (!commit) return undo({ why: 'the arbiter left nothing to commit' });
+    this.say('room', `${AGENT_NAMES[agent]} resolved the conflict in ${files.join(', ')}.`);
+    return { commit };
   }
 
   async taskFailed(task, reason) {
