@@ -59,7 +59,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 
 | Feature | What it gives | Source | Size |
 | --- | --- | --- | --- |
-| Phone push when a gate waits | One `POST` to a private ntfy topic whenever the session's `attention` changes, with the gate summary | Backlog; Hermes ntfy | S |
+| Phone push when a gate waits | One `POST` to a private ntfy topic whenever the session's `attention` changes, with the gate summary | Backlog; Hermes ntfy | Done (2026-10-24): `notify.ntfy` in settings |
 | Answer a gate from the phone | A signed, single-use link per decision, or a paired chat bot (Core's `phone-chat-discord` worktrees). Needs pairing and an allowlist first | Hermes gateway | L |
 | Voice-note answers | A voice note on the phone becomes a gate reply through Vision's faster-whisper | Hermes voice memos | M |
 | Publish the session summary as a page | A shareable read-only summary after the result gate | Backlog | M |
@@ -69,7 +69,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Feature | What it gives | Source | Size |
 | --- | --- | --- | --- |
 | Auto-continue when a limit window resets | A paused session resumes by itself when `quota.json` shows the window reset | Backlog; Hermes `/loop` | M |
-| Requeue on rate limit | A turn that fails only on a rate limit or 5xx is retried later without counting as a failed round | Hermes Kanban exit code 75 | S |
+| Requeue on rate limit | A turn that fails only on a rate limit or 5xx is retried later without counting as a failed round | Hermes Kanban exit code 75 | Done (2026-10-24): main turns pause and retry at the reset; race and parallel attempts still fail |
 | Limit-aware assignment | Work moves from an agent above 90% of a window to another coder | Backlog; Hermes fallback providers | M |
 | Session queue | Start several sessions; they run one after another | Backlog; Hermes Kanban | L |
 | Scheduled sessions | A schedule in room settings, for example a nightly *Review only* session on a repo | Backlog; Hermes cron | M |
@@ -112,7 +112,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Skills the agents write | The orchestrator proposes a new skill at the result gate; the owner approves it | Hermes self-written skills | M |
 | Skill use counts and stale skills | Use counts per skill and a stale mark in the role-set UI | Hermes curator | S |
 | Advisers and one actor | A build variant where references advise and one agent acts | Hermes Mixture of Agents | M |
-| Dangerous-command guard | Edit turns block `rm -rf`, `git push --force` and `git reset --hard` outside the session worktree | Hermes command approval | S |
+| Dangerous-command guard | Edit turns block `rm -rf`, `git push --force` and `git reset --hard` outside the session worktree | Hermes command approval | Done (2026-10-24): kills the turn when the CLI reports the command |
 | Prompt-injection scan of fetched skills | Flag suspicious instructions on the staged card before Install | Hermes context-file scan | S |
 
 ### M13 — Hub and Vision polish
@@ -131,7 +131,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 
 - A stopped session's in-progress task still shows `running` on the board.
 - `npm start` (Wrangler) does not start the room.
-- `mergeSettings` in `scripts/agent-room/agents.mjs` takes `timeouts` from `settings.json` without validating them.
+- Done (2026-10-24): `mergeSettings` validates `timeouts` (1 s to 4 h) and `notify`, keeping defaults with a warning.
 - Nine minor findings from the Agent Room final review were deferred; they are listed only in that session's final message. Recover and file them.
 - Not live-tested: the memory PR (a real push), the result-gate memory picker, Antigravity sub-agents and skill reads. Hub and Vision keep an untracked root `AGENTS.md`, so a memory PR there would clash with it.
 - The desktop `Test-Supervisor.ps1` is flaky (port in use in its restart cycle).

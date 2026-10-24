@@ -30,10 +30,10 @@ test('default settings point at the verified executables', () => {
 });
 
 test('mergeSettings overrides per agent without dropping defaults', () => {
-  const merged = mergeSettings(defaultSettings({}), { agents: { codex: { model: 'x' } }, timeouts: { build: 5 } });
+  const merged = mergeSettings(defaultSettings({}), { agents: { codex: { model: 'x' } }, timeouts: { build: 5000 } });
   assert.equal(merged.agents.codex.model, 'x');
   assert.equal(merged.agents.codex.command, process.execPath);
-  assert.deepEqual(merged.timeouts, { chat: 180000, build: 5, debate: 600000, check: 900000 });
+  assert.deepEqual(merged.timeouts, { chat: 180000, build: 5000, debate: 600000, check: 900000 });
 });
 
 test('role mode maps to each CLI permission flag', () => {

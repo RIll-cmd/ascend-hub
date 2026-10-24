@@ -2,7 +2,8 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
-import { skillReads, subagentEvent, usageEvent } from './events.mjs';
+import { errorText, RATE_LIMITED, shellCommands, skillReads, subagentEvent, usageEvent } from './events.mjs';
+import { dangerousCommand } from './guard.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
 import { branchDiff, commitAll, commitDiff, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, openPullRequest, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
@@ -10,12 +11,15 @@ import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
 import { addNotes, memoryKey, readMemory, splitProposal } from './memory.mjs';
-import { claudeQuota, latestCodexQuota } from './quota.mjs';
+import { claudeQuota, latestCodexQuota, retryTime } from './quota.mjs';
 import { activeRoleSets, installSkills } from './skills.mjs';
 import { capturePreview, findBrowser, validatePreview } from './preview.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
 export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
+
+// A rate-limited session retries by itself this many times in a row, then waits for the owner's Retry.
+const AUTO_RETRIES = 6;
 
 // Only Claude has a working sub-agent switch; it defaults to on.
 const others = agent => AGENT_IDS.filter(id => id !== agent);
@@ -56,6 +60,9 @@ export class RoomSession {
     this.controllers = new Set();
     this.turnUsage = {};
     this.turnReads = {};
+    this.turnErrors = {};
+    this.lastQuota = {};
+    this.retryTimer = null;
     this.loop = null;
     this.lastSave = 0;
     this.startLabels = new Map();
@@ -139,6 +146,7 @@ export class RoomSession {
     state.active = null;
     const session = new RoomSession({ dir, settings, runTurn, state, transcript: readJsonLines(join(dir, 'transcript.jsonl')) });
     session.save();
+    session.scheduleRetry();
     return session;
   }
 
@@ -146,7 +154,18 @@ export class RoomSession {
     // Every stage change is saved, so this is where its start time is recorded for the workflow view.
     const log = (this.state.stageLog ??= []);
     if (log.at(-1)?.stage !== this.state.stage) log.push({ stage: this.state.stage, at: new Date().toISOString() });
+    this.noticeAttention();
     writeJsonAtomic(join(this.dir, 'state.json'), this.state);
+  }
+
+  // Tells onAttention (the phone push) once each time the room starts waiting: a new gate visit or a new pause.
+  // The key is saved, so a restart does not push the same gate again.
+  noticeAttention() {
+    const now = attention(this.state, this.transcript);
+    const key = !now ? null : now.kind === 'pause' ? `pause:${this.state.pause.at}` : `gate:${this.state.stage}:${this.state.stageLog.length}`;
+    if (key === (this.state.attentionKey ?? null)) return;
+    this.state.attentionKey = key;
+    if (now) this.onAttention?.(now, this.state);
   }
 
   diff(commit) {
@@ -192,8 +211,13 @@ export class RoomSession {
     const used = usageEvent(agent, event);
     if (used) this.turnUsage[agent] = used;
     for (const id of skillReads(agent, event)) this.turnReads[agent]?.add(id);
+    const failed = errorText(agent, event);
+    if (failed) this.turnErrors[agent]?.push(failed);
     const quota = agent === 'claude' ? claudeQuota(event) : null;
-    if (quota) this.onQuota?.('claude', quota);
+    if (quota) {
+      this.lastQuota.claude = quota;
+      this.onQuota?.('claude', quota);
+    }
     // Codex writes its windows to its own session log; refresh after each Codex turn.
     if (agent === 'codex' && event.type === 'turn.completed' && this.settings.codexHome) {
       const latest = latestCodexQuota(this.settings.codexHome);
@@ -318,6 +342,7 @@ export class RoomSession {
       if (!side) this.setActive(agent, activity);
       this.turnUsage[agent] = null;
       this.turnReads[agent] = new Set();
+      this.turnErrors[agent] = [];
       const controller = new AbortController();
       this.controllers.add(controller);
       const chosen = this.state.models?.[agent];
@@ -327,14 +352,26 @@ export class RoomSession {
       });
       const { timeouts } = this.settings;
       const timeoutMs = mode === 'edit' ? timeouts.build : this.state.mode === 'debate' ? timeouts.debate : timeouts.chat;
-      const onEvent = event => this.onAgentEvent(agent, event);
+      // shortcut: the command is seen when the CLI reports it, so a fast one may already have run; the turn is still killed.
+      let blocked = null;
+      const onEvent = event => {
+        this.onAgentEvent(agent, event);
+        if (blocked) return;
+        blocked = shellCommands(agent, event).map(c => dangerousCommand(c, cwd)).find(Boolean) ?? null;
+        if (blocked) controller.abort();
+      };
       const result = await this.runTurn(invocation, { cwd, timeoutMs, signal: controller.signal, onEvent });
       this.controllers.delete(controller);
       if (task) this.noteReads(task, agent);
-      if (this.state.stage === 'stopped' || result.aborted) return null;
+      if (this.state.stage === 'stopped') return null;
+      if (blocked) return this.blockedTurn(agent, blocked, side, result.durationMs);
+      if (result.aborted) return null;
+      const limited = result.ok ? null : this.rateLimit(agent, result);
+      if (limited) return this.limitedTurn(agent, limited, side);
       if (!side) this.setActive(null);
       this.countTurn(agent, result.durationMs);
       if (result.ok) {
+        if (this.state.rateRetries) this.state.rateRetries = 0;
         this.say(agent, result.text, { to: typeof to === 'function' ? to(result.text) : to, usage: this.turnUsage[agent] });
         return result.text;
       }
@@ -345,6 +382,57 @@ export class RoomSession {
     if (side) return null;
     this.pauseWith(`${AGENT_NAMES[agent]} failed twice.`);
     return null;
+  }
+
+  blockedTurn(agent, { command, why }, side, durationMs) {
+    if (!side) this.setActive(null);
+    this.countTurn(agent, durationMs);
+    this.say('room', `Stopped ${AGENT_NAMES[agent]}'s turn: it ran \`${command.slice(0, 300)}\`, which ${why}.`);
+    // A race or parallel attempt just fails; the main turn pauses so the owner decides.
+    if (!side) this.pauseWith(`${AGENT_NAMES[agent]} tried a command the room does not allow (it ${why}). Retry runs the step again; Stop ends the session.`, { kind: 'guard', agent });
+    return null;
+  }
+
+  // { retryAt } when a failed turn was the provider refusing work for now, else null.
+  rateLimit(agent, result) {
+    const text = [...(this.turnErrors[agent] ?? []), result.stderr, result.error].filter(Boolean).join('\n');
+    if (result.timedOut || !RATE_LIMITED.test(text)) return null;
+    const quota = agent === 'codex' && this.settings.codexHome ? latestCodexQuota(this.settings.codexHome) : this.lastQuota[agent];
+    return { retryAt: retryTime(text, quota) };
+  }
+
+  // A rate-limited turn is not a failure: it is not counted and does not use up the retry; the session waits and runs the step again.
+  limitedTurn(agent, { retryAt }, side) {
+    if (!side) this.setActive(null);
+    const name = AGENT_NAMES[agent];
+    // shortcut: a race or parallel attempt that hits a limit counts as a failed attempt; only main turns wait.
+    if (side) {
+      this.say('room', `${name} hit a rate limit; this attempt counts as failed.`);
+      return null;
+    }
+    const tries = this.state.rateRetries ?? 0;
+    const when = new Date(retryAt).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    if (tries >= AUTO_RETRIES) {
+      this.pauseWith(`${name} is still rate-limited after ${tries} automatic retries. Press Retry when it has quota again.`, { kind: 'rate-limit', agent, retryAt: null });
+    } else {
+      this.pauseWith(`${name} hit a rate limit. The room retries by itself at ${when}, or press Retry.`, { kind: 'rate-limit', agent, retryAt });
+    }
+    this.scheduleRetry();
+    return null;
+  }
+
+  scheduleRetry() {
+    clearTimeout(this.retryTimer);
+    const pause = this.state.pause;
+    if (pause?.kind !== 'rate-limit' || !pause.retryAt || TERMINAL.has(this.state.stage)) return;
+    const wait = Math.min(Math.max(0, Date.parse(pause.retryAt) - Date.now()), 2 ** 31 - 1);
+    this.retryTimer = setTimeout(() => {
+      if (this.state.pause !== pause) return;
+      this.state.rateRetries = (this.state.rateRetries ?? 0) + 1;
+      this.say('room', 'Retrying after the rate limit.');
+      this.resume({ action: 'retry' });
+    }, wait);
+    this.retryTimer.unref?.();
   }
 
   parseWith(text, validate) {
@@ -942,6 +1030,7 @@ export class RoomSession {
   resume({ action, agent } = {}) {
     const state = this.state;
     if (!state.pause) throw roomError('NOT_PAUSED');
+    clearTimeout(this.retryTimer);
     if (action === 'stop') return this.stop();
     if (action === 'reassign') {
       const task = state.stage === 'build' ? state.plan?.tasks.find(t => t.status !== 'done' && t.status !== 'skipped') : null;
@@ -969,6 +1058,7 @@ export class RoomSession {
     if (TERMINAL.has(this.state.stage)) return;
     this.state.stage = 'stopped';
     this.state.pause = null;
+    clearTimeout(this.retryTimer);
     this.state.active = null;
     for (const controller of this.controllers) controller.abort();
     this.say('room', 'Owner stopped the session.');

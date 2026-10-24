@@ -67,6 +67,19 @@ export function latestCodexQuota(home) {
   }
 }
 
+const RETRY_FALLBACK_MS = 10 * 60_000;
+
+// When a rate-limited agent may try again: a reset time in the error ("...limit reached|1792000000"), else the reset of
+// its nearly full window, else in ten minutes. Never in the past.
+export function retryTime(errorText, quota, now = Date.now()) {
+  const epoch = /\|(\d{10})\b/.exec(String(errorText ?? ''));
+  const resets = [
+    ...(epoch ? [Number(epoch[1]) * 1000] : []),
+    ...[quota?.fiveHour, quota?.weekly].filter(w => w?.usedPercent >= 95 && w.resetsAt).map(w => Date.parse(w.resetsAt)),
+  ].filter(t => t > now);
+  return new Date(resets.length ? Math.min(...resets) + 60_000 : now + RETRY_FALLBACK_MS).toISOString();
+}
+
 const NAMES = { codex: 'Codex', claude: 'Claude', agy: 'Antigravity' };
 
 export function quotaWarning(quota = {}) {

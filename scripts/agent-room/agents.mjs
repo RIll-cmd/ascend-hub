@@ -2,6 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseJsonLine, streamResultText } from './events.mjs';
+import { cleanNotify } from './notify.mjs';
 import { roomError } from './paths.mjs';
 
 export const CLAUDE_ALLOWED_TOOLS = ['Bash(node:*)', 'Bash(npm:*)', 'Bash(npx:*)', 'Bash(git status:*)', 'Bash(git diff:*)', 'Bash(git log:*)'];
@@ -29,11 +30,31 @@ export function defaultSettings(env = process.env) {
   };
 }
 
-export function mergeSettings(base, override = {}) {
+// A turn or check gets 1 second to 4 hours; anything else in settings.json keeps the default.
+const TIMEOUT_RANGE = [1_000, 14_400_000];
+
+function cleanTimeouts(base, value, warn) {
+  if (value === undefined) return { ...base };
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    warn('settings.json: "timeouts" must be an object of milliseconds; using the defaults.');
+    return { ...base };
+  }
+  const timeouts = { ...base };
+  const [min, max] = TIMEOUT_RANGE;
+  for (const [name, ms] of Object.entries(value)) {
+    if (!(name in base)) warn(`settings.json: unknown timeout "${name}" ignored.`);
+    else if (!Number.isInteger(ms) || ms < min || ms > max) warn(`settings.json: timeout "${name}" must be a whole number of milliseconds from ${min} to ${max}; using ${base[name]}.`);
+    else timeouts[name] = ms;
+  }
+  return timeouts;
+}
+
+export function mergeSettings(base, override = {}, warn = console.warn) {
   return {
     ...base,
     ...override,
-    timeouts: { ...base.timeouts, ...override.timeouts },
+    timeouts: cleanTimeouts(base.timeouts, override.timeouts, warn),
+    notify: cleanNotify(override.notify, warn),
     agents: Object.fromEntries(Object.entries(base.agents).map(([id, agent]) => [id, { ...agent, ...override.agents?.[id] }])),
   };
 }

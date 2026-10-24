@@ -56,6 +56,33 @@ export function skillReads(agentId, event) {
   return [...new Set(parts.flatMap(p => [...p.matchAll(SKILL_FILE)].map(m => m[1])))];
 }
 
+// The shell commands an agent starts in one stream event: Claude's Bash calls, Codex's command executions, Antigravity's tool commands.
+// shortcut: Antigravity's tool parameter names are unverified, so any string parameter whose name contains "command" counts.
+export function shellCommands(agentId, event) {
+  if (agentId === 'claude' && event.type === 'assistant') {
+    return (event.message?.content ?? []).filter(b => b?.type === 'tool_use' && b.name === 'Bash' && typeof b.input?.command === 'string').map(b => b.input.command);
+  }
+  if (agentId === 'codex' && event.item?.type === 'command_execution' && typeof event.item.command === 'string') return [event.item.command];
+  if (agentId === 'agy' && event.event === 'step_update' && event.step_update?.step_type === 'tool') {
+    return Object.entries(event.step_update.tool_info?.parameters ?? {}).filter(([k, v]) => /command/i.test(k) && typeof v === 'string').map(([, v]) => v);
+  }
+  return [];
+}
+
+// A provider refusing work for now (usage or rate limit, overload), as the CLIs word it; only checked on failed turns.
+export const RATE_LIMITED = /usage limit|hit your (?:usage )?limit|rate[ _-]?limit|too many requests|\b429\b|resource[_ ]exhausted|quota exceeded|overloaded|\b529\b/i;
+
+// Error text a CLI reports in its stream, never what the agent writes: Claude's error result and rejected rate-limit event,
+// Codex's error and turn.failed events, Antigravity's failed result.
+export function errorText(agentId, event) {
+  if (agentId === 'claude' && event.type === 'result' && event.is_error) return typeof event.result === 'string' ? event.result : 'error';
+  if (agentId === 'claude' && event.type === 'rate_limit_event' && event.rate_limit_info?.status === 'rejected') return 'rate limit rejected';
+  if (agentId === 'codex' && event.type === 'error') return String(event.message ?? 'error');
+  if (agentId === 'codex' && event.type === 'turn.failed') return String(event.error?.message ?? 'turn failed');
+  if (agentId === 'agy' && event.event === 'result' && event.result && event.result.status !== 'SUCCESS') return JSON.stringify(event.result.error ?? event.result.response ?? event.result.status ?? 'error');
+  return null;
+}
+
 export function claudeResultText(event) {
   return event.type === 'result' && typeof event.result === 'string' ? event.result : null;
 }

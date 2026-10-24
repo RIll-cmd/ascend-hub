@@ -10,6 +10,7 @@ import { listDebateFolders, listRepos, resolveRepo, roomDataDir, roomError } fro
 import { finishWorktree, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
+import { attentionNotifier } from './notify.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
 import { ghToken, stageSkill } from './github.mjs';
 import { discardStaged, installStaged, listSkills, readRoleSets, removeSkill, viewSkill, writeRoleSets } from './skills.mjs';
@@ -126,7 +127,14 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   };
   // A Claude probe is a real (tiny) turn, so a manual refresh asks at most once a minute.
   let claudeProbedAt = 0;
-  const watch = s => { if (s) s.onQuota = recordQuota; return s; };
+  const notify = attentionNotifier(settings.notify, fetchImpl);
+  const watch = s => {
+    if (s) {
+      s.onQuota = recordQuota;
+      s.onAttention = notify;
+    }
+    return s;
+  };
   let lastRequest = Date.now();
   // gh can be slow to answer the first time, so a token once found is kept; until then each fetch asks again.
   let ghAuth = null;

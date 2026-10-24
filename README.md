@@ -292,7 +292,8 @@ Optional overrides of the defaults in `scripts/agent-room/agents.mjs`:
 | `buildsRoot` | `D:\ascend-builds` | Where new projects and session worktrees are created. Also set by `ASCEND_BUILDS_ROOT`. |
 | `debateFolders` | the three Ascend repos | Folders that debates may read and repo sessions may branch from. |
 | `checks` | per repo | Suggested check command for each repo. |
-| `timeouts` | chat 3 min, build 15 min, debate 10 min, check 15 min | Time limit per agent turn or check run, in milliseconds. |
+| `timeouts` | chat 3 min, build 15 min, debate 10 min, check 15 min | Time limit per agent turn or check run, in milliseconds, from 1,000 to 14,400,000 (4 hours). A value outside that range keeps its default and the room logs a warning. |
+| `notify` | off | Phone pushes through [ntfy](https://ntfy.sh): `{ "ntfy": "https://ntfy.sh/<private-topic>" }`, or a self-hosted server's topic URL. The room posts once each time a gate opens or a session pauses. The project name and gate summary go to that server, so pick a long, random topic. |
 | `limits` | 120 minutes, 80 turns, 3 rounds | Limits for sessions started without their own (the start form always sends its values). |
 | `agents` | global npm installs | Command for each CLI, if yours live elsewhere. |
 
@@ -306,6 +307,8 @@ The room keeps its sessions, project memory (`memory/<repo>.md`) and last-known 
 | `/room` says *Room offline* | Start Hub with `npm run serve` or the desktop shortcut, or run `node scripts/agent-room/server.mjs` on its own. |
 | *Not ready: claude, agy.* when starting | The room is still probing the CLIs (a few seconds after start), or a CLI is missing or signed out. Run it once in a terminal to check. |
 | A session paused | Read the reason in the gate panel. **Retry** continues and grants more turns, minutes or one more round; **Reassign** hands the task to another coder. |
+| Paused: *hit a rate limit* | The agent's subscription or provider refused work for now. The turn is not counted, and the room retries by itself at the reset time it knows (or in 10 minutes), up to six times in a row. **Retry** tries at once; **Reassign** moves the task to another coder. |
+| Paused: *tried a command the room does not allow* | An agent ran `git push`, `git reset --hard`, `git clean -f`, `npm publish` or a recursive delete outside the session folder. The room killed that turn. Check the transcript, then **Retry** or **Stop**. |
 | *MERGE_REFUSED* at the result gate | Your checkout moved off the base branch, or the base branch moved. Switch back, or choose **Keep branch** and merge yourself. |
 | `localhost` does not load in development | The dev server may listen on IPv6 only. Use `http://[::1]:5173`. |
 
@@ -367,6 +370,7 @@ desktop/tests/Test-SessionReplacement.ps1
 - Browser code never receives the Shelf read credential, producer credentials or the room token.
 - Repo sessions work in separate git worktrees. The room never edits your checkout, and a merge is fast-forward only.
 - Agent turns run with each CLI's own permission mode: read-only for discussion, planning, review and debates, edit mode only for coding in the session folder. Git hooks and signing are disabled for the room's own git calls.
+- The room watches every shell command an agent reports and kills the turn on pushes, hard resets, `git clean -f`, branch deletes, `npm publish` and recursive deletes of the session folder, its `.git` or anything outside it. It sees a command when the CLI reports it, so a very fast command may already have run; the per-task commits and fast-forward-only merges remain the real safety net.
 - Status reporters send lifecycle metadata only, never prompts, responses, transcripts, code, terminal output or raw errors.
 - The quota meter reads only the `rate_limits` field from Codex's session logs and Claude's rate-limit events.
 - `.gitignore` excludes `.env.local`, `.sites-runtime/`, build output and scratch files. Review staged changes before publishing; ignore rules do not protect secrets that are already tracked.
