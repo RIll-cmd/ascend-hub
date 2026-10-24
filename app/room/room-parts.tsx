@@ -253,6 +253,8 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [parallel, setParallel] = useState(false);
   const [raceGate, setRaceGate] = useState(false);
   const [keepGoing, setKeepGoing] = useState(false);
+  const [lint, setLint] = useState("");
+  const [coverage, setCoverage] = useState("");
   // A GitHub issue (repo builds) or pull request (Review only), as a number or link; the room reads it with gh.
   const [github, setGithub] = useState("");
   const [template, setTemplate] = useState<keyof typeof TEMPLATE_LABELS>("feature");
@@ -275,12 +277,12 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
     : { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
   const canStart = missing.length === 0 && !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
+    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -347,6 +349,14 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
             <label title="Runs in the project folder after each task; a failure sends the task back with the output.">
               Checks after every task{b.needsCheck ? " (required)" : ""}
               <Input value={b.checkCommand} onChange={e => b.setCheck(e.target.value)} maxLength={500} placeholder="npm test" spellCheck={false} />
+            </label>
+            <label title="Runs after a task's checks pass. Shown per task in Workflow; never sends a task back.">
+              Lint after every task (optional)
+              <Input value={b.lint} onChange={e => b.setLint(e.target.value)} maxLength={500} placeholder="npx eslint ." spellCheck={false} />
+            </label>
+            <label title="Runs after a task's checks pass. The total is read from a c8, istanbul, Node test-runner or pytest-cov summary and shown per task in Workflow.">
+              Coverage after every task (optional)
+              <Input value={b.coverage} onChange={e => b.setCoverage(e.target.value)} maxLength={500} placeholder="npx c8 npm test" spellCheck={false} />
             </label>
             <SessionSets value={b.sessionSets} onChange={b.setSessionSets} />
             <fieldset className="agent-room-limits is-stacked" title="Before a design review the room starts the app, opens the URL in headless Edge or Chrome and gives the reviewer a screenshot. Leave empty to review the diff only.">

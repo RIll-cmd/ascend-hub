@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { skillsReadLine, workflowView } from "../../app/room/workflow-view";
+import { coverageDelta, skillsReadLine, workflowView } from "../../app/room/workflow-view";
 import type { Message, SessionView } from "../../app/room/room-types";
 
 const t = (s: number) => new Date(Date.UTC(2026, 9, 14, 8, 0, s)).toISOString();
@@ -124,4 +124,14 @@ test("a task's skill reads read as one line per agent, and nothing when none wer
   assert.equal(skillsReadLine({ claude: ["react-best-practices", "magic-ui"], codex: ["code-review"] }), "Codex: code-review · Claude: react-best-practices, magic-ui");
   assert.equal(skillsReadLine({}), null);
   assert.equal(skillsReadLine(undefined), null);
+});
+
+test("coverage change is measured against the latest earlier task that reported a total", () => {
+  const t = (id: number, percent?: number | null) => ({ id, title: "t", assignee: "claude" as const, description: "", status: "done" as const, attempts: 0, commit: null, notes: "",
+    ...(percent === undefined ? {} : { coverage: { ok: true, ms: 1, percent } }) });
+  const tasks = [t(1, 70), t(2), t(3, null), t(4, 72.4), t(5, 71)];
+  assert.equal(coverageDelta(tasks, tasks[0]), null, "the first one has nothing to compare with");
+  assert.equal(coverageDelta(tasks, tasks[1]), null);
+  assert.equal(coverageDelta(tasks, tasks[3]), 2.4);
+  assert.equal(coverageDelta(tasks, tasks[4]), -1.4);
 });

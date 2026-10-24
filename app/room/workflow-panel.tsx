@@ -50,6 +50,12 @@ function TaskNode({ task }: { task: WorkflowTask }) {
             {task.rounds > 0 && <span className="agent-room-badge" title="Coder rounds on this task">{task.rounds} round{task.rounds === 1 ? "" : "s"}{looping ? " · looping?" : ""}</span>}
             {task.reviews > 0 && <span className="agent-room-badge" title="Reviewer replies">{task.reviews} review{task.reviews === 1 ? "" : "s"}</span>}
             {task.check && <span className={`agent-room-badge${task.check.ok ? "" : " is-problem"}`}>{task.check.ok ? "checks ✓" : "checks ✗"}</span>}
+            {task.lint && <span className={`agent-room-badge${task.lint.ok ? "" : " is-problem"}`} title={task.lint.summary}>{task.lint.ok ? "lint ✓" : "lint ✗"}</span>}
+            {task.coverage?.percent != null && (
+              <span className={`agent-room-badge${task.coverageDelta !== null && task.coverageDelta < 0 ? " is-problem" : ""}`} title="Coverage after this task, and the change since the previous measured task">
+                coverage {task.coverage.percent}%{task.coverageDelta ? ` (${task.coverageDelta > 0 ? "+" : ""}${task.coverageDelta})` : ""}
+              </span>
+            )}
             {task.tokens > 0 && <span>{formatTokens(task.tokens)} tokens</span>}
             {task.ms !== null && <span>{formatMs(task.ms)}</span>}
           </span>
@@ -60,6 +66,17 @@ function TaskNode({ task }: { task: WorkflowTask }) {
           </p>
         )}
         {task.check && !task.check.ok && task.check.output && <pre className="agent-room-diff">{task.check.output.slice(-2000)}</pre>}
+        {task.lint && (
+          <p className={task.lint.ok ? "agent-room-hint" : "agent-room-hint is-problem"}>
+            Lint {task.lint.ok ? "clean" : `failed (exit ${task.lint.code ?? "none"})`} in {formatMs(task.lint.ms)}{task.lint.summary ? `: ${task.lint.summary}` : ""}
+          </p>
+        )}
+        {task.coverage && (
+          <p className="agent-room-hint">
+            {task.coverage.percent === null ? "Coverage ran, but no total was found in its output." : `Coverage ${task.coverage.percent}%`}
+            {task.coverageDelta !== null ? `, ${task.coverageDelta >= 0 ? "+" : ""}${task.coverageDelta} points since the previous task` : ""} ({formatMs(task.coverage.ms)}). Full output in the Checks tab.
+          </p>
+        )}
         {task.raced && (
           <p className="agent-room-hint">
             Raced: {task.raced.attempts.map(a => `${AGENT_NAMES[a.agent]} ${a.ok ? "✓" : `✗ (${a.why})`}`).join(", ")}.

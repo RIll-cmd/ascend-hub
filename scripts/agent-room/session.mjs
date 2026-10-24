@@ -6,7 +6,7 @@ import { errorText, RATE_LIMITED, shellCommands, skillReads, subagentEvent, usag
 import { dangerousCommand } from './guard.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateProgress, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, conflictMarkers, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge, workingDiff } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, conflictMarkers, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge, workingDiff, coveragePercent } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
@@ -90,6 +90,11 @@ export class RoomSession {
     const models = cleanModels(body.models);
     const limits = cleanLimits(body.limits, settings.limits ?? DEFAULT_LIMITS);
     if (check !== undefined && check !== null && (typeof check !== 'string' || check.length > 500)) throw roomError('CHECK_INVALID');
+    // Optional lint and coverage commands: measured after each task, shown in Workflow, never blocking a task.
+    for (const name of ['lint', 'coverage']) {
+      const value = body[name];
+      if (value !== undefined && value !== null && (typeof value !== 'string' || value.length > 500)) throw roomError(`${name.toUpperCase()}_INVALID`);
+    }
     if (body.parallel !== undefined && body.parallel !== null && typeof body.parallel !== 'boolean') throw roomError('PARALLEL_INVALID');
     if (body.raceGate !== undefined && body.raceGate !== null && typeof body.raceGate !== 'boolean') throw roomError('RACE_GATE_INVALID');
     if (body.keepGoing !== undefined && body.keepGoing !== null && typeof body.keepGoing !== 'boolean') throw roomError('KEEP_GOING_INVALID');
@@ -132,7 +137,7 @@ export class RoomSession {
       task: found ? `${ownTask.trim() || `Resolve GitHub issue #${found.number}.`}\n\n${fromGitHub('GITHUB ISSUE', found)}` : ownTask.trim(),
       ...(found ? { issue: { number: found.number, title: found.title, url: found.url } } : {}),
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
-      repo: repoInfo, check: check?.trim() || null, limits, turns: 0, workMs: 0, usage: {}, template, models,
+      repo: repoInfo, check: check?.trim() || null, lint: body.lint?.trim() || null, coverage: body.coverage?.trim() || null, limits, turns: 0, workMs: 0, usage: {}, template, models,
       // A bug fix is a strict red-then-green sequence, so it never runs tasks in parallel.
       parallel: body.parallel === true && template !== 'bugfix', roleSets, preview,
       // The owner picks among race attempts that pass, instead of the judge's pick merging at once.
@@ -614,6 +619,7 @@ export class RoomSession {
           if (!result.ok) return this.taskFailed(task, `the checks failed (${state.check}):\n${result.output.slice(-3000)}`);
         }
       }
+      if (!(await this.measure(task))) return;
       if (!this.reviewPasses(task).length) {
         task.status = 'done';
         this.save();
@@ -684,23 +690,51 @@ export class RoomSession {
   // The owner's check command, stoppable like an agent turn; null means the session stopped meanwhile.
   // label says what was checked ("task 2", "before any change"); every run's full output is kept for the Checks pane.
   async runChecks(dir = this.state.projectDir, label = 'checks') {
+    if (dir === this.state.projectDir) this.say('room', `Running checks: ${this.state.check}`);
+    return this.runCommand(this.state.check, dir, label);
+  }
+
+  // Runs one of the session's commands (checks, lint, coverage) and keeps its full output for the Checks tab; null when stopped.
+  async runCommand(command, dir, label) {
     const controller = new AbortController();
     this.controllers.add(controller);
-    if (dir === this.state.projectDir) this.say('room', `Running checks: ${this.state.check}`);
     const started = new Date().toISOString();
-    const { log, ...result } = await runCheck(dir, this.state.check, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: controller.signal });
+    const { log, ...result } = await runCheck(dir, command, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: controller.signal });
     this.controllers.delete(controller);
-    this.recordCheck(label, started, result, log);
+    this.recordCheck(label, command, started, result, log);
     return this.state.stage === 'stopped' ? null : result;
   }
 
-  recordCheck(label, at, { ok, code, ms }, log) {
+  recordCheck(label, command, at, { ok, code, ms }, log) {
     const runs = (this.state.checkRuns ??= []);
     const n = runs.length + 1;
     mkdirSync(join(this.dir, 'checks'), { recursive: true });
     writeFileSync(join(this.dir, 'checks', `${n}.log`), log, 'utf8');
-    runs.push({ n, at, label, command: this.state.check, ok, code, ms, chars: log.length });
+    runs.push({ n, at, label, command, ok, code, ms, chars: log.length });
     this.save();
+  }
+
+  // The lint and coverage commands after a task's checks passed: recorded on the task, told in the room, never blocking it.
+  // false when the session stopped meanwhile.
+  async measure(task) {
+    const { lint, coverage, projectDir } = this.state;
+    const said = [];
+    if (lint) {
+      const r = await this.runCommand(lint, projectDir, `task ${task.id} lint`);
+      if (r === null) return false;
+      const summary = r.output.split('\n').map(l => l.trim()).filter(Boolean).at(-1)?.slice(0, 200) ?? '';
+      task.lint = { ok: r.ok, code: r.code, ms: r.ms, summary };
+      said.push(r.ok ? 'lint clean' : `lint failed (exit ${r.code ?? 'none'}): ${summary}`);
+    }
+    if (coverage) {
+      const r = await this.runCommand(coverage, projectDir, `task ${task.id} coverage`);
+      if (r === null) return false;
+      task.coverage = { ok: r.ok, ms: r.ms, percent: coveragePercent(r.output) };
+      said.push(task.coverage.percent === null ? `coverage not found in the output${r.ok ? '' : ` (exit ${r.code ?? 'none'})`}` : `coverage ${task.coverage.percent}%`);
+    }
+    if (said.length) this.say('room', `Task ${task.id}: ${said.join('; ')}.`);
+    this.save();
+    return true;
   }
 
   // Runs work(item) for every item at once, each in its own worktree branched from the session's HEAD, then done();
@@ -920,6 +954,7 @@ export class RoomSession {
       }
       this.say('room', `Checks passed after merging task ${task.id} (${Math.round(result.ms / 1000)}s).`);
     }
+    if (!(await this.measure(task))) return undo();
     const review = await this.runReviews(task);
     if (!review) return undo();
     if (!review.ok) {

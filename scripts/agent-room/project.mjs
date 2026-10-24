@@ -146,6 +146,15 @@ export function runCheck(dir, command, { timeoutMs = 600_000, signal } = {}) {
   });
 }
 
+// The total coverage percent from a coverage report's summary: c8/istanbul "All files | 84.21", Node's test runner
+// "ℹ all files | 84.21" (or with "#" under the TAP reporter), or pytest-cov "TOTAL ... 84%". The last match wins; null when there is none.
+export function coveragePercent(text) {
+  const patterns = [/^[^\w\n|]*all files\s*\|\s*([\d.]+)/gim, /^TOTAL\s.*?(\d+(?:\.\d+)?)%\s*$/gm];
+  const found = patterns.flatMap(p => [...String(text).matchAll(p)].map(m => ({ at: m.index, value: Number(m[1]) })));
+  const last = found.sort((a, b) => a.at - b.at).at(-1);
+  return last && Number.isFinite(last.value) && last.value <= 100 ? last.value : null;
+}
+
 export function rootCommit(dir) {
   return git(dir, ['rev-list', '--max-parents=0', 'HEAD']).trim().split('\n').at(-1);
 }

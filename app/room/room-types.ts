@@ -14,11 +14,14 @@ export const BOARD_STAGES: Stage[] = ["build", "gate-race", "finish", "gate-resu
 
 export type TaskStatus = "pending" | "running" | "review" | "done" | "skipped";
 export type CheckResult = { ok: boolean; code: number | null; ms: number; output: string };
+// The optional lint and coverage commands after a task's checks; information only, never blocking the task.
+export type LintResult = { ok: boolean; code: number | null; ms: number; summary: string };
+export type CoverageResult = { ok: boolean; ms: number; percent: number | null };
 // race: every coder attempts the task in its own worktree; raced: how that went and which attempt was kept.
 // pick and pending: the judge's choice and the passing attempts while the race gate waits for the owner.
 export type RaceResult = { attempts: { agent: AgentId; ok: boolean; commit: string | null; why: string }[]; winner: AgentId | null; reason: string;
   pick?: AgentId; pending?: { base: string; attempts: { agent: AgentId; branch: string; commit: string; check: CheckResult | null }[] } };
-export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult; race?: boolean; raced?: RaceResult; after?: number[]; role?: string;
+export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult; lint?: LintResult; coverage?: CoverageResult; race?: boolean; raced?: RaceResult; after?: number[]; role?: string;
   // The skill folders each agent opened while working on or reviewing this task (Antigravity's reads are not reported).
   skillsRead?: Partial<Record<AgentId, string[]>> };
 export type Message = {
@@ -62,6 +65,8 @@ export type SessionView = {
   stageLog?: { stage: Stage; at: string }[];
   repo?: { dir: string; branch: string; base: string; baseBranch: string; prUrl?: string } | null;
   check?: string | null;
+  lint?: string | null;
+  coverage?: string | null;
   checkRuns?: CheckRun[];
   raceGate?: boolean;
   keepGoing?: boolean;

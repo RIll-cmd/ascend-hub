@@ -95,7 +95,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Terminal pane for check output | The full output of each check run | Backlog | Done (2026-10-24): **Checks** tab; runs in `state.checkRuns`, output in `checks/<n>.log` |
 | Search across sessions | Full-text search over past sessions in the history column | Backlog; Hermes FTS5 search | Done (2026-10-24): `GET /sessions?q=`, a plain scan of task, transcript and verdict, at most 50 results |
 | Transcript and summary export | Markdown export of a session | Backlog | Done (2026-10-24): **Export .md** on the Session card, from `GET /sessions/<id>/export` with the full transcript |
-| Lint and coverage per task | The repo's linter and coverage after each task, shown in Workflow | Backlog; Hermes LSP lint | M |
+| Lint and coverage per task | The repo's linter and coverage after each task, shown in Workflow | Backlog; Hermes LSP lint | Done (2026-10-24): optional `lint` and `coverage` commands, information only; not run for race attempts |
 | Files produced, as downloads | The result gate lists generated files to download | Hermes deliverable mode | S |
 | Prompt attachments | `@file` and `@diff` references, a pasted screenshot, an attached PDF spec | Hermes context references, vision paste, document extraction | M |
 
