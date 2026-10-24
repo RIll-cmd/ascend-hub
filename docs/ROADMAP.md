@@ -1,6 +1,6 @@
 # Ascend roadmap — Hub and Vision
 
-Updated 2026-10-18.
+Updated 2026-10-24. M1–M7 are done; the open work is under [Next: M8–M13](#next-m8m13-2026-10-24).
 
 **Goals:**
 - **Hub:** the owner's main coding tool, where Codex, Claude and Antigravity plan, build and review together.
@@ -36,12 +36,116 @@ Updated 2026-10-18.
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
 | M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Done (2026-10-14) |
 | M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | Done (2026-10-17) |
+| M8 | Reach the owner away from the PC | A phone push when a gate waits, then answering gates from the phone. | Not started |
+| M9 | Unattended sessions | Sessions that wait out a limit window, queue up, run on a schedule and keep going until the checks pass. | Not started |
+| M10 | GitHub in and out | Start from an issue or PR, review a PR and post comments, resolve merge-queue conflicts, several repos in one session. | Not started |
+| M11 | Seeing the work | Live diff, file viewer, check output, search and export across sessions, lint per task, richer prompt attachments. | Not started |
+| M12 | More agents and connectors | Hermes Agent as a fourth agent and a fifth shelf TV, MCP connectors, a self-maintaining skill library, safety guards. | Not started |
+| M13 | Hub and Vision polish | Spotify controls, reacting mascots, a launcher start-up checklist, a Vision wake word, a lighter voice. | Not started |
 
 **Reliability work alongside:**
 - Room sessions keep a pending gate across restarts.
 - The launcher restarts a crashed app and says why.
 - One tray for both apps.
 - One shared local token for Vision → Hub calls.
+
+These four have no recorded status; confirm each in the code before M8.
+
+## Next: M8–M13 (2026-10-24)
+
+Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff's open items and [the Hermes Agent feature map](hermes-agent-features.md). Sizes: S under a day, M a few days, L a week or more. Nothing here is scheduled until the owner picks it.
+
+### M8 — Reach the owner away from the PC
+
+| Feature | What it gives | Source | Size |
+| --- | --- | --- | --- |
+| Phone push when a gate waits | One `POST` to a private ntfy topic whenever the session's `attention` changes, with the gate summary | Backlog; Hermes ntfy | S |
+| Answer a gate from the phone | A signed, single-use link per decision, or a paired chat bot (Core's `phone-chat-discord` worktrees). Needs pairing and an allowlist first | Hermes gateway | L |
+| Voice-note answers | A voice note on the phone becomes a gate reply through Vision's faster-whisper | Hermes voice memos | M |
+| Publish the session summary as a page | A shareable read-only summary after the result gate | Backlog | M |
+
+### M9 — Unattended sessions
+
+| Feature | What it gives | Source | Size |
+| --- | --- | --- | --- |
+| Auto-continue when a limit window resets | A paused session resumes by itself when `quota.json` shows the window reset | Backlog; Hermes `/loop` | M |
+| Requeue on rate limit | A turn that fails only on a rate limit or 5xx is retried later without counting as a failed round | Hermes Kanban exit code 75 | S |
+| Limit-aware assignment | Work moves from an agent above 90% of a window to another coder | Backlog; Hermes fallback providers | M |
+| Session queue | Start several sessions; they run one after another | Backlog; Hermes Kanban | L |
+| Scheduled sessions | A schedule in room settings, for example a nightly *Review only* session on a repo | Backlog; Hermes cron | M |
+| Keep-going mode | A judge turn after each failed check keeps the task going, inside the M6a budgets | Backlog; Hermes `/goal` | M |
+| Retry from any stage | Restart a session from roles, plan or a single task | Backlog | M |
+| Owner note to a running agent | A note joins the agent's next turn without stopping the session | Hermes `/steer` | S |
+
+### M10 — GitHub in and out
+
+| Feature | What it gives | Source | Size |
+| --- | --- | --- | --- |
+| Start from an issue or PR | Paste an issue or PR number; its text and diff become the task | Backlog | M |
+| PR review mode | A *Review a PR* template: `gh pr diff` in, comments posted with `gh pr review` after the owner approves | Backlog; Hermes PR-review guide | M |
+| Merge-conflict arbiter | A conflicted merge in the M6f merge queue gets one arbiter turn before it fails | Hermes optional skill | S |
+| Several repos in one session | One plan with tasks across repos, one worktree each | Backlog | L |
+
+### M11 — Seeing the work
+
+| Feature | What it gives | Source | Size |
+| --- | --- | --- | --- |
+| Live diff panel | The current task's diff while it is being written | Backlog | M |
+| File tree and read-only viewer | Browse the session worktree | Backlog | M |
+| Terminal pane for check output | The full output of each check run | Backlog | S |
+| Search across sessions | Full-text search over past sessions in the history column | Backlog; Hermes FTS5 search | M |
+| Transcript and summary export | Markdown export of a session | Backlog | S |
+| Lint and coverage per task | The repo's linter and coverage after each task, shown in Workflow | Backlog; Hermes LSP lint | M |
+| Files produced, as downloads | The result gate lists generated files to download | Hermes deliverable mode | S |
+| Prompt attachments | `@file` and `@diff` references, a pasted screenshot, an attached PDF spec | Hermes context references, vision paste, document extraction | M |
+
+### M12 — More agents and connectors
+
+| Feature | What it gives | Source | Size |
+| --- | --- | --- | --- |
+| Hermes Agent spike | Install, run `hermes chat --oneshot -q "2+2" --format stream-json`, record the real events and exit codes | Hermes feature map | S |
+| Hermes as a fourth room agent | Hermes plans, codes, reviews or judges with any model it is set to; `--query-file` avoids the 28,000-character prompt cap | Hermes feature map, path A | M |
+| Hermes status TV (CH 05) | A status adapter from Hermes hooks to Core's `POST /api/status/events`; the shelf already shows unknown services | Handoff; Hermes path B | S–M |
+| Hermes on the Limits pill | Read `hermes usage --json` | Hermes | S |
+| MCP connectors for agents | A curated list of MCP servers per session, with only the needed environment variables passed | Backlog; Hermes MCP catalogue | M |
+| Hermes skills as a library source | Add `NousResearch/hermes-agent` skills through M7d | Hermes | S |
+| Skills the agents write | The orchestrator proposes a new skill at the result gate; the owner approves it | Hermes self-written skills | M |
+| Skill use counts and stale skills | Use counts per skill and a stale mark in the role-set UI | Hermes curator | S |
+| Advisers and one actor | A build variant where references advise and one agent acts | Hermes Mixture of Agents | M |
+| Dangerous-command guard | Edit turns block `rm -rf`, `git push --force` and `git reset --hard` outside the session worktree | Hermes command approval | S |
+| Prompt-injection scan of fetched skills | Flag suspicious instructions on the staged card before Install | Hermes context-file scan | S |
+
+### M13 — Hub and Vision polish
+
+| Feature | What it gives | Source | Size |
+| --- | --- | --- | --- |
+| Spotify controls | Play, pause, skip and queue on the music TV; needs the `user-modify-playback-state` scope | Hermes Spotify plugin | S–M |
+| Reacting mascots | A Bangboo on each status TV or desk that reacts to idle, working, stuck and done (check sprite licences) | Hermes pets | S–M |
+| Hermes dashboard channel | A TV channel that embeds `127.0.0.1:9119` when Hermes is installed | Hermes web dashboard | S |
+| Launcher start-up checklist | The mini console checks Core, the CLI logins and free disk space | Hermes `BOOT.md` | S |
+| Vision wake word | A wake word before gate answers, so stray speech is ignored | Hermes wake word | M |
+| Lighter Vision voice | A smaller Kokoro model, when the owner decides (see M5) | M6 follow-ups | S |
+| Live agent screen on a CRT | During UI tasks the agent's browser shows on its desk CRT | Hermes bot screen | L |
+
+### Fixes and debt (alongside)
+
+- A stopped session's in-progress task still shows `running` on the board.
+- `npm start` (Wrangler) does not start the room.
+- `mergeSettings` in `scripts/agent-room/agents.mjs` takes `timeouts` from `settings.json` without validating them.
+- Nine minor findings from the Agent Room final review were deferred; they are listed only in that session's final message. Recover and file them.
+- Not live-tested: the memory PR (a real push), the result-gate memory picker, Antigravity sub-agents and skill reads. Hub and Vision keep an untracked root `AGENTS.md`, so a memory PR there would clash with it.
+- The desktop `Test-Supervisor.ps1` is flaky (port in use in its restart cycle).
+- Confirm which checkout and runtime the installed desktop profile uses; the handoff has both the main checkout and `.worktrees\desktop-reliability`.
+- Repository lint: 34 errors in 10 older UI files (2026-10-06). Development dependency audit: 15 findings (8 high, 7 moderate), none in production.
+
+### Suggested order
+
+1. M8 phone push, M9 requeue on rate limit, the dangerous-command guard and the `mergeSettings` fix: small, and they make long sessions safer.
+2. M9 auto-continue and keep-going mode: sessions that finish without the owner.
+3. M12 Hermes spike, then the Hermes status TV and fourth agent if the spike holds.
+4. M10 PR review mode and start from an issue.
+5. M11 search, diff panel and export.
+6. M13 polish when there is time.
 
 ## M1 — Room attention and change requests (Hub)
 
@@ -210,7 +314,7 @@ A real session (`skills-check`: Codex orchestrator and reviewer, Claude coder, s
 
 ## Room ideas backlog (2026-10-16)
 
-Not scheduled.
+Not scheduled. Every item not yet built is now in [Next: M8–M13](#next-m8m13-2026-10-24); app preview with screenshots shipped in M7c.
 
 - **Running sessions:**
   - retry from any stage;
