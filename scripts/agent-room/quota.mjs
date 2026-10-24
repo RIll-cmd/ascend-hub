@@ -69,15 +69,26 @@ export function latestCodexQuota(home) {
 
 const RETRY_FALLBACK_MS = 10 * 60_000;
 
-// When a rate-limited agent may try again: a reset time in the error ("...limit reached|1792000000"), else the reset of
-// its nearly full window, else in ten minutes. Never in the past.
+// The next time the local clock reads "resets 4pm" / "resets 11:40pm" after now.
+// shortcut: assumes the CLI prints this machine's time zone (it names it, e.g. "(Asia/Shanghai)"); parse the zone if that ever differs.
+function nextClockTime(text, now) {
+  const m = /resets\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i.exec(text);
+  if (!m) return null;
+  const at = new Date(now);
+  at.setHours((Number(m[1]) % 12) + (m[3].toLowerCase() === 'pm' ? 12 : 0), Number(m[2] ?? 0), 0, 0);
+  if (at.getTime() <= now) at.setDate(at.getDate() + 1);
+  return at.getTime();
+}
+
+// When a rate-limited agent may try again, a minute after: the epoch in the error ("...limit reached|1792000000"); else the
+// latest reset of its full windows (all of them must clear); else the clock time in the error; else in ten minutes.
 export function retryTime(errorText, quota, now = Date.now()) {
-  const epoch = /\|(\d{10})\b/.exec(String(errorText ?? ''));
-  const resets = [
-    ...(epoch ? [Number(epoch[1]) * 1000] : []),
-    ...[quota?.fiveHour, quota?.weekly].filter(w => w?.usedPercent >= 95 && w.resetsAt).map(w => Date.parse(w.resetsAt)),
-  ].filter(t => t > now);
-  return new Date(resets.length ? Math.min(...resets) + 60_000 : now + RETRY_FALLBACK_MS).toISOString();
+  const text = String(errorText ?? '');
+  const future = t => (t > now ? t : null);
+  const epoch = /\|(\d{10})\b/.exec(text);
+  const full = [quota?.fiveHour, quota?.weekly].filter(w => w?.usedPercent >= 95 && w.resetsAt).map(w => Date.parse(w.resetsAt)).filter(t => t > now);
+  const at = (epoch && future(Number(epoch[1]) * 1000)) ?? (full.length ? Math.max(...full) : null) ?? nextClockTime(text, now);
+  return new Date(at ? at + 60_000 : now + RETRY_FALLBACK_MS).toISOString();
 }
 
 const NAMES = { codex: 'Codex', claude: 'Claude', agy: 'Antigravity' };

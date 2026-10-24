@@ -118,6 +118,20 @@ test('retry time: the reset in the error, else a full window, else ten minutes; 
   assert.equal(retryTime('429', quota, now), '2026-10-24T12:01:00.000Z');
   assert.equal(retryTime('429', null, now), '2026-10-24T10:10:00.000Z');
   assert.equal(retryTime('limit reached|1000000000', null, now), '2026-10-24T10:10:00.000Z');
+  // Both windows full: wait for the later one.
+  const both = { fiveHour: { usedPercent: 100, resetsAt: '2026-10-24T12:00:00Z' }, weekly: { usedPercent: 100, resetsAt: '2026-10-27T08:00:00Z' } };
+  assert.equal(retryTime('429', both, now), '2026-10-27T08:01:00.000Z');
+});
+
+test("Claude's real limit message is detected and its local reset time read", () => {
+  // Wording copied from Claude Code's own logs on this machine.
+  for (const text of ["You've hit your session limit · resets 11:40pm (Asia/Shanghai)", "You've hit your weekly limit · resets 4pm (Asia/Shanghai)"]) {
+    assert.ok(RATE_LIMITED.test(text), text);
+  }
+  const now = new Date(2026, 9, 24, 22, 0).getTime();
+  assert.equal(retryTime("You've hit your session limit · resets 11:40pm (Asia/Shanghai)", null, now), new Date(2026, 9, 24, 23, 41).toISOString());
+  assert.equal(retryTime("You've hit your weekly limit · resets 4pm (Asia/Shanghai)", null, now), new Date(2026, 9, 25, 16, 1).toISOString());
+  assert.equal(retryTime('resets 12am', null, now), new Date(2026, 9, 25, 0, 1).toISOString());
 });
 
 test('a blocked command kills the turn and pauses the session for the owner', async () => {

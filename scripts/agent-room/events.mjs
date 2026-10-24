@@ -70,7 +70,8 @@ export function shellCommands(agentId, event) {
 }
 
 // A provider refusing work for now (usage or rate limit, overload), as the CLIs word it; only checked on failed turns.
-export const RATE_LIMITED = /usage limit|hit your (?:usage )?limit|rate[ _-]?limit|too many requests|\b429\b|resource[_ ]exhausted|quota exceeded|overloaded|\b529\b/i;
+// Claude Code says "You've hit your session limit · resets 11:40pm (Asia/Shanghai)" (also "weekly limit"), seen in its own logs.
+export const RATE_LIMITED = /usage limit|hit your (?:\w+ )?limit|rate[ _-]?limit|too many requests|\b429\b|resource[_ ]exhausted|quota exceeded|overloaded|\b529\b/i;
 
 // Error text a CLI reports in its stream, never what the agent writes: Claude's error result and rejected rate-limit event,
 // Codex's error and turn.failed events, Antigravity's failed result.
