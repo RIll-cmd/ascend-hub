@@ -11,6 +11,7 @@ import { finishWorktree, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
 import { attentionNotifier } from './notify.mjs';
+import { sessionMarkdown } from './export.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
 import { ghToken, stageSkill } from './github.mjs';
 import { discardStaged, installStaged, listSkills, readRoleSets, removeSkill, viewSkill, writeRoleSets } from './skills.mjs';
@@ -117,6 +118,14 @@ export function searchSessions(dataDir, q) {
   return found;
 }
 
+// A whole session as Markdown, from disk with its full transcript (the page only holds the last 200 messages).
+function exportSession(dataDir, id) {
+  if (!SESSION_ID.test(id)) throw roomError('SESSION_ID_INVALID');
+  const dir = join(dataDir, 'sessions', id);
+  const state = readJson(join(dir, 'state.json'));
+  return state ? sessionMarkdown(state, readJsonLines(join(dir, 'transcript.jsonl'))) : null;
+}
+
 // One past session as the room page shows it, read from disk without changing it.
 function readSession(dataDir, id) {
   if (!SESSION_ID.test(id)) throw roomError('SESSION_ID_INVALID');
@@ -219,6 +228,11 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       if (route === 'GET /sessions') {
         const q = new URL(req.url, 'http://room').searchParams.get('q');
         return send(200, { sessions: q ? searchSessions(dataDir, q) : listSessions(dataDir) });
+      }
+      const exported = req.method === 'GET' && /^\/sessions\/([^/]+)\/export$/.exec(new URL(req.url, 'http://room').pathname);
+      if (exported) {
+        const markdown = exportSession(dataDir, exported[1]);
+        return markdown ? send(200, { markdown }) : send(404, { error: 'NO_SESSION' });
       }
       const past = req.method === 'GET' && /^\/sessions\/([^/]+)$/.exec(new URL(req.url, 'http://room').pathname);
       if (past) {

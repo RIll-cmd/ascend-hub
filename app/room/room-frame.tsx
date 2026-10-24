@@ -77,8 +77,23 @@ export function RoomSidebar({ history, query, onQuery, searching, activeId, runn
 }
 
 // The right column's first card, like an environment summary: what this session works on.
+// Saves the whole session (facts, plan, summary or verdict, every message) as a Markdown file.
+async function exportSession(session: SessionView): Promise<string | null> {
+  const res = await fetch(`/api/room/sessions/${session.id}/export`, { cache: "no-store" }).catch(() => null);
+  const data = res?.ok ? (await res.json() as { markdown?: string }) : null;
+  if (!data?.markdown) return "The export failed. Is the room running?";
+  const url = URL.createObjectURL(new Blob([data.markdown], { type: "text/markdown" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `room-${session.project}-${session.id}.md`;
+  link.click();
+  URL.revokeObjectURL(url);
+  return null;
+}
+
 export function SessionCard({ session }: { session: SessionView }) {
   const kind = session.mode === "debate" ? "Debate" : TEMPLATE_LABELS[session.template ?? "feature"];
+  const [error, setError] = useState<string | null>(null);
   return (
     <SideSection title="Session" value={historyState(session.stage)} open>
       <ul className="room-env">
@@ -87,6 +102,9 @@ export function SessionCard({ session }: { session: SessionView }) {
         {session.repo && <li><GitBranch size={15} aria-hidden="true" /> {session.repo.branch}</li>}
         <li><Layers size={15} aria-hidden="true" /> {kind}</li>
       </ul>
+      <Button variant="neutral" size="sm" className="self-start" onClick={() => void exportSession(session).then(setError)}
+        title="The task, plan, summary or verdict and every message, as one Markdown file">Export .md</Button>
+      {error && <p role="alert" className="agent-room-error">{error}</p>}
     </SideSection>
   );
 }
