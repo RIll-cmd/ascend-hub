@@ -278,6 +278,10 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       if (route === 'POST /skills/install') return send(200, { installed: installStaged(dataDir, body.token, body.id ?? undefined), sets: readRoleSets(dataDir) });
       if (route === 'POST /skills/discard') { discardStaged(dataDir, body.token); return send(200, { ok: true }); }
       if (route === 'POST /skills/remove') { removeSkill(dataDir, body.id); return send(200, { ok: true }); }
+      if (route === 'GET /sessions/current/live-diff') {
+        if (!session || TERMINAL.has(session.state.stage)) return send(404, { error: 'NO_SESSION' });
+        return send(200, session.liveDiff());
+      }
       if (route === 'GET /sessions/current/diff') {
         if (!session) return send(404, { error: 'NO_SESSION' });
         return send(200, session.diff(new URL(req.url, 'http://room').searchParams.get('commit')));

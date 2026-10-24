@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { killTree } from './agents.mjs';
@@ -158,6 +158,37 @@ export function suggestCheck(repo, checks = {}) {
     if (JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).scripts?.test) return 'npm test';
   } catch { /* no package.json */ }
   return existsSync(join(repo, 'pytest.ini')) ? 'python -m pytest -q' : '';
+}
+
+const NEW_FILES = 20;
+const NEW_FILE_CHARS = 20_000;
+
+// A new untracked file as an all-added patch; binary or very large files are named only.
+function newFilePatch(dir, file) {
+  const path = join(dir, file);
+  let body = null;
+  try {
+    if (statSync(path).size <= 1_000_000) {
+      const buf = readFileSync(path);
+      if (!buf.includes(0)) body = buf.toString('utf8');
+    }
+  } catch { /* deleted while reading */ }
+  if (body === null) return `new file ${file} (binary, large or unreadable)\n`;
+  const lines = body.slice(0, NEW_FILE_CHARS).replace(/\n$/, '').split('\n');
+  const cut = body.length > NEW_FILE_CHARS ? `\n... cut at ${NEW_FILE_CHARS} characters` : '';
+  return `diff --git a/${file} b/${file}\nnew file\n--- /dev/null\n+++ b/${file}\n${lines.map(l => `+${l}`).join('\n')}${cut}\n`;
+}
+
+// What an agent has changed but not committed: the patch against HEAD plus new untracked files.
+// --no-optional-locks keeps these reads from refreshing the index while the agent works in the same folder.
+export function workingDiff(dir, maxChars = 150_000) {
+  const read = args => git(dir, ['--no-optional-locks', ...args]);
+  const tracked = read(['diff', '--stat', '--patch', '--no-color', 'HEAD', '--']);
+  const changed = read(['diff', '--name-only', 'HEAD', '--']).split('\n').filter(Boolean);
+  const untracked = read(['ls-files', '--others', '--exclude-standard', '-z']).split('\0').filter(Boolean);
+  const more = untracked.length > NEW_FILES ? `... and ${untracked.length - NEW_FILES} more new files\n` : '';
+  const text = [tracked, ...untracked.slice(0, NEW_FILES).map(f => newFilePatch(dir, f)), more].filter(Boolean).join('\n');
+  return { files: changed.length + untracked.length, text: text.length > maxChars ? `${text.slice(0, maxChars)}\n... diff cut at ${maxChars} characters` : text };
 }
 
 export function branchDiff(dir, base, maxChars = 150_000, head = 'HEAD') {

@@ -163,6 +163,9 @@
 .agent-room .agent-room-diff .is-del { color: #f08a7a; }
 .agent-room .agent-room-checks { display: grid; grid-template-columns: minmax(180px, 260px) 1fr; gap: 10px; background: var(--room-card); color: var(--room-ink); border-radius: 8px; padding: 12px; min-height: 320px; }
 .agent-room .agent-room-checks.is-empty { display: block; }
+.agent-room-live-diff-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; margin: 0 0 8px; }
+.agent-room-live-diff-head span { font-size: 12px; opacity: 0.8; }
+.agent-room .agent-room-live-diff .agent-room-diff { max-height: 520px; }
 .agent-room-check-runs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 460px; overflow: auto; }
 .agent-room .agent-room-check-runs button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 6px 8px; text-align: left; border: 2px solid transparent; border-radius: 5px; background: transparent; color: inherit; box-shadow: none; transform: none; }
 .agent-room .agent-room-check-runs button:hover { border-color: #000; }

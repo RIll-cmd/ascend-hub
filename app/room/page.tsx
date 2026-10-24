@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/neo/tabs";
 import { DebateView } from "./debate-view";
 import { WorkflowPanel } from "./workflow-panel";
 import { ChecksPanel } from "./checks-panel";
+import { LiveDiffPanel } from "./live-diff-panel";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, LimitsCard, RoomSidebar, SessionCard, TopBar, TranscriptDrawer, type HistoryItem } from "./room-frame";
@@ -134,7 +135,7 @@ export default function RoomPage() {
   const [failure, setFailure] = useState<{ text: string; liveId: string | null } | null>(null);
   const [selected, setSelected] = useState<AgentId | null>(null);
   const [drawer, setDrawer] = useState(false);
-  const [tab, setTab] = useState<"debate" | "deck" | "workflow" | "checks">("debate");
+  const [tab, setTab] = useState<"debate" | "deck" | "workflow" | "checks" | "changes">("debate");
   const [viewing, setViewing] = useState<string | null>(null);
   // "New session" hides the live session it was pressed over; any newer live session shows again by itself.
   const [freshOver, setFreshOver] = useState<string | null | undefined>(undefined);
@@ -166,7 +167,8 @@ export default function RoomPage() {
   const showBoard = Boolean(session?.plan && BOARD_STAGES.includes(session.stage));
   const messages = session?.transcript ?? [];
   // "debate" is the default tab; a build session has no debate view, so it falls back to the deck.
-  const shown = tab === "debate" && !debate ? "deck" : tab;
+  // Changes exists only while the live build runs; it falls back to the deck when the run ends.
+  const shown = (tab === "debate" && !debate) || (tab === "changes" && (debate || !running)) ? "deck" : tab;
   const composing = !liveRunning && (!session || isLive);
   const openSession = (id: string) => { setViewing(id === live?.id ? null : id); setFreshOver(undefined); setSelected(null); };
   const newSession = () => { setViewing(null); setFreshOver(live?.id ?? null); setSelected(null); };
@@ -190,6 +192,7 @@ export default function RoomPage() {
                     {debate && <TabsTrigger value="debate">Debate</TabsTrigger>}
                     <TabsTrigger value="deck">Deck</TabsTrigger>
                     <TabsTrigger value="workflow">Workflow</TabsTrigger>
+                    {!debate && running && <TabsTrigger value="changes">Changes</TabsTrigger>}
                     {!debate && <TabsTrigger value="checks">Checks{session.checkRuns?.length ? ` (${session.checkRuns.length})` : ""}</TabsTrigger>}
                   </TabsList>
                 </Tabs>
@@ -199,6 +202,7 @@ export default function RoomPage() {
             {shown === "debate" && session ? <DebateView session={session} />
               : shown === "workflow" && session ? <WorkflowPanel session={session} />
               : shown === "checks" && session ? <ChecksPanel session={session} />
+              : shown === "changes" && session ? <LiveDiffPanel sessionId={session.id} />
                 : <DeckCanvas view={view} pulses={isLive ? pulses : []} selected={selected} onSelect={setSelected} />}
             {session && <Transcript messages={messages.slice(-80)} />}
             {session && isLive && <GateBar session={session} act={act} />}

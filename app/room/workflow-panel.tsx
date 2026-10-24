@@ -5,6 +5,17 @@ import { AGENT_COLORS, messageLine } from "./deck/deck-view";
 import { AGENT_IDS, AGENT_NAMES, type SessionView } from "./room-types";
 import { formatMs, formatTokens, LOOPING, skillsReadLine, workflowView, type Lanes, type RunSummary, type WorkflowTask } from "./workflow-view";
 
+// A patch with added lines green and removed lines red.
+export function DiffText({ text, label }: { text: string; label: string }) {
+  return (
+    <pre className="agent-room-diff" aria-label={label}>
+      {text.split("\n").map((line, i) => (
+        <span key={i} className={line.startsWith("+") && !line.startsWith("+++") ? "is-add" : line.startsWith("-") && !line.startsWith("---") ? "is-del" : undefined}>{line}{"\n"}</span>
+      ))}
+    </pre>
+  );
+}
+
 export function DiffView({ commit, label }: { commit: string; label?: string }) {
   const [state, setState] = useState<{ text?: string; error?: string; loading?: boolean }>({});
   const load = async () => {
@@ -17,15 +28,7 @@ export function DiffView({ commit, label }: { commit: string; label?: string }) 
       setState({ error: "Hub could not be reached." });
     }
   };
-  if (state.text !== undefined) {
-    return (
-      <pre className="agent-room-diff" aria-label={`Changes in ${commit}`}>
-        {state.text.split("\n").map((line, i) => (
-          <span key={i} className={line.startsWith("+") && !line.startsWith("+++") ? "is-add" : line.startsWith("-") && !line.startsWith("---") ? "is-del" : undefined}>{line}{"\n"}</span>
-        ))}
-      </pre>
-    );
-  }
+  if (state.text !== undefined) return <DiffText text={state.text} label={`Changes in ${commit}`} />;
   return (
     <p>
       <button type="button" className="agent-room-link" onClick={() => void load()} disabled={state.loading}>{state.loading ? "Loading changes…" : label ?? `Show changes (${commit})`}</button>

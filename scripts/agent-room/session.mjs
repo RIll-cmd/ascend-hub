@@ -6,7 +6,7 @@ import { errorText, RATE_LIMITED, shellCommands, skillReads, subagentEvent, usag
 import { dangerousCommand } from './guard.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateProgress, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, conflictMarkers, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, conflictMarkers, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge, workingDiff } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
@@ -200,6 +200,20 @@ export class RoomSession {
     if (key === (this.state.attentionKey ?? null)) return;
     this.state.attentionKey = key;
     if (now) this.onAttention?.(now, this.state);
+  }
+
+  // The session folder's uncommitted changes, for the Changes tab while a coder edits there.
+  // shortcut: parallel and race attempts edit in their own worktrees and are not shown; list those worktrees too if that matters.
+  liveDiff() {
+    const { mode, projectDir, plan, active } = this.state;
+    // A debate's folder is the owner's own checkout: its uncommitted work is none of the room's business.
+    if (mode === 'debate') throw roomError('LIVE_DIFF_BUILD_ONLY');
+    const task = plan?.tasks.find(t => t.status === 'running') ?? null;
+    return {
+      at: new Date().toISOString(), agent: active?.agent ?? null, activity: active?.activity ?? null,
+      task: task && { id: task.id, title: task.title, assignee: task.assignee }, elsewhere: Boolean(active?.activity?.match(/in parallel|^racing/)),
+      ...workingDiff(projectDir),
+    };
   }
 
   diff(commit) {
