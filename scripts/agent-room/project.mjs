@@ -211,6 +211,11 @@ export function projectFiles(dir) {
   return { files: present.slice(0, MAX_FILES), more: Math.max(0, present.length - MAX_FILES) };
 }
 
+// The files committed at HEAD; what an @file reference in a repo session's task may name.
+export function trackedFiles(dir) {
+  return git(dir, ['--no-optional-locks', 'ls-tree', '-r', '--name-only', '-z', 'HEAD']).split('\0').filter(Boolean);
+}
+
 // One file for the read-only viewer. Only a path projectFiles lists, that is a regular file (never a link) whose real path is
 // inside dir; binary or large files come back without their text.
 export function projectFile(dir, file) {

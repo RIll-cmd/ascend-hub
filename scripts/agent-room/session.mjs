@@ -6,13 +6,14 @@ import { errorText, RATE_LIMITED, shellCommands, skillReads, subagentEvent, usag
 import { dangerousCommand } from './guard.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateProgress, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, conflictMarkers, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge, workingDiff, coveragePercent } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, conflictMarkers, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge, workingDiff, coveragePercent, trackedFiles } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
 import { addNotes, memoryKey, readMemory, splitProposal } from './memory.mjs';
 import { claudeQuota, latestCodexQuota, retryTime } from './quota.mjs';
 import { activeRoleSets, installSkills } from './skills.mjs';
+import { attachmentLines, cleanAttachments, copyAttachments, saveAttachments, taskReferences } from './attachments.mjs';
 import { capturePreview, findBrowser, validatePreview } from './preview.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
@@ -82,7 +83,11 @@ export class RoomSession {
   }
 
   static create({ dataDir, settings, runTurn }, body = {}) {
-    if (body.mode === 'debate') return RoomSession.createDebate({ dataDir, settings, runTurn }, body);
+    if (body.mode === 'debate') {
+      // A debate's folder is the owner's own checkout, so nothing is ever written into it.
+      if (given(body.attachments) && body.attachments.length) throw roomError('ATTACHMENTS_BUILD_ONLY', 'Attachments are for build sessions.');
+      return RoomSession.createDebate({ dataDir, settings, runTurn }, body);
+    }
     const { project, task, roles, repo, check } = body;
     const template = body.template ?? 'feature';
     if (!TEMPLATES.includes(template)) throw roomError('TEMPLATE_INVALID');
@@ -104,6 +109,9 @@ export class RoomSession {
     if (typeof ownTask !== 'string' || (!ownTask.trim() && !issue) || ownTask.length > 4000) throw roomError('TASK_INVALID');
     if (issue && !given(repo)) throw roomError('ISSUE_NEEDS_REPO', 'Starting from a GitHub issue needs an existing repo.');
     const preview = validatePreview(body.preview);
+    const uploads = cleanAttachments(body.attachments);
+    const refs = taskReferences(ownTask);
+    if ((refs.diff || refs.files.length) && !given(repo)) throw roomError('REFS_NEED_REPO', '@file and @diff point into an existing repo; pick one under Existing repo.');
     // The sets on now are the session's for good; switching one later never changes a running session.
     const roleSets = activeRoleSets(dataDir, body.roleSets ?? null);
     let presetRoles = null;
@@ -116,11 +124,21 @@ export class RoomSession {
     let projectDir;
     let repoInfo = null;
     let found = null;
+    let ownerDiff = null;
     if (repo !== undefined && repo !== null && repo !== '') {
       if (typeof project !== 'string' || !PROJECT_NAME.test(project)) throw roomError('PROJECT_NAME_INVALID');
       const repoDir = resolveRepo(repo, settings);
-      // Read before the worktree exists, so a bad issue number leaves nothing behind.
+      // Read before the worktree exists, so a bad issue number or reference leaves nothing behind.
       found = issue ? githubItem(repoDir, 'issue', issue, settings.gh) : null;
+      if (refs.files.length) {
+        const tracked = new Set(trackedFiles(repoDir));
+        const unknown = refs.files.filter(f => !tracked.has(f));
+        if (unknown.length) throw roomError('FILE_REF_UNKNOWN', `${unknown.map(f => `@${f}`).join(', ')}: not a committed file in ${repoDir}.`);
+      }
+      if (refs.diff) {
+        ownerDiff = workingDiff(repoDir, 400_000);
+        if (!ownerDiff.files) throw roomError('DIFF_EMPTY', `@diff: ${repoDir} has no uncommitted changes.`);
+      }
       const branch = `room/${project}-${id.slice(-6)}`;
       projectDir = join(settings.buildsRoot, 'worktrees', `${basename(repoDir)}-${id}`);
       const { base, baseBranch } = createWorktree(repoDir, projectDir, branch);
@@ -132,7 +150,9 @@ export class RoomSession {
       createProject(projectDir);
     }
     installSkills(dataDir, roleSets, projectDir);
+    const attachments = saveAttachments(projectDir, uploads, { diff: ownerDiff?.text ?? null, settings });
     const state = {
+      ...(attachments.length ? { attachments } : {}), ...(refs.files.length ? { fileRefs: refs.files } : {}),
       id, mode: 'build', subagents, project, projectDir, stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
       task: found ? `${ownTask.trim() || `Resolve GitHub issue #${found.number}.`}\n\n${fromGitHub('GITHUB ISSUE', found)}` : ownTask.trim(),
       ...(found ? { issue: { number: found.number, title: found.title, url: found.url } } : {}),
@@ -368,7 +388,8 @@ export class RoomSession {
   prompt(stage, agent, extra = {}) {
     return buildPrompt({
       stage, agent, roles: this.state.roles, task: this.state.task,
-      planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript, extra: { template: this.state.template, parallel: this.state.parallel, ...extra },
+      planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript,
+      extra: { template: this.state.template, parallel: this.state.parallel, attached: attachmentLines(this.state.attachments, this.state.fileRefs), ...extra },
       memory: this.projectMemory(), roleSets: this.state.roleSets ?? [],
     });
   }
@@ -752,6 +773,7 @@ export class RoomSession {
         item.made = true;
         linkDependencies(state.repo?.dir ?? state.projectDir, item.dir);
         installSkills(this.dataDir, state.roleSets ?? [], item.dir);
+        copyAttachments(state.projectDir, item.dir);
         await work(item);
       }));
       const broken = settled.find(r => r.status === 'rejected');

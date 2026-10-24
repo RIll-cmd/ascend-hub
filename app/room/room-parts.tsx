@@ -254,6 +254,8 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [raceGate, setRaceGate] = useState(false);
   const [keepGoing, setKeepGoing] = useState(false);
   const [lint, setLint] = useState("");
+  // Files for the agents: a pasted screenshot, a PDF spec, notes. The room checks them again.
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [coverage, setCoverage] = useState("");
   // A GitHub issue (repo builds) or pull request (Review only), as a number or link; the room reads it with gh.
   const [github, setGithub] = useState("");
@@ -277,12 +279,12 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
     : { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}), ...(attachments.length ? { attachments: attachments.map(({ name, data }) => ({ name, data })) } : {}) };
   const canStart = missing.length === 0 && !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
+    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -401,15 +403,85 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
   );
 }
 
+export type Attachment = { name: string; size: number; data: string };
+const ATTACH_TYPES = ".png,.jpg,.jpeg,.gif,.webp,.pdf,.md,.txt";
+const MAX_ATTACH = 5;
+const MAX_ATTACH_FILE = 8 * 1024 * 1024;
+const MAX_ATTACH_TOTAL = 12 * 1024 * 1024;
+
+// A file as base64, the way the room's start body carries it.
+function readBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// Adds files within the limits; returns a message for the ones refused.
+async function addAttachments(current: Attachment[], files: File[], pasted: boolean): Promise<{ next: Attachment[]; problem: string | null }> {
+  const next = [...current];
+  for (const [i, file] of files.entries()) {
+    if (next.length >= MAX_ATTACH) return { next, problem: `At most ${MAX_ATTACH} attachments.` };
+    if (file.size > MAX_ATTACH_FILE || next.reduce((sum, a) => sum + a.size, 0) + file.size > MAX_ATTACH_TOTAL) return { next, problem: `${file.name}: at most 8 MB a file and 12 MB in all.` };
+    const ext = file.type.split("/")[1] === "jpeg" ? "jpg" : file.type.split("/")[1] ?? "png";
+    // A pasted screenshot arrives as "image.png"; give it a clearer name.
+    const name = pasted ? `screenshot-${Date.now().toString(36)}${i ? `-${i + 1}` : ""}.${ext}` : file.name;
+    next.push({ name, size: file.size, data: await readBase64(file) });
+  }
+  return { next, problem: null };
+}
+
+const sizeLabel = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+
 // The prompt box under the chat: what to build or debate, and Start. The side panel's fields belong to this form.
 export function BriefComposer({ brief: b, act }: { brief: Brief; act: Act }) {
   const build = b.kind === "build";
+  const attachable = build && b.template !== "review";
+  const picker = useRef<HTMLInputElement>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  // Adds run one after another from the latest list, so a paste and a pick close together both land.
+  const latest = useRef(b.attachments);
+  const queue = useRef(Promise.resolve());
+  useEffect(() => { latest.current = b.attachments; }, [b.attachments]);
+  const add = (files: File[], pasted = false) => {
+    queue.current = queue.current.then(async () => {
+      const { next, problem: why } = await addAttachments(latest.current, files, pasted);
+      latest.current = next;
+      b.setAttachments(next);
+      setProblem(why);
+    }).catch(() => setProblem("A file could not be read."));
+  };
   return (
     <form id={BRIEF_FORM} className="agent-room-composer" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", b.body); }}>
       <Textarea className="min-h-[72px] resize-y border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0" value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required={!(build && b.inRepo && b.github.trim())} rows={3}
         onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && b.canStart) e.currentTarget.form?.requestSubmit(); }}
-        placeholder={build ? "What should they build?" : "What should they debate?"} aria-label={build ? "What should they build?" : "What should they debate?"} />
+        onPaste={e => {
+          const images = [...e.clipboardData.files].filter(f => f.type.startsWith("image/"));
+          if (!attachable || !images.length) return;
+          e.preventDefault();
+          void add(images, true);
+        }}
+        placeholder={build ? (b.inRepo ? "What should they build? @path/to/file and @diff point at your repo" : "What should they build?") : "What should they debate?"} aria-label={build ? "What should they build?" : "What should they debate?"} />
+      {attachable && b.attachments.length > 0 && (
+        <ul className="agent-room-attachments" aria-label="Attachments">
+          {b.attachments.map(a => (
+            <li key={a.name}>
+              <span>{a.name}</span><small>{sizeLabel(a.size)}</small>
+              <button type="button" aria-label={`Remove ${a.name}`} onClick={() => b.setAttachments(b.attachments.filter(x => x !== a))}>×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {problem && <p role="alert" className="agent-room-error">{problem}</p>}
       <div className="agent-room-composer-bar">
+        {attachable && (
+          <>
+            <input ref={picker} type="file" multiple accept={ATTACH_TYPES} hidden onChange={e => { void add([...(e.target.files ?? [])]); e.target.value = ""; }} />
+            <Button type="button" variant="neutral" size="sm" onClick={() => picker.current?.click()} title="Attach a screenshot, a PDF spec or notes (or paste an image into the box)">Attach</Button>
+          </>
+        )}
         <small>{b.missing.length > 0 ? `Waiting for: ${b.missing.map(id => AGENT_NAMES[id]).join(", ")}` : build ? `${TEMPLATE_LABELS[b.template]} · ${b.inRepo ? "existing repo" : "new project"}` : "Debate · read-only"}</small>
         <Button type="submit" disabled={!b.canStart} title="Ctrl+Enter">Start</Button>
       </div>

@@ -89,14 +89,19 @@ test('one session at a time; gate, view and stop through the API', async () => {
   await room.close();
 });
 
-test('rejects bad bodies and unknown routes', async () => {
+test('rejects bad bodies and unknown routes; only starting a session may carry attachments', async () => {
   const { room, call } = await boot();
-  const bad = await fetch(`http://127.0.0.1:${room.port}/sessions`, { method: 'POST', headers: { authorization: `Bearer ${room.token}` }, body: '[1]' });
-  assert.equal(bad.status, 400);
-  assert.equal((await call('POST', '/sessions', { project: 'p', task: 'x'.repeat(70_000) })).status, 413);
-  assert.equal((await call('GET', '/nope')).status, 404);
-  assert.equal((await call('POST', '/sessions/current/stop', {})).status, 404);
-  await room.close();
+  try {
+    const bad = await fetch(`http://127.0.0.1:${room.port}/sessions`, { method: 'POST', headers: { authorization: `Bearer ${room.token}` }, body: '[1]' });
+    assert.equal(bad.status, 400);
+    assert.equal((await call('POST', '/memory', { key: 'k', notes: ['x'.repeat(70_000)] })).status, 413, 'ordinary routes keep the 64 KB limit');
+    assert.equal((await call('POST', '/sessions', { project: 'p', task: 'x'.repeat(70_000) })).status, 400, 'the start route reads it, then refuses the task');
+    assert.equal((await call('POST', '/sessions', { project: 'p', task: 't', attachments: [{ name: 'a.md', data: 'x'.repeat(18 * 1024 * 1024) }] })).status, 413);
+    assert.equal((await call('GET', '/nope')).status, 404);
+    assert.equal((await call('POST', '/sessions/current/stop', {})).status, 404);
+  } finally {
+    await room.close();
+  }
 });
 
 test('restores an unfinished session from disk on start', async () => {

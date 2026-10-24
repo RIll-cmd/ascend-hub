@@ -34,13 +34,13 @@ export function foreignHost(request: Request): Response | null {
   return LOOPBACK_HOSTS.has(name.toLowerCase()) ? null : Response.json({ error: "HOST_NOT_ALLOWED" }, { status: 403 });
 }
 
-export async function readCommand(request: Request): Promise<{ body: Record<string, unknown> } | { error: Response }> {
+export async function readCommand(request: Request, maxChars = 65_536): Promise<{ body: Record<string, unknown> } | { error: Response }> {
   const foreign = foreignHost(request);
   if (foreign) return { error: foreign };
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin) return { error: Response.json({ error: "ORIGIN_MISMATCH" }, { status: 403 }) };
   const text = await request.text();
-  if (text.length > 65_536) return { error: Response.json({ error: "BODY_TOO_LARGE" }, { status: 413 }) };
+  if (text.length > maxChars) return { error: Response.json({ error: "BODY_TOO_LARGE" }, { status: 413 }) };
   if (!text) return { body: {} };
   try {
     const body = JSON.parse(text);

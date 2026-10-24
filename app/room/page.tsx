@@ -143,12 +143,12 @@ export default function RoomPage() {
   const brief = useBrief(status?.agents, status?.folders, status?.repos);
   const liveIdRef = useRef<string | null>(null);
   useEffect(() => { liveIdRef.current = live?.id ?? null; }, [live?.id]);
-  const { setTask, setQuestion } = brief;
+  const { setTask, setQuestion, setAttachments } = brief;
   const act = useCallback(async (path: string, body?: unknown) => {
     const message = await send(path, body);
     setFailure(message ? { text: message, liveId: liveIdRef.current } : null);
-    if (!message && path === "/api/room/sessions") { setTask(""); setQuestion(""); }
-  }, [send, setTask, setQuestion]);
+    if (!message && path === "/api/room/sessions") { setTask(""); setQuestion(""); setAttachments([]); }
+  }, [send, setTask, setQuestion, setAttachments]);
   const closeDrawer = useCallback(() => setDrawer(false), []);
   const liveRunning = Boolean(live && !TERMINAL_STAGES.includes(live.stage));
   const [query, setQuery] = useState("");

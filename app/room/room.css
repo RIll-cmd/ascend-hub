@@ -278,6 +278,10 @@
 .agent-room-composer textarea { font: inherit; border: 0; background: transparent; resize: vertical; min-height: 56px; outline: none; }
 .agent-room-composer-bar { display: flex; align-items: center; gap: 8px; }
 .agent-room-composer-bar small { opacity: 0.65; }
+.agent-room-attachments { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.agent-room-attachments li { display: flex; align-items: center; gap: 6px; padding: 2px 4px 2px 8px; border: 2px solid #000; border-radius: 5px; background: var(--paper); color: var(--ink); font-size: 12px; }
+.agent-room-attachments small { opacity: 0.7; }
+.room-app .agent-room-attachments button:not([data-slot]) { padding: 0 6px; border: 0; background: transparent; box-shadow: none; line-height: 1.4; }
 .agent-room-composer-bar button { margin-left: auto; }
 /* Gate prompts sit under the chat like the composer. */
 .agent-room-stage .agent-room-gate { border: 1px solid rgba(43, 33, 24, 0.3); border-radius: 12px; }

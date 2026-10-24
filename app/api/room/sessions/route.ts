@@ -9,8 +9,9 @@ export function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const command = await readCommand(request);
+  // Up to 12 MB of attachments, base64-encoded, ride along with a new session.
+  const command = await readCommand(request, 17 * 1024 * 1024);
   if ("error" in command) return command.error;
-  // Starting runs git (a new repository, or a worktree with linked dependencies) before it answers.
-  return forwardToRoom("/sessions", { method: "POST", body: command.body, timeoutMs: 30_000 });
+  // Starting runs git (a new repository, or a worktree with linked dependencies) and may extract a PDF's text before it answers.
+  return forwardToRoom("/sessions", { method: "POST", body: command.body, timeoutMs: 90_000 });
 }

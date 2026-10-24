@@ -20,6 +20,8 @@ import { ensureRoomToken } from './token.mjs';
 
 const PROBE_TTL_MS = 10 * 60_000;
 const MAX_BODY = 64 * 1024;
+// Starting a session may carry attachments: 12 MB of files, base64-encoded.
+const MAX_START_BODY = 17 * 1024 * 1024;
 
 export async function probeAgent(agentId, settings, runTurn = realRunTurn, onEvent) {
   const cwd = tmpdir();
@@ -29,17 +31,17 @@ export async function probeAgent(agentId, settings, runTurn = realRunTurn, onEve
   return { state: 'offline', detail: result.timedOut ? 'timed out' : (result.error ?? (result.stderr || result.text || 'no reply')).slice(-200) };
 }
 
-function readBody(req) {
+function readBody(req, limit = MAX_BODY) {
   return new Promise((resolveBody, reject) => {
     let size = 0;
     const chunks = [];
     // Drain an oversized body instead of destroying the socket, so the 413 reply still arrives.
     req.on('data', chunk => {
       size += chunk.length;
-      if (size <= MAX_BODY) chunks.push(chunk);
+      if (size <= limit) chunks.push(chunk);
     });
     req.on('end', () => {
-      if (size > MAX_BODY) return reject(roomError('BODY_TOO_LARGE'));
+      if (size > limit) return reject(roomError('BODY_TOO_LARGE'));
       const text = Buffer.concat(chunks).toString('utf8');
       if (!text) return resolveBody({});
       try {
@@ -210,8 +212,8 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     const auth = Buffer.from(req.headers.authorization ?? '');
     if (auth.length !== expected.length || !timingSafeEqual(auth, expected)) return send(401, { error: 'UNAUTHORIZED' });
     try {
-      const body = req.method === 'POST' ? await readBody(req) : null;
       const route = `${req.method} ${new URL(req.url, 'http://room').pathname}`;
+      const body = req.method === 'POST' ? await readBody(req, route === 'POST /sessions' ? MAX_START_BODY : MAX_BODY) : null;
       if (route === 'GET /status') {
         if (Date.now() - probedAt > PROBE_TTL_MS && !busy()) refreshProbes();
         const repos = listRepos(settings).map(dir => ({ dir, check: suggestCheck(dir, settings.checks) }));
