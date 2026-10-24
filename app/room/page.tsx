@@ -4,6 +4,7 @@ import { Button } from "@/components/neo/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/neo/tabs";
 import { DebateView } from "./debate-view";
 import { WorkflowPanel } from "./workflow-panel";
+import { ChecksPanel } from "./checks-panel";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, LimitsCard, RoomSidebar, SessionCard, TopBar, TranscriptDrawer, type HistoryItem } from "./room-frame";
@@ -133,7 +134,7 @@ export default function RoomPage() {
   const [failure, setFailure] = useState<{ text: string; liveId: string | null } | null>(null);
   const [selected, setSelected] = useState<AgentId | null>(null);
   const [drawer, setDrawer] = useState(false);
-  const [tab, setTab] = useState<"debate" | "deck" | "workflow">("debate");
+  const [tab, setTab] = useState<"debate" | "deck" | "workflow" | "checks">("debate");
   const [viewing, setViewing] = useState<string | null>(null);
   // "New session" hides the live session it was pressed over; any newer live session shows again by itself.
   const [freshOver, setFreshOver] = useState<string | null | undefined>(undefined);
@@ -189,6 +190,7 @@ export default function RoomPage() {
                     {debate && <TabsTrigger value="debate">Debate</TabsTrigger>}
                     <TabsTrigger value="deck">Deck</TabsTrigger>
                     <TabsTrigger value="workflow">Workflow</TabsTrigger>
+                    {!debate && <TabsTrigger value="checks">Checks{session.checkRuns?.length ? ` (${session.checkRuns.length})` : ""}</TabsTrigger>}
                   </TabsList>
                 </Tabs>
                 <Button type="button" variant="neutral" size="sm" className="ml-auto" onClick={() => setDrawer(true)}>Full transcript</Button>
@@ -196,6 +198,7 @@ export default function RoomPage() {
             )}
             {shown === "debate" && session ? <DebateView session={session} />
               : shown === "workflow" && session ? <WorkflowPanel session={session} />
+              : shown === "checks" && session ? <ChecksPanel session={session} />
                 : <DeckCanvas view={view} pulses={isLive ? pulses : []} selected={selected} onSelect={setSelected} />}
             {session && <Transcript messages={messages.slice(-80)} />}
             {session && isLive && <GateBar session={session} act={act} />}

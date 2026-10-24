@@ -113,15 +113,21 @@ export function linkDependencies(repo, dir) {
 }
 
 const CHECK_OUTPUT = 6000;
+const CHECK_LOG = 2_000_000;
 
 // Runs the owner's check command without blocking the room; stop and timeout kill the whole process tree.
 export function runCheck(dir, command, { timeoutMs = 600_000, signal } = {}) {
   return new Promise(resolve => {
     const started = Date.now();
     let output = '';
+    // The whole output for the Checks pane, up to CHECK_LOG; output keeps only the tail the agents are shown.
+    let log = '';
     let ended = null;
     const child = spawn(command, { cwd: dir, shell: true, windowsHide: true, env: { ...process.env, CI: '1', FORCE_COLOR: '0' } });
-    const keep = chunk => { output = (output + chunk).slice(-CHECK_OUTPUT * 2); };
+    const keep = chunk => {
+      output = (output + chunk).slice(-CHECK_OUTPUT * 2);
+      if (log.length < CHECK_LOG) log += String(chunk).slice(0, CHECK_LOG - log.length);
+    };
     child.stdout.on('data', keep);
     child.stderr.on('data', keep);
     const end = why => { if (!ended) { ended = why; killTree(child); } };
@@ -133,7 +139,8 @@ export function runCheck(dir, command, { timeoutMs = 600_000, signal } = {}) {
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
       const tail = output.slice(-CHECK_OUTPUT).trim();
-      resolve({ ok: !ended && code === 0, code: ended ? null : code, ms: Date.now() - started, output: ended ? `${tail}\n${ended}`.trim() : tail });
+      const full = `${log}${log.length >= CHECK_LOG ? `\n[output cut at ${CHECK_LOG.toLocaleString('en-US')} characters]` : ''}${ended ? `\n${ended}` : ''}`;
+      resolve({ ok: !ended && code === 0, code: ended ? null : code, ms: Date.now() - started, output: ended ? `${tail}\n${ended}`.trim() : tail, log: full });
     });
     child.on('error', error => end(`Check could not start: ${error.message}`));
   });

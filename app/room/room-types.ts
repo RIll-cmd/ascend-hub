@@ -62,6 +62,7 @@ export type SessionView = {
   stageLog?: { stage: Stage; at: string }[];
   repo?: { dir: string; branch: string; base: string; baseBranch: string; prUrl?: string } | null;
   check?: string | null;
+  checkRuns?: CheckRun[];
   raceGate?: boolean;
   keepGoing?: boolean;
   issue?: { number: number; title: string; url: string };
@@ -78,3 +79,6 @@ export function rolesOf(agent: AgentId, roles: Roles | null): string[] {
     roles.reviewer === agent ? "reviewer" : null,
   ].filter((role): role is string => role !== null);
 }
+
+// One run of the session's check command; its full output is read on demand.
+export type CheckRun = { n: number; at: string; label: string; command: string; ok: boolean; code: number | null; ms: number; chars: number };

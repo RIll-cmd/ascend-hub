@@ -161,6 +161,22 @@
 .agent-room .agent-room-diff { max-height: 360px; overflow: auto; font-size: 11px; background: #1d1813; color: #efe3cc; padding: 8px; border-radius: 6px; white-space: pre; }
 .agent-room .agent-room-diff .is-add { color: #8fd18f; }
 .agent-room .agent-room-diff .is-del { color: #f08a7a; }
+.agent-room .agent-room-checks { display: grid; grid-template-columns: minmax(180px, 260px) 1fr; gap: 10px; background: var(--room-card); color: var(--room-ink); border-radius: 8px; padding: 12px; min-height: 320px; }
+.agent-room .agent-room-checks.is-empty { display: block; }
+.agent-room-check-runs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 460px; overflow: auto; }
+.agent-room .agent-room-check-runs button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 6px 8px; text-align: left; border: 2px solid transparent; border-radius: 5px; background: transparent; color: inherit; box-shadow: none; transform: none; }
+.agent-room .agent-room-check-runs button:hover { border-color: #000; }
+.agent-room .agent-room-check-runs button[aria-current="true"] { border-color: #000; background: var(--paper); color: var(--ink); box-shadow: 3px 3px 0 0 #000; }
+.agent-room-check-runs small { font-size: 12px; }
+.agent-room-checks .is-ok { color: #2f7d32; }
+.agent-room-checks .is-bad { color: #b3261e; }
+.agent-room-terminal { display: flex; flex-direction: column; min-width: 0; border: 2px solid #000; border-radius: 6px; overflow: hidden; background: #14110e; color: #e9e2d4; }
+.agent-room-terminal header { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; background: #2a231c; font-size: 12px; }
+.agent-room-terminal header code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #f3e6d4; }
+.agent-room-terminal header .is-ok { color: #8fd18f; }
+.agent-room-terminal header .is-bad { color: #f08a7a; }
+.agent-room-terminal pre { margin: 0; padding: 10px; max-height: 460px; overflow: auto; font-size: 12px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 760px) { .agent-room .agent-room-checks { grid-template-columns: 1fr; } }
 /* Race gate: one column per attempt, stacked on narrow screens. */
 .agent-room-race { flex-basis: 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
 .agent-room-race > section { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }

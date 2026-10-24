@@ -546,7 +546,7 @@ export class RoomSession {
     }
     // A refactor must start from green checks, or "behaviour unchanged" cannot be told apart from already broken.
     if (state.template === 'refactor' && !state.baseline?.ok) {
-      const baseline = await this.runChecks();
+      const baseline = await this.runChecks(state.projectDir, 'before any change');
       if (baseline === null) return;
       state.baseline = baseline;
       if (!baseline.ok) {
@@ -583,7 +583,7 @@ export class RoomSession {
       task.commit = hash;
       this.say('room', `Committed ${hash} "${message}".`);
       if (state.check) {
-        const result = await this.runChecks();
+        const result = await this.runChecks(state.projectDir, `task ${task.id}`);
         if (result === null) return;
         task.check = result;
         const last = result.output.split('\n').filter(Boolean).at(-1) ?? '';
@@ -668,13 +668,25 @@ export class RoomSession {
   }
 
   // The owner's check command, stoppable like an agent turn; null means the session stopped meanwhile.
-  async runChecks(dir = this.state.projectDir) {
+  // label says what was checked ("task 2", "before any change"); every run's full output is kept for the Checks pane.
+  async runChecks(dir = this.state.projectDir, label = 'checks') {
     const controller = new AbortController();
     this.controllers.add(controller);
     if (dir === this.state.projectDir) this.say('room', `Running checks: ${this.state.check}`);
-    const result = await runCheck(dir, this.state.check, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: controller.signal });
+    const started = new Date().toISOString();
+    const { log, ...result } = await runCheck(dir, this.state.check, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: controller.signal });
     this.controllers.delete(controller);
+    this.recordCheck(label, started, result, log);
     return this.state.stage === 'stopped' ? null : result;
+  }
+
+  recordCheck(label, at, { ok, code, ms }, log) {
+    const runs = (this.state.checkRuns ??= []);
+    const n = runs.length + 1;
+    mkdirSync(join(this.dir, 'checks'), { recursive: true });
+    writeFileSync(join(this.dir, 'checks', `${n}.log`), log, 'utf8');
+    runs.push({ n, at, label, command: this.state.check, ok, code, ms, chars: log.length });
+    this.save();
   }
 
   // Runs work(item) for every item at once, each in its own worktree branched from the session's HEAD, then done();
@@ -732,7 +744,7 @@ export class RoomSession {
         attempt.commit = this.sideCommit(attempt.dir, base, message);
         if (!attempt.commit) return Object.assign(attempt, { ok: false, why: 'no changes were made' });
         if (state.check) {
-          attempt.check = await this.runChecks(attempt.dir);
+          attempt.check = await this.runChecks(attempt.dir, `task ${task.id}, ${AGENT_NAMES[attempt.agent]}'s race attempt`);
           if (!attempt.check?.ok) return Object.assign(attempt, { ok: false, why: `the checks failed (exit ${attempt.check?.code ?? 'none'})` });
         }
         attempt.diff = branchDiff(attempt.dir, base, 20_000);
@@ -885,7 +897,7 @@ export class RoomSession {
     task.commit = merged.commit;
     this.say('room', `Merged task ${task.id} as ${task.commit} "${message}".`);
     if (state.check) {
-      const result = await this.runChecks();
+      const result = await this.runChecks(state.projectDir, `task ${task.id} after merging`);
       if (result === null) return;
       task.check = result;
       if (!result.ok) {

@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, readdirSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -118,6 +118,15 @@ export function searchSessions(dataDir, q) {
   return found;
 }
 
+// One check run's facts and full output, as runChecks saved them.
+function readCheckRun(dataDir, id, n) {
+  if (!SESSION_ID.test(id)) throw roomError('SESSION_ID_INVALID');
+  const dir = join(dataDir, 'sessions', id);
+  const run = readJson(join(dir, 'state.json'))?.checkRuns?.find(r => r.n === n);
+  const file = join(dir, 'checks', `${n}.log`);
+  return run && existsSync(file) ? { run, output: readFileSync(file, 'utf8') } : null;
+}
+
 // A whole session as Markdown, from disk with its full transcript (the page only holds the last 200 messages).
 function exportSession(dataDir, id) {
   if (!SESSION_ID.test(id)) throw roomError('SESSION_ID_INVALID');
@@ -228,6 +237,11 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       if (route === 'GET /sessions') {
         const q = new URL(req.url, 'http://room').searchParams.get('q');
         return send(200, { sessions: q ? searchSessions(dataDir, q) : listSessions(dataDir) });
+      }
+      const checkRun = req.method === 'GET' && /^\/sessions\/([^/]+)\/checks\/(\d{1,6})$/.exec(new URL(req.url, 'http://room').pathname);
+      if (checkRun) {
+        const found = readCheckRun(dataDir, checkRun[1], Number(checkRun[2]));
+        return found ? send(200, found) : send(404, { error: 'NO_CHECK_RUN' });
       }
       const exported = req.method === 'GET' && /^\/sessions\/([^/]+)\/export$/.exec(new URL(req.url, 'http://room').pathname);
       if (exported) {
