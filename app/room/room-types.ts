@@ -63,6 +63,7 @@ export type SessionView = {
   repo?: { dir: string; branch: string; base: string; baseBranch: string; prUrl?: string } | null;
   check?: string | null;
   raceGate?: boolean;
+  keepGoing?: boolean;
   raceTask?: number;
   attention?: { kind: "gate" | "pause"; gate?: "roles" | "plan" | "race" | "result"; summary: string; options: string[]; decisions: string[]; memory?: string[] } | null;
 };

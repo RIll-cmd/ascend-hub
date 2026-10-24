@@ -124,6 +124,17 @@ function stageRules(stage, agent, roles, extra, roleSets = []) {
         `\`\`\`json\n{"winner": "${extra.attempts[0].agent}", "reason": "one sentence"}\n\`\`\``,
         ...extra.attempts.map(a => `\nATTEMPT BY ${AGENT_NAMES[a.agent].toUpperCase()} (${a.agent}): ${cap(a.summary, 500)}\nDIFF:\n${cap(a.diff, Math.floor(12_000 / extra.attempts.length))}`),
       ].join('\n');
+    case 'progress':
+      return [
+        `You are the orchestrator. Task ${extra.task.id} (${extra.task.title}) has failed ${extra.task.attempts} time${extra.task.attempts === 1 ? '' : 's'}; ${AGENT_NAMES[extra.task.assignee]} is its coder.`,
+        "Keep-going mode is on: the owner wants this task finished without waiting for them, while the session's budget lasts.",
+        'Decide whether one more round is likely to succeed. Failures that get smaller or change mean progress; the same failure again and again means stuck.',
+        'The latest failures, oldest first:',
+        ...(extra.task.failures ?? []).map((f, i) => `${i + 1}. ${cap(f, 1500)}`),
+        'Do not edit files. Reply with one fenced json block:',
+        '```json\n{"verdict": "continue", "note": "one sentence telling the coder what to try next"}\n```',
+        'Use "stuck" when another round would repeat the same failure.',
+      ].join('\n');
     case 'reassign':
       return `You are the orchestrator. Task ${extra.task.id} (${extra.task.title}) failed twice with ${AGENT_NAMES[extra.task.assignee]}. Last reason: ${cap(extra.reason, 2000)}\nThe coders are:\n${team}\nReply with one fenced json block, either {"action": "reassign", "to": "<coder id>"} with a different coder, or {"action": "skip"}.`;
     case 'finish':

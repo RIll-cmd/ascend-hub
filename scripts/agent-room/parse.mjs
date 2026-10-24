@@ -74,6 +74,11 @@ export function validateVerdict(v) {
   return { ok: true, value: { verdict: v.verdict, notes: typeof v.notes === 'string' ? v.notes.slice(0, 4000) : '' } };
 }
 
+export function validateProgress(v) {
+  if (!['continue', 'stuck'].includes(v?.verdict)) return fail('verdict must be "continue" or "stuck".');
+  return { ok: true, value: { verdict: v.verdict, note: typeof v.note === 'string' ? v.note.replace(/\s+/g, ' ').trim().slice(0, 500) : '' } };
+}
+
 export function validateJudge(v, agents) {
   if (!agents.includes(v?.winner)) return fail(`winner must be one of ${agents.join(', ')}.`);
   return { ok: true, value: { winner: v.winner, reason: typeof v.reason === 'string' ? v.reason.replace(/\s+/g, ' ').trim().slice(0, 500) : '' } };

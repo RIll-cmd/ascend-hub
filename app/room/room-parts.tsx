@@ -252,6 +252,7 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [limits, setLimits] = useState({ minutes: 120, turns: 80, rounds: 3 });
   const [parallel, setParallel] = useState(false);
   const [raceGate, setRaceGate] = useState(false);
+  const [keepGoing, setKeepGoing] = useState(false);
   const [template, setTemplate] = useState<keyof typeof TEMPLATE_LABELS>("feature");
   const [models, setModels] = useState<{ codex: string; claude: string }>({ codex: "", claude: "" });
   const [preview, setPreview] = useState({ command: "", url: "" });
@@ -269,12 +270,12 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const reviewBody = { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}) };
   const canStart = missing.length === 0 && !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, raceGate, setRaceGate, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
+    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -362,6 +363,9 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
             )}
             <label className="agent-room-check" title="When several coders race a task and more than one attempt passes, the room shows their changes side by side and waits for you to keep one.">
               <Checkbox checked={b.raceGate} onCheckedChange={checked => b.setRaceGate(checked)} /> Let me pick race winners
+            </label>
+            <label className="agent-room-check" title="When a task would pause at its round limit or be skipped, the orchestrator judges whether it is still making progress and, if so, gives it another round (up to 5). Session minutes and turns still apply.">
+              <Checkbox checked={b.keepGoing} onCheckedChange={checked => b.setKeepGoing(checked)} /> Keep going on failing tasks
             </label>
             <label className="agent-room-check"><Checkbox checked={b.ownRoles} onCheckedChange={checked => b.setOwnRoles(checked)} /> Set roles myself</label>
             {b.ownRoles && <RolesEditor value={b.roles} onChange={b.setRoles} />}

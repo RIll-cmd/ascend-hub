@@ -91,6 +91,7 @@ The page has three columns: past sessions on the left, the 3D room and the chat 
 - **Checks after every task:** your test command runs after each task. A failure sends the task back to its coder with the output.
 - **Templates:** *Feature*, *Bug fix* (task 1 must add a failing test, later tasks make it pass), *Refactor* (checks must pass before and after every task) and *Review only*.
 - **Limits and loop guard:** caps on work minutes, agent turns and rounds per task. The room pauses and asks you instead of looping, and **Retry** grants a little more.
+- **Keep going:** with *Keep going on failing tasks* ticked, a task that would pause at its round limit or be skipped goes to the orchestrator first. If its failures are changing, the orchestrator gives it another round with a hint for the coder, up to five extra rounds per task. If they keep repeating, the task pauses as usual. Session minutes and turns still apply.
 - **Models per agent:** pick a model for Codex and for Claude, for example a cheaper one for reviews.
 - **Project memory:** at the result gate the orchestrator proposes up to five notes for next time. You tick and edit the ones to keep, and later sessions for that repo read them.
 - **Best-of-N races:** mark a hard task as a race and every coder attempts it at once in its own worktree. The checks filter the attempts, a judge picks the best, and only the winner is kept.
@@ -193,7 +194,7 @@ Then double-click **Ascend Hub** on the desktop. Closing the launcher window whi
 1. Open **http://127.0.0.1:5173/room**, or click the *Ascend Hub* poster on the shelf. Wait until all three agents show as ready.
 2. Under **New session** in the right column, choose **Build** or **Debate**.
 3. For a build, pick the **Kind of work** and either a **New project** name or an **Existing repo**. Under **Options**, add a **check** command such as `npm test`. It is required for *Bug fix* and *Refactor*.
-4. Also under **Options**, optionally set models, limits, sub-agents and **Run independent tasks at the same time**. Tick **Set roles myself** to skip the discussion.
+4. Also under **Options**, optionally set models, limits, sub-agents, **Keep going on failing tasks** and **Run independent tasks at the same time**. Tick **Set roles myself** to skip the discussion.
 5. Describe the task in the prompt box under the room and press **Start**.
 6. Answer the gates as they come:
    - **Roles:** edit the roles or approve them.

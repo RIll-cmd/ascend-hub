@@ -4,7 +4,7 @@ import { basename, dirname, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { errorText, RATE_LIMITED, shellCommands, skillReads, subagentEvent, usageEvent } from './events.mjs';
 import { dangerousCommand } from './guard.mjs';
-import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
+import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateProgress, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
 import { branchDiff, commitAll, commitDiff, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, headCommit, lastCommitDiff, linkDependencies, openPullRequest, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
@@ -20,6 +20,8 @@ export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
 
 // A rate-limited session retries by itself this many times in a row, then waits for the owner's Retry.
 const AUTO_RETRIES = 6;
+// Keep-going grants a failing task at most this many rounds beyond where it would pause or be skipped.
+const KEEP_GOING_ROUNDS = 5;
 
 // Only Claude has a working sub-agent switch; it defaults to on.
 const others = agent => AGENT_IDS.filter(id => id !== agent);
@@ -79,6 +81,7 @@ export class RoomSession {
     if (check !== undefined && check !== null && (typeof check !== 'string' || check.length > 500)) throw roomError('CHECK_INVALID');
     if (body.parallel !== undefined && body.parallel !== null && typeof body.parallel !== 'boolean') throw roomError('PARALLEL_INVALID');
     if (body.raceGate !== undefined && body.raceGate !== null && typeof body.raceGate !== 'boolean') throw roomError('RACE_GATE_INVALID');
+    if (body.keepGoing !== undefined && body.keepGoing !== null && typeof body.keepGoing !== 'boolean') throw roomError('KEEP_GOING_INVALID');
     const subagents = subagentChoice(body.subagents);
     if (typeof task !== 'string' || !task.trim() || task.length > 4000) throw roomError('TASK_INVALID');
     const preview = validatePreview(body.preview);
@@ -115,6 +118,8 @@ export class RoomSession {
       parallel: body.parallel === true && template !== 'bugfix', roleSets, preview,
       // The owner picks among race attempts that pass, instead of the judge's pick merging at once.
       raceGate: body.raceGate === true,
+      // A failing task asks the orchestrator whether it is still making progress instead of pausing or being skipped.
+      keepGoing: body.keepGoing === true,
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
@@ -869,10 +874,21 @@ export class RoomSession {
     task.attempts += 1;
     task.passed = [];
     task.notes = reason;
+    task.failures = [...(task.failures ?? []), String(reason).slice(0, 1500)].slice(-3);
     this.say('room', `Task ${task.id} attempt ${task.attempts} not accepted: ${reason}`);
     // The loop guard stops another round (a retry or a reassignment), never a skip: a task going in circles waits for the owner.
     const skipping = task.attempts >= 2 && task.reassigned;
-    if (!skipping && (task.rounds ?? 0) >= (this.state.limits?.rounds ?? Infinity) + (task.extraRounds ?? 0)) {
+    const overRounds = !skipping && (task.rounds ?? 0) >= (this.state.limits?.rounds ?? Infinity) + (task.extraRounds ?? 0);
+    if (overRounds || skipping) {
+      const more = await this.keepGoing(task);
+      if (more === null) return;
+      if (more) {
+        task.status = 'pending';
+        this.save();
+        return;
+      }
+    }
+    if (overRounds) {
       task.status = 'pending';
       this.pauseWith(`Task ${task.id} reached ${task.rounds} rounds. Retry allows one more.`, { kind: 'rounds', task: task.id });
       return;
@@ -1018,6 +1034,25 @@ export class RoomSession {
     }
     this.save();
     return this.kick();
+  }
+
+  // Keep-going: true grants one more round, false lets the task pause or be skipped as usual, null when the judge turn paused or stopped.
+  // Session minutes and turns still bound it, because every round and judge turn goes through turn().
+  async keepGoing(task) {
+    if (!this.state.keepGoing || (task.keptGoing ?? 0) >= KEEP_GOING_ROUNDS) return false;
+    const { orchestrator } = this.state.roles;
+    const verdict = await this.jsonTurn(orchestrator, this.prompt('progress', orchestrator, { task }), 'judging progress', validateProgress, [task.assignee], { task });
+    if (!verdict) return null;
+    const note = verdict.note ? ` ${verdict.note}` : '';
+    if (verdict.verdict !== 'continue') {
+      this.say('room', `Keep going: ${AGENT_NAMES[orchestrator]} judged task ${task.id} stuck.${note}`);
+      return false;
+    }
+    task.keptGoing = (task.keptGoing ?? 0) + 1;
+    task.extraRounds = (task.extraRounds ?? 0) + 1;
+    if (verdict.note) task.notes = `${task.notes}\nOrchestrator: ${verdict.note}`;
+    this.say('room', `Keep going: ${AGENT_NAMES[orchestrator]} sees progress on task ${task.id}, so it gets another round (${task.keptGoing} of ${KEEP_GOING_ROUNDS}).${note}`);
+    return true;
   }
 
   // Only notes the owner approved at a kept result are stored; a rejected result teaches nothing.

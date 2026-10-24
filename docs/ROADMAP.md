@@ -68,12 +68,12 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 
 | Feature | What it gives | Source | Size |
 | --- | --- | --- | --- |
-| Auto-continue when a limit window resets | A paused session resumes by itself when `quota.json` shows the window reset | Backlog; Hermes `/loop` | M |
+| Auto-continue when a limit window resets | A paused session resumes by itself when `quota.json` shows the window reset | Backlog; Hermes `/loop` | Done (2026-10-24) by the rate-limit requeue: a limited session resumes at the reset |
 | Requeue on rate limit | A turn that fails only on a rate limit or 5xx is retried later without counting as a failed round | Hermes Kanban exit code 75 | Done (2026-10-24): main turns pause and retry at the reset; race and parallel attempts still fail |
 | Limit-aware assignment | Work moves from an agent above 90% of a window to another coder | Backlog; Hermes fallback providers | M |
 | Session queue | Start several sessions; they run one after another | Backlog; Hermes Kanban | L |
 | Scheduled sessions | A schedule in room settings, for example a nightly *Review only* session on a repo | Backlog; Hermes cron | M |
-| Keep-going mode | A judge turn after each failed check keeps the task going, inside the M6a budgets | Backlog; Hermes `/goal` | M |
+| Keep-going mode | A judge turn after each failed check keeps the task going, inside the M6a budgets | Backlog; Hermes `/goal` | Done (2026-10-24): `keepGoing` option; the orchestrator judges progress where a task would pause or be skipped, up to 5 extra rounds |
 | Retry from any stage | Restart a session from roles, plan or a single task | Backlog | M |
 | Owner note to a running agent | A note joins the agent's next turn without stopping the session | Hermes `/steer` | S |
 
