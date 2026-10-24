@@ -162,3 +162,43 @@ Small and useful first:
 - Never point two Hermes processes at one profile: both write memory and read each other's writes.
 - Hermes as a room agent spends whatever provider it is set to; its usage must reach the M6 meter before long sessions.
 - The gateway and API server must stay on `127.0.0.1` with a key, like the room.
+
+## Spike results (2026-10-24)
+
+Hermes `vgit.5894e75` (2026.9.24, stable channel), run on this Windows machine. Only failure paths have been seen so far: no usable model provider was available (see below).
+
+**Install.**
+- The official installer (`install.ps1`, 1,672 lines, adds its `bin` to the user PATH) was not run: Claude Code's auto-mode safety check refused it.
+- Hermes refuses wheel builds by design ("Building wheels or sdists for hermes-agent is not supported"). `uv pip install -e` on `main` fails on a pin clash (`pillow==13.0.0` against `browser-harness==0.1.13`, which wants `12.3.0`).
+- What worked: a shallow clone in `D:\hermes-spike\src`, then `uv sync --frozen` with `UV_PROJECT_ENVIRONMENT=D:\hermes-spike\.venv` and `UV_CACHE_DIR` on the same drive (uv cannot move its temp files across drives: os error 17). Venv 171 MB, source 358 MB. Nothing was added to PATH; every run sets `HERMES_HOME=D:\hermes-spike\home`.
+
+**Credentials (important for the room).**
+- By default (`auth.adopt_external_logins: true`) Hermes reads and refreshes `~/.codex/auth.json` and `~/.claude/.credentials.json`. Both use single-use rotating refresh tokens, so Hermes refreshing them would log the Agent Room's Codex and Claude out. The spike home sets `adopt_external_logins: false`; any Hermes the room runs must do the same.
+- Borrowing the Claude login would also only bill Claude Max "extra usage" credits, not the plan's normal allowance.
+- On its own Hermes found Copilot through `gh auth token` and Hugging Face through `HF_TOKEN`. Hugging Face has no credits left; Copilot was not tried (the safety check refused using the `gh` token).
+
+**Process.** `hermes chat` starts a background gateway, `python -m hermes_cli.main --profile default gateway run --quiet --idle-exit`, and leaves it running after the turn. Two runs left two gateways. A room integration must stop them or reuse one.
+
+**Events seen** (`hermes chat --oneshot -q <prompt> --format stream-json`). Every stdout line is JSON with a `timestamp` in milliseconds; `init` comes first even when the turn fails; the process exit code equals `result.exit_code`.
+
+No model configured (exit 1, 21 s, including gateway start):
+
+```json
+{"type":"system","subtype":"init","model":"","session_id":""}
+{"type":"result","session_id":"","exit_code":1,"text":"","tokens":{"input":0,"output":0,"total":0,"cache_read":0,"cache_write":0},"duration_ms":16936,"error":"storage_unavailable"}
+```
+
+`storage_unavailable` is misleading: the gateway's `restore_policy` rejects a session policy with an empty model (`gateway/session_policy.py`). stderr: `Error: storage_unavailable`.
+
+Provider billing failure, `--provider huggingface --model Qwen/Qwen3.5-397B-A17B` (exit 1, 10 s):
+
+```json
+{"type":"system","subtype":"init","model":"Qwen/Qwen3.5-397B-A17B","session_id":""}
+{"type":"result","session_id":"local-<64 hex>","exit_code":1,"text":"Billing or credits exhausted: HTTP 402: {\"error\":\"You have no remaining credits...\"}","tokens":{"input":0,"output":0,"total":0,"cache_read":0,"cache_write":0},"duration_ms":6536,"error":"HTTP 402: {...}"}
+```
+
+stderr carries `Session: local-…` and `session_id: local-…`.
+
+**Not seen yet:** `text` deltas, `tool_use`, `tool_result`, a successful `result` with token counts, and exit code 130. They need a working provider.
+
+**For the room:** read the reply and usage from `result` (`text`, `tokens.total`), and the error from `result.error`. Treat an HTTP 402 as a billing stop, not a rate limit, since it does not reset by itself.

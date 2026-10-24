@@ -103,7 +103,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 
 | Feature | What it gives | Source | Size |
 | --- | --- | --- | --- |
-| Hermes Agent spike | Install, run `hermes chat --oneshot -q "2+2" --format stream-json`, record the real events and exit codes | Hermes feature map | S |
+| Hermes Agent spike | Install, run `hermes chat --oneshot -q "2+2" --format stream-json`, record the real events and exit codes | Hermes feature map | Partly done (2026-10-24): installed, failure events recorded; a successful turn needs a model provider (see the feature map) |
 | Hermes as a fourth room agent | Hermes plans, codes, reviews or judges with any model it is set to; `--query-file` avoids the 28,000-character prompt cap | Hermes feature map, path A | M |
 | Hermes status TV (CH 05) | A status adapter from Hermes hooks to Core's `POST /api/status/events`; the shelf already shows unknown services | Handoff; Hermes path B | S–M |
 | Hermes on the Limits pill | Read `hermes usage --json` | Hermes | S |
