@@ -93,7 +93,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Live diff panel | The current task's diff while it is being written | Backlog | M |
 | File tree and read-only viewer | Browse the session worktree | Backlog | M |
 | Terminal pane for check output | The full output of each check run | Backlog | S |
-| Search across sessions | Full-text search over past sessions in the history column | Backlog; Hermes FTS5 search | M |
+| Search across sessions | Full-text search over past sessions in the history column | Backlog; Hermes FTS5 search | Done (2026-10-24): `GET /sessions?q=`, a plain scan of task, transcript and verdict, at most 50 results |
 | Transcript and summary export | Markdown export of a session | Backlog | S |
 | Lint and coverage per task | The repo's linter and coverage after each task, shown in Workflow | Backlog; Hermes LSP lint | M |
 | Files produced, as downloads | The result gate lists generated files to download | Hermes deliverable mode | S |

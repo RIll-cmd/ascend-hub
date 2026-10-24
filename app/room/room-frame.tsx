@@ -26,13 +26,13 @@ export function TopBar({ session, view, running, act }: { session: SessionView |
   );
 }
 
-export type HistoryItem = { id: string; mode: "build" | "debate"; project: string; stage: Stage; title: string; createdAt: string };
+export type HistoryItem = { id: string; mode: "build" | "debate"; project: string; stage: Stage; title: string; createdAt: string; match?: { from: string; snippet: string } };
 
 const historyState = (stage: Stage) => (TERMINAL_STAGES.includes(stage) ? stage : stage.startsWith("gate-") ? "waiting for you" : "running");
 
 // The left column: back to the shelf, a new session, past sessions, and the sound switch.
-export function RoomSidebar({ history, activeId, running, onNew, onOpen, soundOn, onToggleSound, theme, onTheme }: {
-  history: HistoryItem[]; activeId: string | null; running: boolean; onNew: () => void; onOpen: (id: string) => void; soundOn: boolean; onToggleSound: () => void;
+export function RoomSidebar({ history, query, onQuery, searching, activeId, running, onNew, onOpen, soundOn, onToggleSound, theme, onTheme }: {
+  history: HistoryItem[]; query: string; onQuery: (q: string) => void; searching: boolean; activeId: string | null; running: boolean; onNew: () => void; onOpen: (id: string) => void; soundOn: boolean; onToggleSound: () => void;
   theme: ThemeId; onTheme: (id: ThemeId) => void;
 }) {
   return (
@@ -43,16 +43,21 @@ export function RoomSidebar({ history, activeId, running, onNew, onOpen, soundOn
         <Plus aria-hidden="true" /> New session
       </Button>
       <p className="room-left-label">Sessions</p>
-      <ul className="room-history">
+      <input type="search" className="room-history-search" value={query} onChange={e => onQuery(e.target.value)} maxLength={200}
+        placeholder="Search tasks and chats" aria-label="Search past sessions" />
+      <ul className="room-history" aria-label={searching ? "Matching sessions" : "Past sessions"}>
         {history.map(h => (
           <li key={h.id}>
             <button type="button" className={h.id === activeId ? "is-active" : undefined} onClick={() => onOpen(h.id)} title={h.title}>
               <span>{h.title || h.project}</span>
               <small>{h.mode === "debate" ? "Debate" : h.project} · {historyState(h.stage)}</small>
+              {h.match && h.match.snippet !== h.title && (
+                <small className="room-history-match">{h.match.from === "task" || h.match.from === "project" ? "" : `${h.match.from}: `}{h.match.snippet}</small>
+              )}
             </button>
           </li>
         ))}
-        {history.length === 0 && <li className="room-history-empty">No sessions yet.</li>}
+        {history.length === 0 && <li className="room-history-empty">{searching ? "No matching sessions." : "No sessions yet."}</li>}
       </ul>
       <label className="room-theme">
         Theme

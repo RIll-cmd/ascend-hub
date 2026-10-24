@@ -2,9 +2,10 @@ import { foreignHost, forwardToRoom, readCommand } from "@/app/room/room-proxy";
 
 export const dynamic = "force-dynamic";
 
-// The session history for the room's sidebar.
+// The session history for the room's sidebar; ?q= searches it.
 export function GET(request: Request) {
-  return foreignHost(request) ?? forwardToRoom("/sessions");
+  const q = new URL(request.url).searchParams.get("q")?.slice(0, 200);
+  return foreignHost(request) ?? forwardToRoom(q ? `/sessions?q=${encodeURIComponent(q)}` : "/sessions");
 }
 
 export async function POST(request: Request) {

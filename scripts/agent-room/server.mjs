@@ -74,13 +74,47 @@ function leftoverWorktrees(dataDir) {
 
 const SESSION_ID = /^\d+-[0-9a-f]{6}$/;
 
+const summaryOf = s => ({ id: s.id, mode: s.mode ?? 'build', project: s.project, stage: s.stage, title: String(s.task ?? '').split('\n')[0].slice(0, 80), createdAt: s.createdAt });
+const sessionIds = root => (existsSync(root) ? readdirSync(root).filter(id => SESSION_ID.test(id)).sort().reverse() : []);
+
 // The history list: newest first, a one-line summary each.
 function listSessions(dataDir) {
   const root = join(dataDir, 'sessions');
-  if (!existsSync(root)) return [];
-  return readdirSync(root).filter(id => SESSION_ID.test(id)).sort().reverse().slice(0, 100)
-    .map(id => readJson(join(root, id, 'state.json'))).filter(Boolean)
-    .map(s => ({ id: s.id, mode: s.mode ?? 'build', project: s.project, stage: s.stage, title: String(s.task ?? '').split('\n')[0].slice(0, 80), createdAt: s.createdAt }));
+  return sessionIds(root).slice(0, 100).map(id => readJson(join(root, id, 'state.json'))).filter(Boolean).map(summaryOf);
+}
+
+// About 140 characters of text around the first place it contains term, on one line.
+function snippetAround(text, term) {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  const at = Math.max(0, flat.toLowerCase().indexOf(term));
+  const start = Math.max(0, at - 60);
+  return `${start > 0 ? '…' : ''}${flat.slice(start, at + term.length + 80)}${at + term.length + 80 < flat.length ? '…' : ''}`;
+}
+
+// Past sessions whose task, transcript or verdict hold every word of q (any case), newest first, at most 50, each with where it matched.
+// shortcut: reads every session's files on each search; fine for hundreds of sessions, add an index (SQLite FTS5) if it gets slow.
+export function searchSessions(dataDir, q) {
+  const query = String(q).trim().toLowerCase();
+  if (query.length < 2 || query.length > 200) throw roomError('QUERY_INVALID', 'Search for 2 to 200 characters.');
+  const terms = query.split(/\s+/);
+  const root = join(dataDir, 'sessions');
+  const found = [];
+  for (const id of sessionIds(root)) {
+    const state = readJson(join(root, id, 'state.json'));
+    if (!state) continue;
+    const parts = [
+      { from: 'task', text: String(state.task ?? '') },
+      ...readJsonLines(join(root, id, 'transcript.jsonl')).map(m => ({ from: m.from, text: String(m.text ?? '') })),
+      ...(state.answer ? [{ from: 'verdict', text: String(state.answer) }] : []),
+      { from: 'project', text: String(state.project ?? '') },
+    ];
+    const all = parts.map(p => p.text.toLowerCase()).join('\n');
+    if (!terms.every(t => all.includes(t))) continue;
+    const hit = parts.find(p => p.text.toLowerCase().includes(terms[0]));
+    found.push({ ...summaryOf(state), match: { from: hit.from, snippet: snippetAround(hit.text, terms[0]) } });
+    if (found.length === 50) break;
+  }
+  return found;
 }
 
 // One past session as the room page shows it, read from disk without changing it.
@@ -182,7 +216,10 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         return send(201, { session: session.summary() });
       }
       if (route === 'GET /sessions/current') return send(200, { session: session?.view() ?? null });
-      if (route === 'GET /sessions') return send(200, { sessions: listSessions(dataDir) });
+      if (route === 'GET /sessions') {
+        const q = new URL(req.url, 'http://room').searchParams.get('q');
+        return send(200, { sessions: q ? searchSessions(dataDir, q) : listSessions(dataDir) });
+      }
       const past = req.method === 'GET' && /^\/sessions\/([^/]+)$/.exec(new URL(req.url, 'http://room').pathname);
       if (past) {
         const view = session?.state.id === past[1] ? session.view() : readSession(dataDir, past[1]);

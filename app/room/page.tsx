@@ -94,19 +94,23 @@ function useRoomSound(view: DeckView, pulses: DeckPulse[]) {
   return { soundOn, toggle };
 }
 
-// Past sessions for the sidebar; refreshed every few seconds and whenever the live session changes stage.
-function useHistory(liveKey: string) {
+// Past sessions for the sidebar, or the ones matching a search of 2+ characters; refreshed every few seconds and whenever
+// the live session changes stage. A search waits a moment for typing to stop.
+function useHistory(liveKey: string, query: string) {
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const q = query.trim();
+  const searching = q.length >= 2;
   useEffect(() => {
     let alive = true;
-    const load = () => fetch("/api/room/sessions", { cache: "no-store" })
+    const url = searching ? `/api/room/sessions?q=${encodeURIComponent(q)}` : "/api/room/sessions";
+    const load = () => fetch(url, { cache: "no-store" })
       .then(r => (r.ok ? (r.json() as Promise<{ sessions?: HistoryItem[] }>) : null))
       .then(data => { if (alive && data?.sessions) setHistory(data.sessions); }, () => {});
-    const first = setTimeout(load, 0);
+    const first = setTimeout(load, searching ? 250 : 0);
     const timer = setInterval(load, 8_000);
     return () => { alive = false; clearTimeout(first); clearInterval(timer); };
-  }, [liveKey]);
-  return history;
+  }, [liveKey, q, searching]);
+  return { history, searching };
 }
 
 // A past session opened from the sidebar, read-only.
@@ -144,7 +148,8 @@ export default function RoomPage() {
   }, [send, setTask, setQuestion]);
   const closeDrawer = useCallback(() => setDrawer(false), []);
   const liveRunning = Boolean(live && !TERMINAL_STAGES.includes(live.stage));
-  const history = useHistory(`${live?.id ?? ""}:${live?.stage ?? ""}`);
+  const [query, setQuery] = useState("");
+  const { history, searching } = useHistory(`${live?.id ?? ""}:${live?.stage ?? ""}`, query);
   const pastView = usePastSession(viewing && viewing !== live?.id ? viewing : null);
   // What the middle column shows: a past session, a blank new one, or the live session.
   const fresh = freshOver !== undefined && (live?.id ?? null) === freshOver;
@@ -167,7 +172,7 @@ export default function RoomPage() {
 
   return (
     <main className="agent-room room-app" data-theme={theme}>
-      <RoomSidebar history={history} activeId={session?.id ?? null} running={liveRunning} onNew={newSession} onOpen={openSession} soundOn={soundOn} onToggleSound={toggleSound} theme={theme} onTheme={themePref.set} />
+      <RoomSidebar history={history} query={query} onQuery={setQuery} searching={searching} activeId={session?.id ?? null} running={liveRunning} onNew={newSession} onOpen={openSession} soundOn={soundOn} onToggleSound={toggleSound} theme={theme} onTheme={themePref.set} />
       <section className="room-center" aria-label="Room">
         <TopBar session={session} view={view} running={running} act={act} />
         {offline ? (
