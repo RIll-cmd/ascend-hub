@@ -307,7 +307,7 @@ Optional overrides of the defaults in `scripts/agent-room/agents.mjs`:
 | `debateFolders` | the three Ascend repos | Folders that debates may read and repo sessions may branch from. |
 | `checks` | per repo | Suggested check command for each repo. |
 | `timeouts` | chat 3 min, build 15 min, debate 10 min, check 15 min | Time limit per agent turn or check run, in milliseconds, from 1,000 to 14,400,000 (4 hours). A value outside that range keeps its default and the room logs a warning. |
-| `notify` | off | Phone pushes through [ntfy](https://ntfy.sh): `{ "ntfy": "https://ntfy.sh/<private-topic>" }`, or a self-hosted server's topic URL. The room posts once each time a gate opens or a session pauses. The project name and gate summary go to that server, so pick a long, random topic. |
+| `notify` | off | Phone pushes through [ntfy](https://ntfy.sh): `{ "ntfy": "https://ntfy.sh/<private-topic>" }`, or a self-hosted server's topic URL. The room posts once each time a gate opens or a session pauses. The project name and gate summary go to that server, so pick a long, random topic. Add `"answer": true` to answer gates from the phone (below); the room then polls a second topic, `"reply"`, by default the push topic with `-reply` added. |
 | `limits` | 120 minutes, 80 turns, 3 rounds | Limits for sessions started without their own (the start form always sends its values). |
 | `agents` | global npm installs | Command for each CLI, if yours live elsewhere. |
 
@@ -380,6 +380,7 @@ desktop/tests/Test-SessionReplacement.ps1
 
 ## Security and privacy
 
+- **Answering gates from the phone** (`notify.answer`, off by default) needs no open port: the ntfy app's buttons post to the private reply topic and the room polls it. Every wait gets its own six-character code, which works once and dies with the wait; five wrong codes lock the phone out of that wait. The phone can only approve roles, the plan or the judge's race pick, ask for changes with a note (`revise <code> <note>`), keep a result, and retry or stop a pause. Merging, opening a pull request and rejecting stay on the Hub page. Anyone who learns both topic names could read the codes, so treat the topic names like passwords (or use a self-hosted ntfy server with access control).
 - Hub and the Agent Room listen on `127.0.0.1` only. Room requests need a bearer token, and Hub refuses requests whose host is not loopback, which blocks DNS-rebinding attacks.
 - Browser code never receives the Shelf read credential, producer credentials or the room token.
 - Repo sessions work in separate git worktrees. The room never edits your checkout, and a merge is fast-forward only.

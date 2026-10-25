@@ -10,7 +10,8 @@ import { listDebateFolders, listRepos, resolveRepo, roomDataDir, roomError } fro
 import { finishWorktree, producedBlob, producedFiles, producedZip, projectFile, projectFiles, rootCommit, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
-import { attentionNotifier } from './notify.mjs';
+import { attentionNotifier, phonePush } from './notify.mjs';
+import { replyWatcher } from './phone.mjs';
 import { RoomQueue } from './queue.mjs';
 import { sessionMarkdown } from './export.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
@@ -160,7 +161,7 @@ function readSession(dataDir, id) {
 
 const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409, SKILL_PICK: 409, SKILL_FETCH_FAILED: 502, GITHUB_FAILED: 502, REVIEW_POSTED: 409 };
 
-export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, fetchImpl = globalThis.fetch, port = 5181, idleMs = 30 * 60_000, queueMs = 15_000, token = randomBytes(32).toString('hex') }) {
+export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, fetchImpl = globalThis.fetch, port = 5181, idleMs = 30 * 60_000, queueMs = 15_000, replyMs = 10_000, token = randomBytes(32).toString('hex') }) {
   // The readiness probe is a real turn, so it also refreshes Claude's quota before any session runs.
   const probeOne = probe ?? (id => probeAgent(id, settings, runTurn, event => {
     const value = id === 'claude' ? claudeQuota(event) : null;
@@ -377,6 +378,11 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   refreshProbes();
   const queueTimer = setInterval(runQueue, queueMs);
   queueTimer.unref();
+  // Answers from the phone arrive by polling the private reply topic; the outcome goes back as a push.
+  const replies = replyWatcher({
+    notify: settings.notify, fetchImpl, everyMs: replyMs,
+    onReply: reply => phonePush(settings.notify, (session?.phoneAnswer(reply) ?? { text: 'No session is open.' }).text, fetchImpl),
+  });
   session = watch(restoreSession(dataDir, settings, runTurn));
   session?.kick();
   const actualPort = server.address().port;
@@ -389,6 +395,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     closed = true;
     clearInterval(idleTimer);
     clearInterval(queueTimer);
+    replies?.stop();
     rmSync(infoFile, { force: true });
     await new Promise(resolveClose => server.close(resolveClose));
   };
@@ -396,7 +403,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   const idleTimer = setInterval(() => { if (!busy() && !queue.waiting && Date.now() - lastRequest > idleMs) void close(); }, 60_000);
   idleTimer.unref();
 
-  return { port: actualPort, token, close, getSession: () => session };
+  return { port: actualPort, token, close, getSession: () => session, pollReplies: () => replies?.poll() };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

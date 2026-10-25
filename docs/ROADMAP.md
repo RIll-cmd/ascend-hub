@@ -36,7 +36,7 @@ Updated 2026-10-24. M1–M7 are done; the open work is under [Next: M8–M13](#n
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
 | M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Done (2026-10-14) |
 | M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | Done (2026-10-17) |
-| M8 | Reach the owner away from the PC | A phone push when a gate waits, then answering gates from the phone. | In progress: the phone push is done (1 of 4) |
+| M8 | Reach the owner away from the PC | A phone push when a gate waits, then answering gates from the phone. | In progress: the phone push and answering gates from the phone are done (2 of 4) |
 | M9 | Unattended sessions | Sessions that wait out a limit window, queue up, run on a schedule and keep going until the checks pass. | Done (2026-10-25) |
 | M10 | GitHub in and out | Start from an issue or PR, review a PR and post comments, resolve merge-queue conflicts, several repos in one session. | In progress: issue starts, PR reviews and the merge arbiter are done; several repos in one session is set aside (3 of 4) |
 | M11 | Seeing the work | Live diff, file viewer, check output, search and export across sessions, lint per task, richer prompt attachments. | Done (2026-10-25) |
@@ -60,7 +60,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Feature | What it gives | Source | Size |
 | --- | --- | --- | --- |
 | Phone push when a gate waits | One `POST` to a private ntfy topic whenever the session's `attention` changes, with the gate summary | Backlog; Hermes ntfy | Done (2026-10-24): `notify.ntfy` in settings |
-| Answer a gate from the phone | A signed, single-use link per decision, or a paired chat bot (Core's `phone-chat-discord` worktrees). Needs pairing and an allowlist first | Hermes gateway | L |
+| Answer a gate from the phone | A signed, single-use link per decision, or a paired chat bot (Core's `phone-chat-discord` worktrees). Needs pairing and an allowlist first | Hermes gateway | Done (2026-10-25), the safest form: ntfy buttons post to a private reply topic the room polls (no open port); one-time code per wait, five wrong codes lock it, no merge, pull request or reject from the phone |
 | Voice-note answers | A voice note on the phone becomes a gate reply through Vision's faster-whisper | Hermes voice memos | M |
 | Publish the session summary as a page | A shareable read-only summary after the result gate | Backlog | M |
 

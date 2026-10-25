@@ -14,6 +14,7 @@ import { addNotes, memoryKey, readMemory, splitProposal } from './memory.mjs';
 import { claudeQuota, latestCodexQuota, NEAR_FULL, retryTime } from './quota.mjs';
 import { activeRoleSets, installSkills } from './skills.mjs';
 import { attachmentLines, cleanAttachments, copyAttachments, saveAttachments, taskReferences } from './attachments.mjs';
+import { MAX_WRONG, newCode, phoneChoices } from './phone.mjs';
 import { capturePreview, findBrowser, validatePreview } from './preview.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
@@ -224,7 +225,44 @@ export class RoomSession {
     const key = !now ? null : now.kind === 'pause' ? `pause:${this.state.pause.at}` : `gate:${this.state.stage}:${this.state.stageLog.length}`;
     if (key === (this.state.attentionKey ?? null)) return;
     this.state.attentionKey = key;
+    // A fresh one-time code for each wait when answering from the phone is on; it dies with the wait.
+    delete this.state.phone;
+    if (now && this.settings.notify?.answer && phoneChoices(now).length) this.state.phone = { key, code: newCode(), wrong: 0 };
     if (now) this.onAttention?.(now, this.state);
+  }
+
+  // An answer sent from the phone ({ decision, code, note }). It must carry the current wait's code and be a decision the
+  // phone may make; five wrong codes lock the phone out of this wait. Returns { ok, text } to push back as the outcome.
+  phoneAnswer({ decision, code, note }) {
+    const state = this.state;
+    const now = attention(state, this.transcript);
+    const phone = state.phone;
+    if (!now || !phone || phone.key !== state.attentionKey) return { ok: false, text: 'Nothing is waiting for an answer.' };
+    if (phone.locked) return { ok: false, text: 'Answering from the phone is locked for this step; answer on the Hub page.' };
+    if (code !== phone.code) {
+      phone.wrong += 1;
+      if (phone.wrong >= MAX_WRONG) {
+        phone.locked = true;
+        this.say('room', `${MAX_WRONG} wrong codes from the phone; answering from the phone is locked until the next step.`);
+      }
+      this.save();
+      return { ok: false, text: 'That code does not match this step.' };
+    }
+    if (!phoneChoices(now).includes(decision)) return { ok: false, text: `"${decision}" cannot be answered from the phone here.` };
+    if (decision === 'revise' && !note) return { ok: false, text: 'Add what to change after the code.' };
+    // Single use: the code goes before anything else can happen.
+    delete state.phone;
+    this.say('room', `Owner answered from the phone: ${decision}${note ? ` (${note.replace(/\s+/g, ' ').slice(0, 300)})` : ''}.`);
+    try {
+      if (decision === 'stop') void this.stop();
+      else if (decision === 'retry') void this.resume({ action: 'retry' });
+      else if (decision === 'keep') void this.gate({ gate: 'result', decision: 'accept' });
+      else void this.gate({ gate: now.gate, decision, ...(decision === 'revise' ? { note } : {}) });
+    } catch (error) {
+      this.save();
+      return { ok: false, text: `Not done: ${error.message}` };
+    }
+    return { ok: true, text: `Done: ${decision} (${state.project}).` };
   }
 
   // The session folder's uncommitted changes, for the Changes tab while a coder edits there.
