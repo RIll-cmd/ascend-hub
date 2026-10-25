@@ -286,6 +286,17 @@
 .agent-room-produced small { opacity: 0.7; white-space: nowrap; }
 .agent-room-produced-status { flex: none; width: 4.5em; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.75; }
 .agent-room-produced-status.is-deleted + span { text-decoration: line-through; opacity: 0.7; }
+.agent-room-queue { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.agent-room-queue li { display: grid; grid-template-columns: 1fr auto; column-gap: 6px; }
+.agent-room-queue li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-room-queue li small { grid-column: 1; font-size: 11px; opacity: 0.75; }
+.agent-room-queue li button { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.agent-room-queue li.is-problem small { color: #b3261e; opacity: 1; }
+.room-app .agent-room-queue button:not([data-slot]) { padding: 0 6px; border: 0; background: transparent; box-shadow: none; }
+.agent-room-schedule { font-size: 12px; }
+.agent-room-schedule summary { cursor: pointer; font-weight: 700; }
+.agent-room-schedule[open] { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.agent-room-schedule input, .agent-room-schedule select { font: inherit; padding: 2px 4px; border: 2px solid #000; border-radius: 4px; background: var(--paper); color: var(--ink); }
 .agent-room-attachments { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .agent-room-attachments li { display: flex; align-items: center; gap: 6px; padding: 2px 4px 2px 8px; border: 2px solid #000; border-radius: 5px; background: var(--paper); color: var(--ink); font-size: 12px; }
 .agent-room-attachments small { opacity: 0.7; }

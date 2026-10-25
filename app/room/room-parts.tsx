@@ -281,11 +281,13 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
     : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}), ...(attachments.length ? { attachments: attachments.map(({ name, data }) => ({ name, data })) } : {}) };
-  const canStart = missing.length === 0 && !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
+  // valid: the form is complete; canStart also needs every agent ready. A queued or scheduled session checks readiness when it starts.
+  const valid = !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
+  const canStart = missing.length === 0 && valid;
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, canStart, folders, repos,
+    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, valid, canStart, folders, repos,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -437,8 +439,14 @@ async function addAttachments(current: Attachment[], files: File[], pasted: bool
 const sizeLabel = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
 // The prompt box under the chat: what to build or debate, and Start. The side panel's fields belong to this form.
-export function BriefComposer({ brief: b, act }: { brief: Brief; act: Act }) {
+// busy: a session runs, so the form queues the next one instead of starting it.
+export function BriefComposer({ brief: b, act, busy = false }: { brief: Brief; act: Act; busy?: boolean }) {
   const build = b.kind === "build";
+  const [at, setAt] = useState("");
+  const [repeat, setRepeat] = useState<"once" | "daily" | "weekdays">("once");
+  const hasText = Boolean((build ? b.task : b.question).trim() || (build && b.inRepo && b.github.trim()));
+  // Attachments only travel with a session started now.
+  const canWait = b.valid && hasText && b.attachments.length === 0;
   const attachable = build && b.template !== "review";
   const picker = useRef<HTMLInputElement>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -455,7 +463,7 @@ export function BriefComposer({ brief: b, act }: { brief: Brief; act: Act }) {
     }).catch(() => setProblem("A file could not be read."));
   };
   return (
-    <form id={BRIEF_FORM} className="agent-room-composer" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions", b.body); }}>
+    <form id={BRIEF_FORM} className="agent-room-composer" onSubmit={e => { e.preventDefault(); void (busy ? act("/api/room/queue", { body: b.body }) : act("/api/room/sessions", b.body)); }}>
       <Textarea className="min-h-[72px] resize-y border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0" value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required={!(build && b.inRepo && b.github.trim())} rows={3}
         onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && b.canStart) e.currentTarget.form?.requestSubmit(); }}
         onPaste={e => {
@@ -484,7 +492,19 @@ export function BriefComposer({ brief: b, act }: { brief: Brief; act: Act }) {
           </>
         )}
         <small>{b.missing.length > 0 ? `Waiting for: ${b.missing.map(id => AGENT_NAMES[id]).join(", ")}` : build ? `${TEMPLATE_LABELS[b.template]} · ${b.inRepo ? "existing repo" : "new project"}` : "Debate · read-only"}</small>
-        <Button type="submit" disabled={!b.canStart} title="Ctrl+Enter">Start</Button>
+        <details className="agent-room-schedule">
+          <summary>Schedule</summary>
+          <label>First run <input type="datetime-local" value={at} onChange={e => setAt(e.target.value)} /></label>
+          <label>Repeat
+            <select value={repeat} onChange={e => setRepeat(e.target.value as typeof repeat)}>
+              <option value="once">Once</option><option value="daily">Every day</option><option value="weekdays">Weekdays</option>
+            </select>
+          </label>
+          <Button type="button" size="sm" variant="neutral" disabled={!canWait || !at}
+            title={b.attachments.length ? "Attachments only travel with a session started now" : "Adds the session to the queue at this time"}
+            onClick={() => void act("/api/room/schedules", { body: b.body, at: new Date(at).toISOString(), repeat })}>Schedule</Button>
+        </details>
+        <Button type="submit" disabled={busy ? !canWait : !b.canStart} title={busy ? "Starts when the running session ends" : "Ctrl+Enter"}>{busy ? "Add to queue" : "Start"}</Button>
       </div>
     </form>
   );

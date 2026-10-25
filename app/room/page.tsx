@@ -7,6 +7,7 @@ import { WorkflowPanel } from "./workflow-panel";
 import { ChecksPanel } from "./checks-panel";
 import { LiveDiffPanel } from "./live-diff-panel";
 import { FilesPanel } from "./files-panel";
+import { QueuePanel } from "./queue-panel";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, LimitsCard, RoomSidebar, SessionCard, TopBar, TranscriptDrawer, type HistoryItem } from "./room-frame";
@@ -147,7 +148,7 @@ export default function RoomPage() {
   const act = useCallback(async (path: string, body?: unknown) => {
     const message = await send(path, body);
     setFailure(message ? { text: message, liveId: liveIdRef.current } : null);
-    if (!message && path === "/api/room/sessions") { setTask(""); setQuestion(""); setAttachments([]); }
+    if (!message && ["/api/room/sessions", "/api/room/queue", "/api/room/schedules"].includes(path)) { setTask(""); setQuestion(""); setAttachments([]); }
   }, [send, setTask, setQuestion, setAttachments]);
   const closeDrawer = useCallback(() => setDrawer(false), []);
   const liveRunning = Boolean(live && !TERMINAL_STAGES.includes(live.stage));
@@ -156,7 +157,8 @@ export default function RoomPage() {
   const pastView = usePastSession(viewing && viewing !== live?.id ? viewing : null);
   // What the middle column shows: a past session, a blank new one, or the live session.
   const fresh = freshOver !== undefined && (live?.id ?? null) === freshOver;
-  const session = viewing && viewing !== live?.id ? pastView : fresh && !liveRunning ? null : live;
+  // A blank new session stays blank while another runs, so the next one can be queued.
+  const session = viewing && viewing !== live?.id ? pastView : fresh ? null : live;
   const isLive = session !== null && session === live;
   const view = useMemo(() => deckView(session, status), [session, status]);
   const liveView = useMemo(() => deckView(live, status), [live, status]);
@@ -170,7 +172,7 @@ export default function RoomPage() {
   // "debate" is the default tab; a build session has no debate view, so it falls back to the deck.
   // Changes exists only while the live build runs; it falls back to the deck when the run ends.
   const shown = (tab === "debate" && !debate) || (tab === "changes" && (debate || !running)) ? "deck" : tab;
-  const composing = !liveRunning && (!session || isLive);
+  const composing = (!session && !(viewing && viewing !== live?.id)) || (isLive && !liveRunning);
   const openSession = (id: string) => { setViewing(id === live?.id ? null : id); setFreshOver(undefined); setSelected(null); };
   const newSession = () => { setViewing(null); setFreshOver(live?.id ?? null); setSelected(null); };
 
@@ -212,7 +214,7 @@ export default function RoomPage() {
             {failure && failure.liveId === (live?.id ?? null) && <p role="alert" className="agent-room-error">{failure.text}</p>}
           </div>
         )}
-        {!offline && composing && <div className="room-center-foot"><BriefComposer brief={brief} act={act} /></div>}
+        {!offline && composing && <div className="room-center-foot"><BriefComposer brief={brief} act={act} busy={liveRunning} /></div>}
       </section>
       <aside className="room-right" aria-label="Details">
         {session && <SessionCard session={session} />}
@@ -220,6 +222,7 @@ export default function RoomPage() {
         <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} />
         {session && <VerdictPanel session={session} act={isLive ? act : undefined} />}
         {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
+        {!offline && <QueuePanel act={act} />}
         {composing && <WorktreeCleanup />}
         {composing && <BriefSettings brief={brief} quotaWarning={status?.quotaWarning} />}
         {composing && <RoleSets />}

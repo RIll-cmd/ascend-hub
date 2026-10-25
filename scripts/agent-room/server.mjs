@@ -11,6 +11,7 @@ import { finishWorktree, producedBlob, producedFiles, producedZip, projectFile, 
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
 import { attentionNotifier } from './notify.mjs';
+import { RoomQueue } from './queue.mjs';
 import { sessionMarkdown } from './export.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
 import { ghToken, stageSkill } from './github.mjs';
@@ -159,7 +160,7 @@ function readSession(dataDir, id) {
 
 const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409, SKILL_PICK: 409, SKILL_FETCH_FAILED: 502, GITHUB_FAILED: 502, REVIEW_POSTED: 409 };
 
-export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, fetchImpl = globalThis.fetch, port = 5181, idleMs = 30 * 60_000, token = randomBytes(32).toString('hex') }) {
+export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, fetchImpl = globalThis.fetch, port = 5181, idleMs = 30 * 60_000, queueMs = 15_000, token = randomBytes(32).toString('hex') }) {
   // The readiness probe is a real turn, so it also refreshes Claude's quota before any session runs.
   const probeOne = probe ?? (id => probeAgent(id, settings, runTurn, event => {
     const value = id === 'claude' ? claudeQuota(event) : null;
@@ -202,6 +203,23 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     return s;
   };
   let lastRequest = Date.now();
+  const queue = new RoomQueue(dataDir);
+  // The queue runner: due schedules join the queue, and the next item starts once no session runs and every agent is ready.
+  // A start that fails (a bad body, a missing repo) is kept with its reason and the queue moves on.
+  const runQueue = () => {
+    queue.due();
+    if (busy() || !queue.items.length) return;
+    if (Date.now() - probedAt > PROBE_TTL_MS) return refreshProbes();
+    if (AGENT_IDS.some(id => agents[id].state !== 'ready')) return;
+    const item = queue.take();
+    try {
+      session = watch(RoomSession.create({ dataDir, settings, runTurn }, item.body));
+      session.say('room', `Started from the queue${item.source.startsWith('schedule:') ? ' by a schedule' : ''}: ${item.title}`);
+      session.kick();
+    } catch (error) {
+      queue.fail(item, error.message);
+    }
+  };
   // gh can be slow to answer the first time, so a token once found is kept; until then each fetch asks again.
   let ghAuth = null;
   const githubToken = () => (ghAuth ??= ghToken(settings.gh));
@@ -246,6 +264,17 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         }
         return send(200, { quota, quotaWarning: quotaWarning(quota), refreshed: { codex: Boolean(settings.codexHome), claude } });
       }
+      if (route === 'GET /queue') return send(200, queue.view());
+      if (route === 'POST /queue') {
+        const item = queue.add(body?.body);
+        runQueue();
+        return send(201, { item, ...queue.view() });
+      }
+      if (route === 'POST /queue/remove') {
+        queue.remove(body?.id);
+        return send(200, queue.view());
+      }
+      if (route === 'POST /schedules') return send(201, { item: queue.schedule(body ?? {}), ...queue.view() });
       if (route === 'POST /sessions') {
         if (busy()) return send(409, { error: 'SESSION_ACTIVE', message: 'A session is already running.' });
         const missing = AGENT_IDS.filter(id => agents[id].state !== 'ready');
@@ -342,6 +371,8 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   });
   // Only the process that owns the port may probe, restore or touch a project: a duplicate must fail first.
   refreshProbes();
+  const queueTimer = setInterval(runQueue, queueMs);
+  queueTimer.unref();
   session = watch(restoreSession(dataDir, settings, runTurn));
   session?.kick();
   const actualPort = server.address().port;
@@ -353,10 +384,12 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     if (closed) return;
     closed = true;
     clearInterval(idleTimer);
+    clearInterval(queueTimer);
     rmSync(infoFile, { force: true });
     await new Promise(resolveClose => server.close(resolveClose));
   };
-  const idleTimer = setInterval(() => { if (!busy() && Date.now() - lastRequest > idleMs) void close(); }, 60_000);
+  // Queued or scheduled work keeps the room up, or nothing would start it.
+  const idleTimer = setInterval(() => { if (!busy() && !queue.waiting && Date.now() - lastRequest > idleMs) void close(); }, 60_000);
   idleTimer.unref();
 
   return { port: actualPort, token, close, getSession: () => session };

@@ -39,7 +39,7 @@ export function RoomSidebar({ history, query, onQuery, searching, activeId, runn
     <aside className="room-left" aria-label="Sessions">
       {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- vinext Link does nothing on click in production builds */}
       <a href="/" className="room-left-item"><ChevronLeft size={16} aria-hidden="true" /> Shelf</a>
-      <Button type="button" className="room-left-new w-full justify-start" onClick={onNew} disabled={running} title={running ? "A session is running" : "Start a new session"}>
+      <Button type="button" className="room-left-new w-full justify-start" onClick={onNew} title={running ? "Queue the next session" : "Start a new session"}>
         <Plus aria-hidden="true" /> New session
       </Button>
       <p className="room-left-label">Sessions</p>

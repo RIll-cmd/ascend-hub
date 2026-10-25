@@ -37,7 +37,7 @@ Updated 2026-10-24. M1–M7 are done; the open work is under [Next: M8–M13](#n
 | M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Done (2026-10-14) |
 | M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | Done (2026-10-17) |
 | M8 | Reach the owner away from the PC | A phone push when a gate waits, then answering gates from the phone. | In progress: the phone push is done (1 of 4) |
-| M9 | Unattended sessions | Sessions that wait out a limit window, queue up, run on a schedule and keep going until the checks pass. | In progress: requeue on rate limit, auto-continue and keep-going are done (3 of 8) |
+| M9 | Unattended sessions | Sessions that wait out a limit window, queue up, run on a schedule and keep going until the checks pass. | In progress: requeue on rate limit, auto-continue, keep-going, the queue and schedules are done (5 of 8) |
 | M10 | GitHub in and out | Start from an issue or PR, review a PR and post comments, resolve merge-queue conflicts, several repos in one session. | In progress: issue starts, PR reviews and the merge arbiter are done; several repos in one session is set aside (3 of 4) |
 | M11 | Seeing the work | Live diff, file viewer, check output, search and export across sessions, lint per task, richer prompt attachments. | Done (2026-10-25) |
 | M12 | More agents and connectors | MCP connectors, a self-maintaining skill library, safety guards. | In progress: the dangerous-command guard is done; the Hermes agent items are dropped |
@@ -71,8 +71,8 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Auto-continue when a limit window resets | A paused session resumes by itself when `quota.json` shows the window reset | Backlog; Hermes `/loop` | Done (2026-10-24) by the rate-limit requeue: a limited session resumes at the reset |
 | Requeue on rate limit | A turn that fails only on a rate limit or 5xx is retried later without counting as a failed round | Hermes Kanban exit code 75 | Done (2026-10-24): main turns pause and retry at the reset; race and parallel attempts still fail |
 | Limit-aware assignment | Work moves from an agent above 90% of a window to another coder | Backlog; Hermes fallback providers | M |
-| Session queue | Start several sessions; they run one after another | Backlog; Hermes Kanban | L |
-| Scheduled sessions | A schedule in room settings, for example a nightly *Review only* session on a repo | Backlog; Hermes cron | M |
+| Session queue | Start several sessions; they run one after another | Backlog; Hermes Kanban | Done (2026-10-25): **Add to queue** while a session runs; `queue.json` survives restarts |
+| Scheduled sessions | A schedule in room settings, for example a nightly *Review only* session on a repo | Backlog; Hermes cron | Done (2026-10-25): once, daily or weekdays from the prompt bar; a due schedule joins the queue |
 | Keep-going mode | A judge turn after each failed check keeps the task going, inside the M6a budgets | Backlog; Hermes `/goal` | Done (2026-10-24): `keepGoing` option; the orchestrator judges progress where a task would pause or be skipped, up to 5 extra rounds |
 | Retry from any stage | Restart a session from roles, plan or a single task | Backlog | M |
 | Owner note to a running agent | A note joins the agent's next turn without stopping the session | Hermes `/steer` | S |
