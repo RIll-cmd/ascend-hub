@@ -25,6 +25,20 @@ export async function forwardToRoom(path: string, init: { method?: string; body?
   }
 }
 
+// A download from the room passed through as bytes, keeping its type and file name; errors stay JSON.
+export async function forwardFileFromRoom(path: string, timeoutMs = 60_000, conn = roomConnection()): Promise<Response> {
+  if (!conn) return Response.json({ online: false, reason: "ASCEND_ROOM_TOKEN is not set in .env.local" }, { status: 503, headers: NO_STORE });
+  try {
+    const res = await fetch(`http://127.0.0.1:${conn.port}${path}`, { headers: { authorization: `Bearer ${conn.token}` }, signal: AbortSignal.timeout(timeoutMs), cache: "no-store" });
+    const headers: Record<string, string> = { "cache-control": "no-store", "content-type": res.headers.get("content-type") ?? "application/octet-stream" };
+    const disposition = res.headers.get("content-disposition");
+    if (disposition) headers["content-disposition"] = disposition;
+    return new Response(await res.arrayBuffer(), { status: res.status, headers });
+  } catch {
+    return Response.json({ online: false }, { status: 503, headers: NO_STORE });
+  }
+}
+
 // The room drives agents that run commands. The production server has no Host check, so a DNS-rebound
 // hostname would pass the origin check; only loopback hostnames may reach it.
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);

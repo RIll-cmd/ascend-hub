@@ -17,6 +17,7 @@ import { messageLine, nearBottom, stepStates } from "./deck/deck-view";
 import { Markdown } from "./markdown";
 import { inlineSummary } from "./markdown-parse";
 import { DiffView } from "./workflow-panel";
+import { ProducedFiles } from "./produced-files";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
 
@@ -667,6 +668,7 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
         {summary}
         <p>Branch <code>{branch}</code> of <code>{dir}</code>.</p>
         <DiffView commit="all" label="Show all changes on the branch" />
+        <ProducedFiles sessionId={session.id} />
         <MemoryPicker proposal={proposal} onChange={setMemory} />
         <Button size="sm" onClick={() => act(GATE, { gate: "result", decision: "merge", memory })}>Merge into {baseBranch}</Button>
         <Button size="sm" variant="neutral" onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Keep branch</Button>
@@ -684,6 +686,7 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
         {summary}
         <p>Work finished in <code>{session.projectDir}</code>. See SUMMARY.md there.</p>
         <DiffView commit="all" label="Show all changes" />
+        <ProducedFiles sessionId={session.id} />
         <MemoryPicker proposal={proposal} onChange={setMemory} />
         <Button size="sm" onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Accept</Button>
         <Button size="sm" variant="danger" onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject</Button>

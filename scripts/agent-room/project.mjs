@@ -211,6 +211,45 @@ export function projectFiles(dir) {
   return { files: present.slice(0, MAX_FILES), more: Math.max(0, present.length - MAX_FILES) };
 }
 
+// git with raw bytes out, for file contents and archives.
+function gitBytes(dir, args) {
+  const result = spawnSync('git', [...IDENTITY, ...args], { cwd: dir, windowsHide: true, maxBuffer: 80 * 1024 * 1024, timeout: 120_000 });
+  if (result.error || result.status !== 0) throw roomError('GIT_FAILED', `git ${args[0]}: ${String(result.stderr ?? result.error?.message ?? '').trim()}`);
+  return result.stdout;
+}
+
+const STATUS = { A: 'added', M: 'changed', D: 'deleted', T: 'changed' };
+const MAX_PRODUCED = 500;
+
+// What a session's commits added, changed or deleted since base, with each file's size at HEAD (null when deleted).
+export function producedFiles(dir, base) {
+  const parts = git(dir, ['--no-optional-locks', 'diff', '--name-status', '--no-renames', '-z', `${base}..HEAD`, '--']).split('\0').filter(Boolean);
+  const sizes = new Map(git(dir, ['--no-optional-locks', 'ls-tree', '-r', '-l', '-z', 'HEAD']).split('\0').filter(Boolean)
+    .map(line => { const [meta, path] = line.split('\t'); return [path, Number(meta.trim().split(/\s+/)[3])]; }));
+  const files = [];
+  for (let i = 0; i + 1 < parts.length; i += 2) {
+    const status = STATUS[parts[i][0]] ?? 'changed';
+    files.push({ path: parts[i + 1], status, size: status === 'deleted' ? null : sizes.get(parts[i + 1]) ?? null });
+  }
+  return { files: files.slice(0, MAX_PRODUCED), more: Math.max(0, files.length - MAX_PRODUCED) };
+}
+
+// One produced file exactly as committed at HEAD; only a listed file that still exists there.
+export function producedBlob(dir, base, path) {
+  const file = producedFiles(dir, base).files.find(f => f.path === path && f.status !== 'deleted');
+  if (!file) throw roomError('FILE_NOT_LISTED');
+  return gitBytes(dir, ['show', `HEAD:${file.path}`]);
+}
+
+// Every produced file that exists at HEAD, as one zip built by git itself.
+// shortcut: the paths go on the command line, so a very long list is refused; use a temporary index if that ever matters.
+export function producedZip(dir, base) {
+  const paths = producedFiles(dir, base).files.filter(f => f.status !== 'deleted').map(f => f.path);
+  if (!paths.length) throw roomError('NOTHING_PRODUCED');
+  if (paths.join(' ').length > 24_000) throw roomError('ZIP_TOO_MANY', 'Too many files for one zip; download them one by one.');
+  return gitBytes(dir, ['archive', '--format=zip', 'HEAD', '--', ...paths]);
+}
+
 // The files committed at HEAD; what an @file reference in a repo session's task may name.
 export function trackedFiles(dir) {
   return git(dir, ['--no-optional-locks', 'ls-tree', '-r', '--name-only', '-z', 'HEAD']).split('\0').filter(Boolean);

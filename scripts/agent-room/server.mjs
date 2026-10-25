@@ -2,12 +2,12 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildInvocation, defaultSettings, mergeSettings, runTurn as realRunTurn } from './agents.mjs';
 import { AGENT_IDS } from './parse.mjs';
 import { listDebateFolders, listRepos, resolveRepo, roomDataDir, roomError } from './paths.mjs';
-import { finishWorktree, projectFile, projectFiles, suggestCheck } from './project.mjs';
+import { finishWorktree, producedBlob, producedFiles, producedZip, projectFile, projectFiles, rootCommit, suggestCheck } from './project.mjs';
 import { claudeQuota, latestCodexQuota, quotaWarning } from './quota.mjs';
 import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
 import { attentionNotifier } from './notify.mjs';
@@ -122,12 +122,15 @@ export function searchSessions(dataDir, q) {
 
 // A build session's folder (its project or worktree), while it still exists. A debate's folder is the owner's own checkout,
 // so the file viewer never opens it.
-function buildFolder(dataDir, id) {
+function buildState(dataDir, id) {
   if (!SESSION_ID.test(id)) throw roomError('SESSION_ID_INVALID');
   const state = readJson(join(dataDir, 'sessions', id, 'state.json'));
-  if (!state || state.mode === 'debate') return null;
-  return existsSync(state.projectDir) ? state.projectDir : null;
+  return state && state.mode !== 'debate' && existsSync(state.projectDir) ? state : null;
 }
+const buildFolder = (dataDir, id) => buildState(dataDir, id)?.projectDir ?? null;
+
+// Where a session's own work starts: the commit a repo session branched from, or a new project's first commit.
+const workBase = state => state.repo?.base ?? rootCommit(state.projectDir);
 
 // One check run's facts and full output, as runChecks saved them.
 function readCheckRun(dataDir, id, n) {
@@ -209,6 +212,13 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       res.end(JSON.stringify(body));
     };
+    // A file download; the name is sent both plain (ASCII only) and RFC 5987-encoded.
+    const sendBytes = (bytes, type, name) => {
+      const plain = name.replace(/[^\x20-\x7e]|["\\]/g, '_');
+      res.writeHead(200, { 'content-type': type, 'content-length': bytes.length, 'cache-control': 'no-store',
+        'content-disposition': `attachment; filename="${plain}"; filename*=UTF-8''${encodeURIComponent(name)}` });
+      res.end(bytes);
+    };
     const auth = Buffer.from(req.headers.authorization ?? '');
     if (auth.length !== expected.length || !timingSafeEqual(auth, expected)) return send(401, { error: 'UNAUTHORIZED' });
     try {
@@ -248,6 +258,16 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       if (route === 'GET /sessions') {
         const q = new URL(req.url, 'http://room').searchParams.get('q');
         return send(200, { sessions: q ? searchSessions(dataDir, q) : listSessions(dataDir) });
+      }
+      const produced = req.method === 'GET' && /^\/sessions\/([^/]+)\/produced(?:\/(file|zip))?$/.exec(new URL(req.url, 'http://room').pathname);
+      if (produced) {
+        const state = buildState(dataDir, produced[1]);
+        if (!state) return send(404, { error: 'NO_FOLDER', message: 'This session has no folder on disk any more.' });
+        const base = workBase(state);
+        if (!produced[2]) return send(200, producedFiles(state.projectDir, base));
+        if (produced[2] === 'zip') return sendBytes(producedZip(state.projectDir, base), 'application/zip', `${state.project}-produced.zip`);
+        const path = new URL(req.url, 'http://room').searchParams.get('path') ?? '';
+        return sendBytes(producedBlob(state.projectDir, base, path), 'application/octet-stream', basename(path));
       }
       const files = req.method === 'GET' && /^\/sessions\/([^/]+)\/(files|file)$/.exec(new URL(req.url, 'http://room').pathname);
       if (files) {

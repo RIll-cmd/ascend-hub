@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import test from "node:test";
-import { foreignHost, forwardToRoom, readCommand, roomConnection } from "../../app/room/room-proxy";
+import { foreignHost, forwardFileFromRoom, forwardToRoom, readCommand, roomConnection } from "../../app/room/room-proxy";
 
 test("connection comes from the .env.local values workerd exposes", () => {
   assert.equal(roomConnection({}), null);
@@ -64,4 +64,22 @@ test("a rebound hostname cannot reach the room even with a matching origin", asy
   for (const host of ["127.0.0.1:5173", "localhost:5173", "[::1]:5173", "localhost"]) {
     assert.equal(foreignHost(new Request(`http://${host}/api/room`, { headers: { host } })), null, host);
   }
+});
+
+test("downloads pass through as bytes with their type and file name", async () => {
+  const bytes = Buffer.from([0, 255, 13, 10, 0x80, 1]);
+  const server = createServer((req, res) => {
+    if (req.headers.authorization !== "Bearer secret") { res.writeHead(401); res.end(); return; }
+    res.writeHead(200, { "content-type": "application/zip", "content-disposition": "attachment; filename=\"a.zip\"" });
+    res.end(bytes);
+  });
+  await new Promise<void>(r => server.listen(0, "127.0.0.1", r));
+  const port = (server.address() as { port: number }).port;
+  const res = await forwardFileFromRoom("/sessions/x/produced/zip", 5000, { port, token: "secret" });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("content-type"), "application/zip");
+  assert.equal(res.headers.get("content-disposition"), "attachment; filename=\"a.zip\"");
+  assert.ok(Buffer.from(await res.arrayBuffer()).equals(bytes), "binary bytes survive the proxy");
+  assert.equal((await forwardFileFromRoom("/x", 5000, null)).status, 503);
+  server.close();
 });
