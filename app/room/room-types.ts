@@ -68,6 +68,7 @@ export type SessionView = {
   lint?: string | null;
   coverage?: string | null;
   checkRuns?: CheckRun[];
+  ownerNotes?: { at: string; text: string }[];
   raceGate?: boolean;
   keepGoing?: boolean;
   issue?: { number: number; title: string; url: string };

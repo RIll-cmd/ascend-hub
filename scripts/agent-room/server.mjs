@@ -199,6 +199,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     if (s) {
       s.onQuota = recordQuota;
       s.onAttention = notify;
+      s.quotaOf = agent => quota[agent];
     }
     return s;
   };
@@ -352,10 +353,13 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         if (!session) return send(404, { error: 'NO_SESSION' });
         return send(200, session.diff(new URL(req.url, 'http://room').searchParams.get('commit')));
       }
-      if (!['POST /sessions/current/gate', 'POST /sessions/current/resume', 'POST /sessions/current/stop', 'POST /sessions/current/post-review'].includes(route)) return send(404, { error: 'NOT_FOUND' });
+      if (!['POST /sessions/current/gate', 'POST /sessions/current/resume', 'POST /sessions/current/stop', 'POST /sessions/current/post-review',
+        'POST /sessions/current/rewind', 'POST /sessions/current/note'].includes(route)) return send(404, { error: 'NOT_FOUND' });
       if (!session) return send(404, { error: 'NO_SESSION' });
       if (route === 'POST /sessions/current/gate') session.gate(body);
       else if (route === 'POST /sessions/current/post-review') session.postReview();
+      else if (route === 'POST /sessions/current/rewind') session.rewind(body);
+      else if (route === 'POST /sessions/current/note') session.note(body?.text);
       else if (route === 'POST /sessions/current/resume') session.resume(body);
       else await session.stop();
       return send(200, { session: session.summary() });

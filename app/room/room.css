@@ -293,6 +293,12 @@
 .agent-room-queue li button { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
 .agent-room-queue li.is-problem small { color: #b3261e; opacity: 1; }
 .room-app .agent-room-queue button:not([data-slot]) { padding: 0 6px; border: 0; background: transparent; box-shadow: none; }
+.agent-room-rewind { font-size: 13px; margin-top: 6px; }
+.agent-room-rewind summary { cursor: pointer; font-weight: 700; }
+.agent-room-rewind[open] { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.agent-room-rewind select { font: inherit; margin-left: 6px; padding: 2px 4px; border: 2px solid #000; border-radius: 4px; background: var(--paper); color: var(--ink); max-width: 260px; }
+.agent-room-note { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.agent-room-note input { flex: 1; min-width: 0; }
 .agent-room-schedule { font-size: 12px; }
 .agent-room-schedule summary { cursor: pointer; font-weight: 700; }
 .agent-room-schedule[open] { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }

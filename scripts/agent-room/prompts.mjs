@@ -205,6 +205,7 @@ export function buildPrompt({ stage, agent, roles, task, planText = '', transcri
     DEBATE_STAGES.has(stage) ? 'QUESTION:' : 'OWNER TASK:',
     cap(task, 4000),
     extra.attached ?? '',
+    extra.ownerNotes?.length ? `\nOWNER NOTES, added while the session runs (newest last). Follow them:\n${extra.ownerNotes.map(n => `- ${cap(n.text, 1000)}`).join('\n')}` : '',
     planText ? `\nPLAN.md:\n${cap(planText, 6000)}` : '',
     extra.diff && (stage === 'opening' || stage === 'critique') ? `\nPULL REQUEST DIFF:\n${cap(extra.diff, 12_000)}` : '',
   ].join('\n');

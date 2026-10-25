@@ -11,7 +11,7 @@ import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
 import { addNotes, memoryKey, readMemory, splitProposal } from './memory.mjs';
-import { claudeQuota, latestCodexQuota, retryTime } from './quota.mjs';
+import { claudeQuota, latestCodexQuota, NEAR_FULL, retryTime } from './quota.mjs';
 import { activeRoleSets, installSkills } from './skills.mjs';
 import { attachmentLines, cleanAttachments, copyAttachments, saveAttachments, taskReferences } from './attachments.mjs';
 import { capturePreview, findBrowser, validatePreview } from './preview.mjs';
@@ -389,7 +389,7 @@ export class RoomSession {
     return buildPrompt({
       stage, agent, roles: this.state.roles, task: this.state.task,
       planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript,
-      extra: { template: this.state.template, parallel: this.state.parallel, attached: attachmentLines(this.state.attachments, this.state.fileRefs), ...extra },
+      extra: { template: this.state.template, parallel: this.state.parallel, attached: attachmentLines(this.state.attachments, this.state.fileRefs), ownerNotes: this.state.ownerNotes, ...extra },
       memory: this.projectMemory(), roleSets: this.state.roleSets ?? [],
     });
   }
@@ -607,9 +607,12 @@ export class RoomSession {
       }
       task.rounds = (task.rounds ?? 0) + 1;
       rollback(state.projectDir);
+      if (!task.race) this.limitAware(task);
       task.status = 'running';
       this.save();
       const before = headCommit(state.projectDir);
+      // Where this task's work starts, for a rewind to it; a retry builds on its own earlier attempt.
+      task.before ??= before;
       // Bug fix task 1 must go red, which no race can rank, so it never races.
       if (task.race && state.roles.coders.length > 1 && !(state.template === 'bugfix' && task.id === 1)) return this.raceTask(task, before);
       this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
@@ -918,7 +921,11 @@ export class RoomSession {
       task, branch: `room/par-${state.id.slice(-6)}-t${task.id}`,
       dir: join(this.settings.buildsRoot, 'worktrees', `${basename(state.projectDir)}-t${task.id}`),
     }));
+    const taken = new Set(batch.map(t => t.assignee));
     for (const { task } of items) {
+      // A parallel task only moves to a coder with no other task in this batch.
+      const from = task.assignee;
+      if (this.limitAware(task, taken)) { taken.delete(from); taken.add(task.assignee); }
       task.rounds = (task.rounds ?? 0) + 1;
       task.status = 'running';
       this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
@@ -950,6 +957,7 @@ export class RoomSession {
   async mergeTask({ task, branch }) {
     const state = this.state;
     const before = headCommit(state.projectDir);
+    task.before ??= before;
     const message = `task-${task.id}: ${task.title}`;
     const undo = () => {
       resetTo(state.projectDir, before);
@@ -1090,7 +1098,7 @@ export class RoomSession {
     // Openings must be independent, so they never see the conversation.
     const transcript = state.stage === 'opening' ? [] : this.transcript.filter(m => m.from !== 'room');
     const diff = state.pr ? readFileSync(join(this.dir, 'pr.diff'), 'utf8') : null;
-    const prompt = buildPrompt({ stage: state.stage, agent, roles: null, task: state.task, transcript, extra: { diff } });
+    const prompt = buildPrompt({ stage: state.stage, agent, roles: null, task: state.task, transcript, extra: { diff, ownerNotes: state.ownerNotes } });
     const text = await this.turn(agent, 'read', prompt, state.stage === 'opening' ? 'answering' : 'critiquing', state.stage === 'opening' ? [] : others(agent));
     if (text === null) return;
     state.debateTurns += 1;
@@ -1102,7 +1110,7 @@ export class RoomSession {
   async verdictStep() {
     const state = this.state;
     const transcript = this.transcript.filter(m => m.from !== 'room');
-    const text = await this.turn(state.judge, 'read', buildPrompt({ stage: 'verdict', agent: state.judge, roles: null, task: state.task, transcript }), 'judging', [...AGENT_IDS]);
+    const text = await this.turn(state.judge, 'read', buildPrompt({ stage: 'verdict', agent: state.judge, roles: null, task: state.task, transcript, extra: { ownerNotes: state.ownerNotes } }), 'judging', [...AGENT_IDS]);
     if (text === null) return;
     writeFileSync(join(this.dir, 'answer.md'), `${text}\n`, 'utf8');
     state.answer = text;
@@ -1186,6 +1194,73 @@ export class RoomSession {
       this.keepNotes(decision, memory);
       this.say('room', `Owner ${decision === 'accept' ? 'accepted' : 'rejected'} the result.`);
     }
+    this.save();
+    return this.kick();
+  }
+
+  // How full an agent's fullest subscription window is, from the room's quota record; a window whose reset has passed,
+  // or an agent with no reading (Antigravity reports none), counts as empty.
+  fullness(agent) {
+    const q = this.quotaOf?.(agent);
+    const live = [q?.fiveHour, q?.weekly].filter(w => typeof w?.usedPercent === 'number' && !(w.resetsAt && Date.parse(w.resetsAt) <= Date.now()));
+    return Math.max(0, ...live.map(w => w.usedPercent));
+  }
+
+  // Limit-aware assignment: a task whose coder has used 90% or more of a window moves, before it runs, to the coder with
+  // the most room left (one outside `taken`). True when it moved.
+  limitAware(task, taken = new Set()) {
+    const full = this.fullness(task.assignee);
+    if (full < NEAR_FULL) return false;
+    const [to] = (this.state.roles?.coders ?? []).filter(c => c !== task.assignee && !taken.has(c))
+      .map(c => [c, this.fullness(c)]).filter(([, f]) => f < NEAR_FULL).sort((a, b) => a[1] - b[1])[0] ?? [];
+    if (!to) return false;
+    this.say('room', `Task ${task.id} moved from ${AGENT_NAMES[task.assignee]} (${full}% of a usage window used) to ${AGENT_NAMES[to]}.`);
+    task.assignee = to;
+    return true;
+  }
+
+  // A note from the owner while the session runs: said in the chat, and kept (the last 5) in every later prompt.
+  note(text) {
+    if (typeof text !== 'string' || !text.trim() || text.length > 1000) throw roomError('NOTE_INVALID', 'Write a note of up to 1,000 characters.');
+    if (TERMINAL.has(this.state.stage)) throw roomError('SESSION_ENDED');
+    const clean = text.replace(/\s+/g, ' ').trim();
+    this.state.ownerNotes = [...(this.state.ownerNotes ?? []), { at: new Date().toISOString(), text: clean }].slice(-5);
+    this.say('room', `Owner note: ${clean}`);
+    this.save();
+  }
+
+  // Sends a paused or waiting build back to its roles, its plan, or task N and everything after it. Rewinding to a task
+  // resets the folder to where that task (or the first later one that ran) began, so that work is done again.
+  rewind({ to, task: id } = {}) {
+    const state = this.state;
+    if (state.mode === 'debate') throw roomError('REWIND_BUILD_ONLY');
+    const waiting = state.pause || (GATES[state.stage] && state.stage !== 'gate-race');
+    if (!waiting || TERMINAL.has(state.stage)) throw roomError('REWIND_NOT_NOW', 'Rewind while the session is paused or waiting at a gate (not the race gate).');
+    let label;
+    if (to === 'roles' || to === 'plan') {
+      if (to === 'plan' && !state.roles) throw roomError('REWIND_INVALID', 'There are no roles yet.');
+      state.stage = to;
+      label = to === 'roles' ? 'the roles' : 'the plan';
+    } else if (to === 'task') {
+      const tasks = state.plan?.tasks ?? [];
+      if (!tasks.some(t => t.id === id)) throw roomError('REWIND_INVALID', `There is no task ${id}.`);
+      const again = tasks.filter(t => t.id >= id);
+      const start = again.filter(t => t.before).sort((a, b) => a.id - b.id)[0]?.before;
+      rollback(state.projectDir);
+      if (start) resetTo(state.projectDir, start);
+      for (const t of again) {
+        for (const key of ['commit', 'check', 'lint', 'coverage', 'before', 'raced', 'failures', 'keptGoing', 'extraRounds', 'skillsRead']) delete t[key];
+        Object.assign(t, { status: 'pending', attempts: 0, rounds: 0, notes: '', passed: [], reassigned: false });
+      }
+      state.stage = 'build';
+      label = `task ${id}${again.length > 1 ? ` (and the ${again.length - 1} after it)` : ''}`;
+    } else {
+      throw roomError('REWIND_INVALID', 'Rewind to roles, plan or a task.');
+    }
+    clearTimeout(this.retryTimer);
+    state.pause = null;
+    state.memoryProposal = [];
+    this.say('room', `Owner rewound the session to ${label}.`);
     this.save();
     return this.kick();
   }

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES,
+  AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES, TERMINAL_STAGES,
   type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
   type RepoChoice,
 } from "./room-types";
@@ -660,7 +660,50 @@ function ChangeRequest({ gate, options, act }: { gate: "roles" | "plan"; options
 }
 
 export function GateBar({ session, act }: { session: SessionView; act: Act }) {
-  return <GateBarInner key={`${session.id}-${session.stage}`} session={session} act={act} />;
+  const waiting = Boolean(session.pause) || (session.stage.startsWith("gate-") && session.stage !== "gate-race");
+  const working = !waiting && !TERMINAL_STAGES.includes(session.stage) && !session.stage.startsWith("gate-");
+  return (
+    <>
+      <GateBarInner key={`${session.id}-${session.stage}`} session={session} act={act} />
+      {waiting && session.mode !== "debate" && <RewindControl key={`${session.id}-rewind`} session={session} act={act} />}
+      {!TERMINAL_STAGES.includes(session.stage) && <OwnerNote key={`${session.id}-note`} working={working} act={act} />}
+    </>
+  );
+}
+
+// Sends a waiting build back to its roles, its plan, or a task and everything after it; the work from that task on is redone.
+function RewindControl({ session, act }: { session: SessionView; act: Act }) {
+  const tasks = session.plan?.tasks ?? [];
+  const [to, setTo] = useState(tasks.length ? `task:${tasks[0].id}` : "plan");
+  const label = to.startsWith("task:") ? `task ${to.slice(5)} and everything after it` : `the ${to}`;
+  return (
+    <details className="agent-room-rewind">
+      <summary>Go back to an earlier step</summary>
+      <label>Redo from
+        <select value={to} onChange={e => setTo(e.target.value)}>
+          <option value="roles">Roles</option>
+          {session.roles && <option value="plan">Plan</option>}
+          {tasks.map(t => <option key={t.id} value={`task:${t.id}`}>Task {t.id}: {t.title}</option>)}
+        </select>
+      </label>
+      <Button size="sm" variant="neutral" onClick={() => {
+        const ask = to.startsWith("task:") ? `Redo ${label}? Their committed work is undone first.` : `Go back to ${label}? Committed work stays.`;
+        if (window.confirm(ask)) void act("/api/room/sessions/current/rewind", to.startsWith("task:") ? { to: "task", task: Number(to.slice(5)) } : { to });
+      }}>Go back</Button>
+    </details>
+  );
+}
+
+// A note to the agents while the session runs; it joins every later prompt.
+function OwnerNote({ working, act }: { working: boolean; act: Act }) {
+  const [text, setText] = useState("");
+  return (
+    <form className="agent-room-note" onSubmit={e => { e.preventDefault(); void act("/api/room/sessions/current/note", { text }).then(() => setText("")); }}>
+      <Input value={text} onChange={e => setText(e.target.value)} maxLength={1000} aria-label="Note to the agents"
+        placeholder={working ? "Note to the agents: it joins their next turn" : "Note to the agents for the next steps"} />
+      <Button type="submit" size="sm" variant="neutral" disabled={!text.trim()}>Send note</Button>
+    </form>
+  );
 }
 
 function GateBarInner({ session, act }: { session: SessionView; act: Act }) {

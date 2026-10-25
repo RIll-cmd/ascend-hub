@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { parseJsonLine } from './events.mjs';
 
 // Subscription windows: a rolling 5-hour window and a weekly cap. Values are percent used and reset time.
-const NEAR_FULL = 90;
+export const NEAR_FULL = 90;
 const iso = seconds => (typeof seconds === 'number' ? new Date(seconds * 1000).toISOString() : null);
 const pct = value => (typeof value === 'number' ? Math.round(value) : null);
 
