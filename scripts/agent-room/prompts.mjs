@@ -3,6 +3,9 @@ import { skillIndex } from './skills.mjs';
 
 export const AGENT_NAMES = { codex: 'Codex', claude: 'Claude', agy: 'Antigravity' };
 export const MAX_PROMPT_CHARS = 28_000;
+// Room left for the prompt on Antigravity's command line once its own path and flags are counted.
+export const AGY_COMMAND_CHARS = 31_000;
+export const escapedLength = text => text.length + (text.match(/["\\]/g)?.length ?? 0);
 export const DEBATE_STAGES = new Set(['opening', 'critique', 'verdict']);
 
 const CAPABILITIES = {
@@ -209,7 +212,16 @@ export function buildPrompt({ stage, agent, roles, task, planText = '', transcri
     planText ? `\nPLAN.md:\n${cap(planText, 6000)}` : '',
     extra.diff && (stage === 'opening' || stage === 'critique') ? `\nPULL REQUEST DIFF:\n${cap(extra.diff, 12_000)}` : '',
   ].join('\n');
-  const budget = Math.max(0, Math.min(12_000, MAX_PROMPT_CHARS - fixed.length - 40));
-  const tail = transcriptTail(transcript, { maxChars: budget });
-  return tail ? `${fixed}\n\nCONVERSATION SO FAR:\n${tail}` : fixed;
+  let budget = Math.max(0, Math.min(12_000, MAX_PROMPT_CHARS - fixed.length - 40));
+  for (;;) {
+    const tail = transcriptTail(transcript, { maxChars: budget });
+    const prompt = tail ? `${fixed}\n\nCONVERSATION SO FAR:\n${tail}` : fixed;
+    // Antigravity takes the prompt on its command line, where Windows escapes every " and \ (and caps the line at
+    // 32,767 characters); the conversation shrinks until the escaped prompt fits.
+    const over = agent === 'agy' ? escapedLength(prompt) - AGY_COMMAND_CHARS : 0;
+    if (over <= 0 || budget === 0) return prompt;
+    // The excess is in escaped characters; a quote-heavy conversation escapes to up to twice its length.
+    const ratio = tail ? escapedLength(tail) / tail.length : 1;
+    budget = Math.max(0, budget - Math.ceil(over / ratio) - 200);
+  }
 }

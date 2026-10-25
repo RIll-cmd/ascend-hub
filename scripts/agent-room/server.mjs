@@ -1,5 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
@@ -26,8 +26,10 @@ const MAX_BODY = 64 * 1024;
 const MAX_START_BODY = 17 * 1024 * 1024;
 
 export async function probeAgent(agentId, settings, runTurn = realRunTurn, onEvent) {
-  const cwd = tmpdir();
-  const outFile = join(cwd, `ascend-room-probe-${agentId}.txt`);
+  // From the builds folder, like every session turn, so a per-folder trust prompt or setting shows up here first.
+  let cwd = tmpdir();
+  try { mkdirSync(settings.buildsRoot, { recursive: true }); cwd = settings.buildsRoot; } catch { /* the temp folder will do */ }
+  const outFile = join(tmpdir(), `ascend-room-probe-${agentId}.txt`);
   const result = await runTurn(buildInvocation(agentId, 'read', 'Reply with exactly: READY', { cwd, settings, outFile }), { cwd, timeoutMs: 120_000, onEvent });
   if (result.ok && result.text.includes('READY')) return { state: 'ready' };
   return { state: 'offline', detail: result.timedOut ? 'timed out' : (result.error ?? (result.stderr || result.text || 'no reply')).slice(-200) };
@@ -156,7 +158,11 @@ function readSession(dataDir, id) {
   if (!SESSION_ID.test(id)) throw roomError('SESSION_ID_INVALID');
   const dir = join(dataDir, 'sessions', id);
   const state = readJson(join(dir, 'state.json'));
-  return state ? { ...state, active: null, attention: null, transcript: readJsonLines(join(dir, 'transcript.jsonl')).slice(-200) } : null;
+  if (!state) return null;
+  // Sessions stopped before stop() reset its task still say "running" on disk; a finished session runs nothing.
+  const plan = state.plan && TERMINAL.has(state.stage)
+    ? { ...state.plan, tasks: state.plan.tasks.map(t => (t.status === 'running' || t.status === 'review' ? { ...t, status: 'pending' } : t)) } : state.plan;
+  return { ...state, plan, active: null, attention: null, transcript: readJsonLines(join(dir, 'transcript.jsonl')).slice(-200) };
 }
 
 const STATUS_FOR = { BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409, SKILL_PICK: 409, SKILL_FETCH_FAILED: 502, GITHUB_FAILED: 502, REVIEW_POSTED: 409 };
@@ -248,7 +254,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         if (Date.now() - probedAt > PROBE_TTL_MS && !busy()) refreshProbes();
         const repos = listRepos(settings).map(dir => ({ dir, check: suggestCheck(dir, settings.checks) }));
         refreshCodexQuota();
-        return send(200, { online: true, agents, folders: listDebateFolders(settings), repos, quota, quotaWarning: quotaWarning(quota), session: session?.summary() ?? null });
+        return send(200, { online: true, agents, buildsRoot: settings.buildsRoot, folders: listDebateFolders(settings), repos, quota, quotaWarning: quotaWarning(quota), session: session?.summary() ?? null });
       }
       // The meter alone: unlike /status it never starts readiness probes, so a page can poll it for free.
       if (route === 'GET /quota') {

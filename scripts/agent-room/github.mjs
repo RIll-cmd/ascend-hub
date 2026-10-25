@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, posix } from 'node:path';
 import { roomError } from './paths.mjs';
+import { scanSkill } from './skill-scan.mjs';
 import { frontMatter, hasScriptFiles, skillId } from './skills.mjs';
 import { writeJsonAtomic } from './store.mjs';
 
@@ -120,6 +121,8 @@ export async function stageSkill(dataDir, url, { fetchImpl = globalThis.fetch, u
     const meta = {
       id: update ?? id ?? (base || 'skill'), name: name || base, description, url, owner: src.owner, repo: src.repo, path: src.path, commit, license,
       hasScripts: hasScriptFiles(files.map(f => f.rel)), files: files.map(f => f.rel), update,
+      // Read before Install, like the rest of the card; it warns and never blocks.
+      scan: scanSkill(filesDir, files.map(f => f.rel)),
     };
     writeJsonAtomic(join(stage, 'meta.json'), meta);
     return { token, ...meta, skillMd: skillMd.slice(0, 100_000), diff: update ? diffAgainst(dataDir, update, `skills-staging/${token}/files`) : null };

@@ -237,7 +237,7 @@ function SessionSets({ value, onChange }: { value: string[] | null; onChange: (s
 export const TEMPLATE_LABELS ={ feature: "Feature", bugfix: "Bug fix", refactor: "Refactor", review: "Review only" } as const;
 
 // Everything a new session needs. The settings live in the side panel, the task in the composer under the chat.
-export function useBrief(agents?: Record<AgentId, Availability>, folders: string[] = [], repos: RepoChoice[] = []) {
+export function useBrief(agents?: Record<AgentId, Availability>, folders: string[] = [], repos: RepoChoice[] = [], buildsRoot = "D:\\ascend-builds") {
   const [kind, setKind] = useState<SessionMode>("build");
   const [project, setProject] = useState("");
   const [task, setTask] = useState("");
@@ -287,7 +287,7 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, valid, canStart, folders, repos,
+    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, valid, canStart, folders, repos, buildsRoot,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -325,7 +325,7 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
                 </NativeSelect>
               </label>
             )}
-            <label title={b.inRepo ? `Works on branch room/<name>-… in its own worktree; ${b.chosenRepo?.dir} is untouched until you merge.` : "Built in D:\\ascend-builds\\<name> as its own git repository."}>
+            <label title={b.inRepo ? `Works on branch room/<name>-… in its own worktree; ${b.chosenRepo?.dir} is untouched until you merge.` : `Built in ${b.buildsRoot}\\<name> as its own git repository.`}>
               {b.inRepo ? "Branch name" : "Project name"}
               <Input form={BRIEF_FORM} value={b.project} onChange={e => b.setProject(e.target.value)} pattern="[a-z0-9][a-z0-9\-]{0,39}" required placeholder={b.inRepo ? "fix-login" : "todo-system"} />
             </label>

@@ -113,7 +113,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Skill use counts and stale skills | Use counts per skill and a stale mark in the role-set UI | Hermes curator | S |
 | Advisers and one actor | A build variant where references advise and one agent acts | Hermes Mixture of Agents | M |
 | Dangerous-command guard | Edit turns block `rm -rf`, `git push --force` and `git reset --hard` outside the session worktree | Hermes command approval | Done (2026-10-24): kills the turn when the CLI reports the command |
-| Prompt-injection scan of fetched skills | Flag suspicious instructions on the staged card before Install | Hermes context-file scan | S |
+| Prompt-injection scan of fetched skills | Flag suspicious instructions on the staged card before Install | Hermes context-file scan | Done (2026-10-25): `skill-scan.mjs`; warns, never blocks; no findings across the 27 installed skills |
 
 ### M13 — Hub and Vision polish
 
@@ -129,13 +129,13 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 
 ### Fixes and debt (alongside)
 
-- A stopped session's in-progress task still shows `running` on the board.
-- `npm start` (Wrangler) does not start the room.
+- Done (2026-10-25): a stopped session's interrupted task goes back to pending (older stopped sessions are corrected when read).
+- Done (2026-10-25): `npm start` starts the room too (`scripts/start-worker.mjs`). It still cannot serve Hub: Wrangler refuses assets over 25 MiB and the TV's show videos are larger, so `npm run serve` stays the way to run Hub.
 - Done (2026-10-24): `mergeSettings` validates `timeouts` (1 s to 4 h) and `notify`, keeping defaults with a warning.
-- Nine minor findings from the Agent Room final review were deferred; they are listed only in that session's final message. Recover and file them.
+- Done (2026-10-25): the nine deferred review findings were recovered from that session's log. Fixed: a pause during a reassignment decision now resumes the decision (the old coder's notes were already cleared); a token mismatch says so instead of "room offline", and a quoted token is read without quotes; the start form names the real builds folder; the sign-in check runs from the builds folder; Antigravity prompts shrink their conversation until the escaped command line fits Windows' limit; a start that fails partway removes its folder or worktree and branch; a stop whose cleanup fails still reports the stop; a stopped task no longer shows running. Not changed, by decision: Hub's proxy routes check only request shape and size, and the room stays the single place that validates fields.
 - Not live-tested: the memory PR (a real push), the result-gate memory picker, Antigravity sub-agents and skill reads. Hub and Vision keep an untracked root `AGENTS.md`, so a memory PR there would clash with it.
 - The desktop `Test-Supervisor.ps1` is flaky (port in use in its restart cycle).
-- Confirm which checkout and runtime the installed desktop profile uses; the handoff has both the main checkout and `.worktrees\desktop-reliability`.
+- Done (2026-10-25): the desktop profile runs Hub from the main checkout `D:\ascend_hub` in the production runtime (port 5173) and Vision from its `.worktrees\desktop-reliability` worktree, which matched Vision's local `main` (`4fc291b`, clean); Vision's local `main` was 5 commits (README edits on GitHub) behind `origin/main`.
 - Repository lint: 34 errors in 10 older UI files (2026-10-06). Development dependency audit: 15 findings (8 high, 7 moderate), none in production.
 
 ### Suggested order

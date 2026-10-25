@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
 import { errorText, RATE_LIMITED, shellCommands, skillReads, subagentEvent, usageEvent } from './events.mjs';
@@ -142,16 +142,30 @@ export class RoomSession {
       }
       const branch = `room/${project}-${id.slice(-6)}`;
       projectDir = join(settings.buildsRoot, 'worktrees', `${basename(repoDir)}-${id}`);
-      const { base, baseBranch } = createWorktree(repoDir, projectDir, branch);
-      linkDependencies(repoDir, projectDir);
-      repoInfo = { dir: repoDir, branch, base, baseBranch };
+      repoInfo = { dir: repoDir, branch };
     } else {
       projectDir = resolveProjectDir(settings.buildsRoot, project);
       mkdirSync(settings.buildsRoot, { recursive: true });
-      createProject(projectDir);
     }
-    installSkills(dataDir, roleSets, projectDir);
-    const attachments = saveAttachments(projectDir, uploads, { diff: ownerDiff?.text ?? null, settings });
+    // Everything made from here on is removed again if the start fails, so a failed start never blocks the name.
+    let undo = () => {};
+    let attachments;
+    try {
+      if (repoInfo) {
+        Object.assign(repoInfo, createWorktree(repoInfo.dir, projectDir, repoInfo.branch));
+        undo = () => finishWorktree(repoInfo.dir, projectDir, repoInfo.branch, null, 'reject');
+        linkDependencies(repoInfo.dir, projectDir);
+      } else {
+        undo = () => rmSync(projectDir, { recursive: true, force: true });
+        createProject(projectDir);
+      }
+      installSkills(dataDir, roleSets, projectDir);
+      attachments = saveAttachments(projectDir, uploads, { diff: ownerDiff?.text ?? null, settings });
+    } catch (error) {
+      // EEXIST: the folder was someone else's all along, so it is never removed.
+      if (error.code !== 'EEXIST') try { undo(); } catch { /* the original error matters more */ }
+      throw error;
+    }
     const state = {
       ...(attachments.length ? { attachments } : {}), ...(refs.files.length ? { fileRefs: refs.files } : {}),
       id, mode: 'build', subagents, project, projectDir, stage: presetRoles ? 'plan' : 'discuss', roles: presetRoles,
@@ -622,6 +636,7 @@ export class RoomSession {
       this.save();
       return;
     }
+    if (task.pendingReassign) return this.decideReassign(task, task.pendingReassign);
     // A refactor must start from green checks, or "behaviour unchanged" cannot be told apart from already broken.
     if (state.template === 'refactor' && !state.baseline?.ok) {
       const baseline = await this.runChecks(state.projectDir, 'before any change');
@@ -942,7 +957,7 @@ export class RoomSession {
     const batch = [];
     for (const t of plan.tasks) {
       const allowed = (limits?.rounds ?? Infinity) + (t.extraRounds ?? 0);
-      if (t.status !== 'pending' || t.race || busy.has(t.assignee) || (t.rounds ?? 0) >= allowed || !(t.after ?? []).every(finished)) continue;
+      if (t.status !== 'pending' || t.race || t.pendingReassign || busy.has(t.assignee) || (t.rounds ?? 0) >= allowed || !(t.after ?? []).every(finished)) continue;
       busy.add(t.assignee);
       batch.push(t);
     }
@@ -1090,6 +1105,15 @@ export class RoomSession {
       this.save();
       return;
     }
+    return this.decideReassign(task, reason);
+  }
+
+  // The orchestrator decides whether a task that failed twice moves to another coder or is skipped. The question is saved on
+  // the task first, so a pause here resumes with this decision, not with another build round.
+  async decideReassign(task, reason) {
+    task.pendingReassign = reason;
+    task.status = 'pending';
+    this.save();
     const { roles } = this.state;
     const decision = await this.jsonTurn(roles.orchestrator, this.prompt('reassign', roles.orchestrator, { task, reason }), 'deciding',
       v => validateReassign(v, roles.coders, task.assignee),
@@ -1098,6 +1122,7 @@ export class RoomSession {
         return block.ok && block.value?.action === 'reassign' && roles.coders.includes(block.value.to) ? [block.value.to] : [];
       });
     if (!decision) return;
+    delete task.pendingReassign;
     if (decision.action === 'skip') {
       task.status = 'skipped';
       this.say('room', `Task ${task.id} skipped by the orchestrator.`);
@@ -1287,7 +1312,7 @@ export class RoomSession {
       rollback(state.projectDir);
       if (start) resetTo(state.projectDir, start);
       for (const t of again) {
-        for (const key of ['commit', 'check', 'lint', 'coverage', 'before', 'raced', 'failures', 'keptGoing', 'extraRounds', 'skillsRead']) delete t[key];
+        for (const key of ['commit', 'check', 'lint', 'coverage', 'before', 'raced', 'failures', 'keptGoing', 'extraRounds', 'skillsRead', 'pendingReassign']) delete t[key];
         Object.assign(t, { status: 'pending', attempts: 0, rounds: 0, notes: '', passed: [], reassigned: false });
       }
       state.stage = 'build';
@@ -1340,6 +1365,7 @@ export class RoomSession {
       task.assignee = agent;
       task.attempts = 0;
       task.status = 'pending';
+      delete task.pendingReassign;
       this.say('room', `Owner reassigned task ${task.id} to ${AGENT_NAMES[agent]}.`);
     } else if (action !== 'retry') {
       throw roomError('ACTION_INVALID');
@@ -1366,11 +1392,20 @@ export class RoomSession {
     this.say('room', 'Owner stopped the session.');
     this.save();
     await this.loop;
-    const raced = this.state.plan?.tasks.find(t => t.raced?.pending);
-    if (raced) this.dropRaceBranches(raced);
-    // A debate folder is the owner's own repo: never reset or clean it.
-    if (this.state.mode === 'debate') return;
-    // Committed work stays; anything half-written by the killed turn goes.
-    rollback(this.state.projectDir);
+    // A task cut off mid-run never finished, so the board must not keep showing it as running.
+    for (const task of this.state.plan?.tasks ?? []) if (task.status === 'running' || task.status === 'review') task.status = 'pending';
+    this.save();
+    // The session has stopped whatever happens next; a cleanup that fails is told, not thrown back at the owner.
+    try {
+      const raced = this.state.plan?.tasks.find(t => t.raced?.pending);
+      if (raced) this.dropRaceBranches(raced);
+      // A debate folder is the owner's own repo: never reset or clean it.
+      if (this.state.mode === 'debate') return;
+      // Committed work stays; anything half-written by the killed turn goes.
+      rollback(this.state.projectDir);
+    } catch (error) {
+      this.say('room', `Stopped, but cleaning up failed: ${error.message}`);
+      this.save();
+    }
   }
 }

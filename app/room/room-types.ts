@@ -34,7 +34,7 @@ export type RepoChoice = { dir: string; check: string };
 export type QuotaWindow = { usedPercent: number | null; resetsAt: string | null } | null;
 export type AgentQuota = { fiveHour: QuotaWindow; weekly: QuotaWindow; seenAt?: string } | null;
 export type RoomStatus = {
-  online: true; agents: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[];
+  online: true; agents: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[]; buildsRoot?: string;
   quota?: Partial<Record<AgentId, AgentQuota>>; quotaWarning?: string | null;
 };
 

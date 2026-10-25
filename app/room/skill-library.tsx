@@ -7,7 +7,8 @@ import { Markdown } from "./markdown";
 
 type Source = { url: string; commit: string; license: string | null; fetchedAt: string } | null;
 type Skill = { id: string; name: string; description: string; hasScripts: boolean; source: Source };
-type Staged = { token: string; id: string; name: string; description: string; url: string; commit: string; license: string | null; hasScripts: boolean; files: string[]; skillMd: string; diff: string | null; update: string | null };
+type Staged = { token: string; id: string; name: string; description: string; url: string; commit: string; license: string | null; hasScripts: boolean; files: string[]; skillMd: string; diff: string | null; update: string | null;
+  scan?: { file: string; line: number; rule: string; why: string; text: string }[] };
 type Missing = { id: string; name: string; source: string };
 
 async function post<T>(action: string, body: unknown): Promise<{ ok: true; data: T } | { ok: false; message: string; candidates?: string[] }> {
@@ -39,6 +40,12 @@ function StagedCard({ staged, onDone }: { staged: Staged; onDone: (message: stri
       </p>
       {staged.hasScripts && <p className="agent-room-hint is-problem">This skill includes scripts. Agents may run them; read them before installing.</p>}
       {!staged.license && <p className="agent-room-hint is-problem">No license was found. Check the repository before using it.</p>}
+      {staged.scan && (staged.scan.length ? (
+        <div className="agent-room-skill-scan" role="alert">
+          <p className="agent-room-hint is-problem">The safety scan found {staged.scan.length} line{staged.scan.length === 1 ? "" : "s"} that may be instructions aimed at the agents. Read them before installing:</p>
+          <ul>{staged.scan.map((f, i) => <li key={i}><code>{f.file}:{f.line}</code> {f.why}: <q>{f.text}</q></li>)}</ul>
+        </div>
+      ) : <p className="agent-room-hint">The safety scan found nothing suspicious. That does not prove the skill is safe; read it before installing.</p>)}
       {staged.diff !== null && (staged.diff ? <pre className="agent-room-skill-diff">{staged.diff}</pre> : <p className="agent-room-hint">No changes since the installed copy.</p>)}
       {staged.diff === null && <div className="agent-room-skill-md"><Markdown text={staged.skillMd} /></div>}
       <div className="agent-room-skill-actions">

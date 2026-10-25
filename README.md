@@ -111,6 +111,7 @@ The page has three columns: past sessions on the left, the 3D room and the chat 
 - **Usage:** tokens per agent and task, plus cost where the CLI reports it.
 - **Session history:** every past session is listed in the left column. Click one to read its chat, workflow, plan and verdict again.
 - **Export:** **Export .md** on the Session card saves any session, live or past, as one Markdown file: its facts (folder, branch, roles, checks, usage), the task, the plan with each task's outcome, the summary or verdict, and every message with its time in UTC.
+- **Skill safety scan:** a skill fetched from GitHub is scanned before **Install** for lines aimed at the agents (ignore earlier instructions, hide things from you, read secret files, download and run code, force-push) and for invisible characters. Findings are listed on the card; they warn and never block.
 - **Search:** the box above the list finds past sessions whose task, chat or verdict contain every word you type, in any case, newest first. Each result shows who said the matching line. It matches parts of words, so *resolved* also finds *unresolved*.
 - **Formatted chat:** agent replies render Markdown, with headings, lists, inline code and code blocks that collapse when long. **Full transcript** opens every message in one drawer.
 - **Themes:** seven neobrutalist colour themes: *Dark wood* (default), *Sky*, *Lime*, *Retro SaaS*, *BrutAdmin*, *Brutstack* and *Neoflux*. Pick one under **Theme** at the bottom of the left column. Your browser remembers the choice.
@@ -332,6 +333,7 @@ The room keeps its sessions, project memory (`memory/<repo>.md`) and last-known 
 npm run dev            # development server with hot reload
 npm run serve          # production build on 127.0.0.1 (rebuilds only when sources change)
 npm run build          # production build only
+npm start              # the built Worker through Wrangler, plus the room; cannot serve the TV's videos over 25 MiB, so use serve
 npm run lint           # repository lint
 npm run test:status    # status shelf tests
 ```

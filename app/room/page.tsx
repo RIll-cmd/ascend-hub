@@ -33,7 +33,9 @@ function useRoom() {
       ]);
       if (!statusRes.ok) {
         const data = await statusRes.json().catch(() => ({})) as { reason?: string };
-        setOffline(data.reason ?? "The room process is not running.");
+        // 401: the room runs, but Hub holds an older ASCEND_ROOM_TOKEN than the room.
+        setOffline(statusRes.status === 401 ? "Hub and the room hold different ASCEND_ROOM_TOKEN values. Restart Hub so it reads .env.local again."
+          : data.reason ?? "The room process is not running.");
         return;
       }
       setOffline(null);
@@ -141,7 +143,7 @@ export default function RoomPage() {
   const [viewing, setViewing] = useState<string | null>(null);
   // "New session" hides the live session it was pressed over; any newer live session shows again by itself.
   const [freshOver, setFreshOver] = useState<string | null | undefined>(undefined);
-  const brief = useBrief(status?.agents, status?.folders, status?.repos);
+  const brief = useBrief(status?.agents, status?.folders, status?.repos, status?.buildsRoot);
   const liveIdRef = useRef<string | null>(null);
   useEffect(() => { liveIdRef.current = live?.id ?? null; }, [live?.id]);
   const { setTask, setQuestion, setAttachments } = brief;

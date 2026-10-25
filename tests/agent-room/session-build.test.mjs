@@ -97,6 +97,7 @@ test('stop mid-edit kills the turn, rolls back uncommitted files, and runs nothi
   assert.equal(existsSync(join(dir, 'half.txt')), false);
   assert.equal(calls.filter(c => c.stage === 'build').length, 1);
   assert.equal(session.state.active, null);
+  assert.ok(session.state.plan.tasks.every(t => t.status !== 'running' && t.status !== 'review'), 'no task is left showing as running');
 });
 
 test('restart mid-build: reload rolls back the running task and re-runs it', async () => {
