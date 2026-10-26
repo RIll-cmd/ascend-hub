@@ -874,8 +874,17 @@ export class RoomSession {
     const controller = new AbortController();
     this.controllers.add(controller);
     const started = new Date().toISOString();
-    const { log, ...result } = await runCheck(dir, command, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: controller.signal });
-    this.controllers.delete(controller);
+    // The room shows "checks running" while this is set (the deck's check lamp, the Now card).
+    this.state.checking = { label, since: started };
+    this.save();
+    let ran;
+    try {
+      ran = await runCheck(dir, command, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: controller.signal });
+    } finally {
+      this.state.checking = null;
+      this.controllers.delete(controller);
+    }
+    const { log, ...result } = ran;
     this.recordCheck(label, command, started, result, log);
     return this.state.stage === 'stopped' ? null : result;
   }

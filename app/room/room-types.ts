@@ -74,6 +74,8 @@ export type SessionView = {
   raceGate?: boolean;
   keepGoing?: boolean;
   advisers?: boolean;
+  // Set while a check, lint or coverage command runs (label as in the Checks tab).
+  checking?: { label: string; since: string } | null;
   // Several repos in one session: the extra repos, each with its own worktree and branch; finished after the result gate.
   extraRepos?: { id: string; dir: string; branch: string; worktree: string; finished?: "merge" | "pr" | "accept" | "reject"; prUrl?: string }[];
   // Set while the room shows the app live for a UI task; at changes with each capture.
