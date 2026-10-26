@@ -38,7 +38,7 @@ Updated 2026-10-24. M1–M7 are done; the open work is under [Next: M8–M13](#n
 | M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | Done (2026-10-17) |
 | M8 | Reach the owner away from the PC | A phone push when a gate waits, then answering gates from the phone. | In progress: the phone push and answering gates from the phone are done (2 of 4) |
 | M9 | Unattended sessions | Sessions that wait out a limit window, queue up, run on a schedule and keep going until the checks pass. | Done (2026-10-25) |
-| M10 | GitHub in and out | Start from an issue or PR, review a PR and post comments, resolve merge-queue conflicts, several repos in one session. | In progress: issue starts, PR reviews and the merge arbiter are done; several repos in one session is set aside (3 of 4) |
+| M10 | GitHub in and out | Start from an issue or PR, review a PR and post comments, resolve merge-queue conflicts, several repos in one session. | Done (2026-10-27) |
 | M11 | Seeing the work | Live diff, file viewer, check output, search and export across sessions, lint per task, richer prompt attachments. | Done (2026-10-25) |
 | M12 | More agents and connectors | MCP connectors, a self-maintaining skill library, safety guards. | In progress: MCP connectors, the dangerous-command guard, the skill scan, skill use counts and skills the agents write are done; the Hermes agent items are dropped |
 | M13 | Hub and Vision polish | Spotify controls, reacting mascots, a launcher start-up checklist, a Vision wake word, a lighter voice. | Not started (the Hermes channel is dropped) |
@@ -84,7 +84,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Start from an issue or PR | Paste an issue or PR number; its text and diff become the task | Backlog | Done (2026-10-24): issues start repo builds; PRs start reviews (below) |
 | PR review mode | A *Review a PR* template: `gh pr diff` in, comments posted with `gh pr review` after the owner approves | Backlog; Hermes PR-review guide | Done (2026-10-24): *Review only* with a PR; one comment-only review after a confirmation. Diffs over 12,000 characters are cut per prompt |
 | Merge-conflict arbiter | A conflicted merge in the M6f merge queue gets one arbiter turn before it fails | Hermes optional skill | Done (2026-10-24): the task's coder resolves the markers in place; checks and review judge it |
-| Several repos in one session | One plan with tasks across repos, one worktree each | Backlog | L |
+| Several repos in one session | One plan with tasks across repos, one worktree each | Backlog | Done (2026-10-27): `extraRepos` (up to 3) with a worktree and branch each; tasks carry `repo`; edits, commits, checks, reviews, diffs and rewinds use the task's worktree; read turns get `--add-dir` (Claude, Antigravity); the result gate finishes every repo and resumes after a partial failure; no races or parallel tasks |
 
 ### M11 — Seeing the work
 

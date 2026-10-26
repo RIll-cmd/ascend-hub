@@ -44,7 +44,8 @@ export function validateRoles(v, setIds = []) {
   return { ok: true, value };
 }
 
-export function validatePlan(v, coders, setIds = []) {
+// repoIds: the session's repositories when it has more than one; each task then names its repo (default: the first).
+export function validatePlan(v, coders, setIds = [], repoIds = []) {
   if (!v || !Array.isArray(v.tasks) || v.tasks.length < 1 || v.tasks.length > 20) return fail('tasks must be a list of 1 to 20 tasks.');
   const tasks = [];
   for (const [index, task] of v.tasks.entries()) {
@@ -57,8 +58,12 @@ export function validatePlan(v, coders, setIds = []) {
       if (!setIds.includes(task.role)) return fail(`Task ${n} role must be one of the enabled role sets${setIds.length ? `: ${setIds.join(', ')}` : ' (none are on, so leave role out)'}.`);
       clean.role = task.role;
     }
-    // A race needs rivals: every coder attempts the task and the best attempt is kept.
-    if (task.race === true && coders.length > 1) clean.race = true;
+    if (task.repo !== undefined && task.repo !== null && repoIds.length > 1) {
+      if (!repoIds.includes(task.repo)) return fail(`Task ${n} repo must be one of: ${repoIds.join(', ')}.`);
+      if (task.repo !== repoIds[0]) clean.repo = task.repo;
+    }
+    // A race needs rivals: every coder attempts the task and the best attempt is kept. Several repos never race.
+    if (task.race === true && coders.length > 1 && repoIds.length < 2) clean.race = true;
     // Only earlier tasks, so the order is always valid and there can be no cycle.
     if (task.after !== undefined && task.after !== null) {
       if (!Array.isArray(task.after) || !task.after.every(d => Number.isInteger(d) && d >= 1 && d < n)) return fail(`Task ${n} after may only list earlier task numbers.`);

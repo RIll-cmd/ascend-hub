@@ -21,7 +21,7 @@ export type CoverageResult = { ok: boolean; ms: number; percent: number | null }
 // pick and pending: the judge's choice and the passing attempts while the race gate waits for the owner.
 export type RaceResult = { attempts: { agent: AgentId; ok: boolean; commit: string | null; why: string }[]; winner: AgentId | null; reason: string;
   pick?: AgentId; pending?: { base: string; attempts: { agent: AgentId; branch: string; commit: string; check: CheckResult | null }[] } };
-export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult; lint?: LintResult; coverage?: CoverageResult; race?: boolean; raced?: RaceResult; after?: number[]; role?: string;
+export type PlanTask = { id: number; title: string; assignee: AgentId; description: string; status: TaskStatus; attempts: number; commit: string | null; notes: string; check?: CheckResult; lint?: LintResult; coverage?: CoverageResult; race?: boolean; raced?: RaceResult; after?: number[]; role?: string; repo?: string;
   // The skill folders each agent opened while working on or reviewing this task (Antigravity's reads are not reported).
   skillsRead?: Partial<Record<AgentId, string[]>> };
 export type Message = {
@@ -74,6 +74,8 @@ export type SessionView = {
   raceGate?: boolean;
   keepGoing?: boolean;
   advisers?: boolean;
+  // Several repos in one session: the extra repos, each with its own worktree and branch; finished after the result gate.
+  extraRepos?: { id: string; dir: string; branch: string; worktree: string; finished?: "merge" | "pr" | "accept" | "reject"; prUrl?: string }[];
   // Set while the room shows the app live for a UI task; at changes with each capture.
   screen?: { task: number; agent: AgentId; at: string } | null;
   issue?: { number: number; title: string; url: string };

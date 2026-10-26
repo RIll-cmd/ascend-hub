@@ -82,7 +82,7 @@ export function TaskBoard({ tasks }: { tasks: PlanTask[] }) {
         {tasks.map(t => (
           <li key={t.id} className={`is-${t.status}`}>
             <span>{t.id}. {t.title}</span>
-            <small>{AGENT_NAMES[t.assignee]}{t.role ? ` · ${t.role}` : ""} · {t.status}{t.attempts ? ` · retry ${t.attempts}` : ""}{t.commit ? ` · ${t.commit}` : ""}</small>
+            <small>{AGENT_NAMES[t.assignee]}{t.repo ? ` · ${t.repo}` : ""}{t.role ? ` · ${t.role}` : ""} · {t.status}{t.attempts ? ` · retry ${t.attempts}` : ""}{t.commit ? ` · ${t.commit}` : ""}</small>
           </li>
         ))}
       </ol>
@@ -251,6 +251,7 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [claudeSubagents, setClaudeSubagents] = useState(true);
   const [where, setWhere] = useState<"new" | "repo">("new");
   const [repoDir, setRepoDir] = useState("");
+  const [extraRepos, setExtraRepos] = useState<string[]>([]);
   const [check, setCheck] = useState<string | null>(null);
   const [limits, setLimits] = useState({ minutes: 120, turns: 80, rounds: 3 });
   const [parallel, setParallel] = useState(false);
@@ -275,6 +276,8 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
   const inRepo = where === "repo" && repos.length > 0;
   const chosenRepo = repos.find(r => r.dir === repoDir) ?? repos[0];
+  // Several repos: the ones ticked besides the main repo (never the main repo itself).
+  const chosenExtras = inRepo ? extraRepos.filter(d => d !== chosenRepo?.dir && repos.some(r => r.dir === d)).slice(0, 3) : [];
   // The suggested command follows the chosen repo until the owner edits it.
   const checkCommand = check ?? (inRepo ? chosenRepo?.check ?? "" : "");
   const needsCheck = template === "bugfix" || template === "refactor";
@@ -286,13 +289,13 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
     : { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(advisers ? { advisers } : {}),...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}), ...(chosenConnectors.length ? { connectors: chosenConnectors } : {}), ...(attachments.length ? { attachments: attachments.map(({ name, data }) => ({ name, data })) } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(chosenExtras.length ? { extraRepos: chosenExtras } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(advisers ? { advisers } : {}),...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}), ...(chosenConnectors.length ? { connectors: chosenConnectors } : {}), ...(attachments.length ? { attachments: attachments.map(({ name, data }) => ({ name, data })) } : {}) };
   // valid: the form is complete; canStart also needs every agent ready. A queued or scheduled session checks readiness when it starts.
   const valid = !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   const canStart = missing.length === 0 && valid;
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
-    judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
+    judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, chosenExtras, setExtraRepos, checkCommand, setCheck, limits, setLimits,
     parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, advisers, setAdvisers, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, connectorChoices, chosenConnectors, setConnectors, needsCheck, missing, body, valid, canStart, folders, repos, buildsRoot,
   };
 }
@@ -330,6 +333,17 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
                   {b.repos.map(r => <NativeSelectOption key={r.dir} value={r.dir}>{r.dir}</NativeSelectOption>)}
                 </NativeSelect>
               </label>
+            )}
+            {b.inRepo && b.template !== "review" && b.repos.length > 1 && (
+              <fieldset className="agent-room-limits is-stacked" title="One plan across several repos: each task works in one repo's worktree, and the result gate merges, opens pull requests, keeps or deletes every branch together. Tasks then run one at a time and never race.">
+                <legend>Also change (up to 3)</legend>
+                {b.repos.filter(r => r.dir !== b.chosenRepo?.dir).map(r => (
+                  <label key={r.dir} className="agent-room-check">
+                    <Checkbox checked={b.chosenExtras.includes(r.dir)} disabled={!b.chosenExtras.includes(r.dir) && b.chosenExtras.length >= 3}
+                      onCheckedChange={checked => b.setExtraRepos(list => checked ? [...list, r.dir] : list.filter(d => d !== r.dir))} /> {r.dir}
+                  </label>
+                ))}
+              </fieldset>
             )}
             <label title={b.inRepo ? `Works on branch room/<name>-… in its own worktree; ${b.chosenRepo?.dir} is untouched until you merge.` : `Built in ${b.buildsRoot}\\<name> as its own git repository.`}>
               {b.inRepo ? "Branch name" : "Project name"}
@@ -576,7 +590,7 @@ function RolesGate({ initial, act }: { initial: Roles; act: Act }) {
 }
 
 function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]; act: Act }) {
-  const [draft, setDraft] = useState(tasks.map(t => ({ title: t.title, assignee: t.assignee, description: t.description, race: t.race === true, after: t.after, role: t.role })));
+  const [draft, setDraft] = useState(tasks.map(t => ({ title: t.title, assignee: t.assignee, description: t.description, race: t.race === true, after: t.after, role: t.role, repo: t.repo })));
   const update = (index: number, patch: Partial<(typeof draft)[number]>) => setDraft(d => d.map((t, j) => (j === index ? { ...t, ...patch } : t)));
   return (
     <div className="agent-room-gate">
@@ -587,6 +601,7 @@ function PlanGate({ tasks, coders, act }: { tasks: PlanTask[]; coders: AgentId[]
             <Input className="h-9 w-auto min-w-48 flex-1" aria-label={`Task ${i + 1} title`} value={t.title} maxLength={120} onChange={e => update(i, { title: e.target.value })} />
             <AgentSelect label={`Task ${i + 1} assignee`} value={t.assignee} options={coders} onChange={assignee => update(i, { assignee })} />
             {t.role && <Badge variant="neutral" title="Role set: the coder gets this set's skills">{t.role}</Badge>}
+            {t.repo && <Badge variant="neutral" title="This task works in this repo's worktree">{t.repo}</Badge>}
             {coders.length > 1 && (
               <label className="agent-room-check" title="Every coder attempts this task in its own worktree; the checks and a judge pick the best attempt.">
                 <Checkbox checked={t.race} onCheckedChange={checked => update(i, { race: checked })} /> Race all coders
@@ -749,7 +764,7 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
     return (
       <div className="agent-room-gate">
         {summary}
-        <p>Branch <code>{branch}</code> of <code>{dir}</code>.</p>
+        <p>Branch <code>{branch}</code> of <code>{dir}</code>{session.extraRepos?.map(e => <span key={e.id}>, and of <code>{e.dir}</code>{e.finished ? ` (${e.finished === "merge" ? "merged" : e.finished === "pr" ? "pull request opened" : e.finished === "accept" ? "kept" : "deleted"})` : ""}</span>)}.{session.extraRepos?.length ? " Your decision applies to every repo." : ""}</p>
         <DiffView commit="all" label="Show all changes on the branch" />
         <ProducedFiles sessionId={session.id} />
         <MemoryPicker proposal={proposal} onChange={setMemory} />

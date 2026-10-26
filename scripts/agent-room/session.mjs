@@ -7,7 +7,7 @@ import { errorText, RATE_LIMITED, shellCommands, skillReads, subagentEvent, usag
 import { dangerousCommand } from './guard.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateProgress, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
 import { PROJECT_NAME, resolveDebateFolder, resolveProjectDir, resolveRepo, roomError } from './paths.mjs';
-import { branchDiff, commitAll, commitDiff, conflictMarkers, createProject, createWorktree, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge, workingDiff, coveragePercent, trackedFiles } from './project.mjs';
+import { branchDiff, commitAll, commitDiff, conflictMarkers, createProject, createWorktree, suggestCheck, deleteBranch, excludeFromGit, fastForward, finishWorktree, githubItem, headCommit, lastCommitDiff, linkDependencies, openPullRequest, postPrReview, renderPlan, resetTo, rollback, rootCommit, runCheck, squashMerge, workingDiff, coveragePercent, trackedFiles } from './project.mjs';
 import { AGENT_NAMES, buildPrompt } from './prompts.mjs';
 import { attention, GATES } from './attention.mjs';
 import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
@@ -40,6 +40,18 @@ export { GATES };
 const TEMPLATES = ['feature', 'bugfix', 'refactor'];
 // The live screen's latest capture, inside the project folder (excluded from git like the rest of .ascend/).
 export const LIVE_SCREEN = '.ascend/preview/live.png';
+
+// Up to three more repos for one session, besides the main one: each must be a known repo, and every repo folder
+// name must differ, because the name is the repo's id in the plan.
+const MAX_EXTRA_REPOS = 3;
+function chooseExtraRepos(value, main, settings) {
+  if (!given(value)) return [];
+  if (!Array.isArray(value) || value.length > MAX_EXTRA_REPOS) throw roomError('EXTRA_REPOS_INVALID', `Pick at most ${MAX_EXTRA_REPOS} more repos.`);
+  const dirs = value.map(v => resolveRepo(v, settings));
+  const names = [main, ...dirs].map(d => basename(d).toLowerCase());
+  if (new Set(names).size !== names.length) throw roomError('EXTRA_REPOS_INVALID', 'Each repo in a session needs a different folder name.');
+  return dirs;
+}
 
 // Optional model per agent ("sonnet", "gpt-6-mini"); names only, never flags or paths.
 function cleanModels(value) {
@@ -130,6 +142,8 @@ export class RoomSession {
     const id = `${Date.now()}-${randomBytes(3).toString('hex')}`;
     let projectDir;
     let repoInfo = null;
+    let extras = [];
+    if (given(body.extraRepos) && !given(repo)) throw roomError('EXTRA_REPOS_NEED_REPO', 'Several repos need an existing repo first.');
     let found = null;
     let ownerDiff = null;
     if (repo !== undefined && repo !== null && repo !== '') {
@@ -149,6 +163,10 @@ export class RoomSession {
       const branch = `room/${project}-${id.slice(-6)}`;
       projectDir = join(settings.buildsRoot, 'worktrees', `${basename(repoDir)}-${id}`);
       repoInfo = { dir: repoDir, branch };
+      // Several repos in one session: each extra repo gets its own worktree on a branch of the same name.
+      extras = chooseExtraRepos(body.extraRepos, repoDir, settings).map(dir => ({
+        id: basename(dir), dir, branch, worktree: join(settings.buildsRoot, 'worktrees', `${basename(dir)}-${id}`), check: suggestCheck(dir, settings.checks) || null,
+      }));
     } else {
       projectDir = resolveProjectDir(settings.buildsRoot, project);
       mkdirSync(settings.buildsRoot, { recursive: true });
@@ -161,11 +179,19 @@ export class RoomSession {
         Object.assign(repoInfo, createWorktree(repoInfo.dir, projectDir, repoInfo.branch));
         undo = () => finishWorktree(repoInfo.dir, projectDir, repoInfo.branch, null, 'reject');
         linkDependencies(repoInfo.dir, projectDir);
+        for (const extra of extras) {
+          Object.assign(extra, createWorktree(extra.dir, extra.worktree, extra.branch));
+          const before = undo;
+          undo = () => { finishWorktree(extra.dir, extra.worktree, extra.branch, null, 'reject'); before(); };
+          linkDependencies(extra.dir, extra.worktree);
+          excludeFromGit(extra.worktree, '.ascend/');
+        }
       } else {
         undo = () => rmSync(projectDir, { recursive: true, force: true });
         createProject(projectDir);
       }
       installSkills(dataDir, roleSets, projectDir);
+      for (const extra of extras) installSkills(dataDir, roleSets, extra.worktree);
       attachments = saveAttachments(projectDir, uploads, { diff: ownerDiff?.text ?? null, settings });
     } catch (error) {
       // EEXIST: the folder was someone else's all along, so it is never removed.
@@ -179,8 +205,9 @@ export class RoomSession {
       ...(found ? { issue: { number: found.number, title: found.title, url: found.url } } : {}),
       plan: null, discussTurns: 0, pause: null, active: null, createdAt: new Date().toISOString(),
       repo: repoInfo, check: check?.trim() || null, lint: body.lint?.trim() || null, coverage: body.coverage?.trim() || null, limits, turns: 0, workMs: 0, usage: {}, template, models,
-      // A bug fix is a strict red-then-green sequence, so it never runs tasks in parallel.
-      parallel: body.parallel === true && template !== 'bugfix', roleSets, preview,
+      // A bug fix is red-then-green in order, and several repos run one task at a time, so neither runs tasks in parallel.
+      parallel: body.parallel === true && template !== 'bugfix' && !extras.length, roleSets, preview,
+      ...(extras.length ? { extraRepos: extras } : {}),
       // The owner picks among race attempts that pass, instead of the judge's pick merging at once.
       raceGate: body.raceGate === true,
       // A failing task asks the orchestrator whether it is still making progress instead of pausing or being skipped.
@@ -192,7 +219,7 @@ export class RoomSession {
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
     session.say('room', repoInfo
-      ? `Session started on branch ${repoInfo.branch} of ${repoInfo.dir} (worktree ${projectDir}).`
+      ? `Session started on branch ${repoInfo.branch} of ${repoInfo.dir} (worktree ${projectDir})${extras.map(e => `, and of ${e.dir} (worktree ${e.worktree})`).join('')}.`
       : `Session started for project "${project}" in ${projectDir}.`);
     recordOffers(dataDir, [...new Set(roleSets.flatMap(s => s.skills.map(k => k.id)))]);
     return session;
@@ -299,7 +326,7 @@ export class RoomSession {
     return {
       at: new Date().toISOString(), agent: active?.agent ?? null, activity: active?.activity ?? null,
       task: task && { id: task.id, title: task.title, assignee: task.assignee }, elsewhere: Boolean(active?.activity?.match(/in parallel|^racing/)),
-      ...workingDiff(projectDir),
+      ...workingDiff(task ? this.taskDir(task) : projectDir),
     };
   }
 
@@ -314,11 +341,15 @@ export class RoomSession {
     }
     if (commit === 'all') {
       const base = this.state.repo?.base ?? rootCommit(this.state.projectDir);
-      return { commit, text: branchDiff(this.state.projectDir, base) };
+      const main = branchDiff(this.state.projectDir, base);
+      // Several repos: each extra repo's branch after the main one, under a header naming the repo.
+      const extras = (this.state.extraRepos ?? []).filter(e => !e.finished || e.finished === 'accept')
+        .map(e => `# ${e.id} (${e.branch})\n${branchDiff(e.worktree, e.base)}`);
+      return { commit, text: extras.length ? [`# ${basename(this.state.repo.dir)} (${this.state.repo.branch})\n${main}`, ...extras].join('\n\n') : main };
     }
-    const own = this.state.plan?.tasks.some(t => t.commit && t.commit === commit);
-    if (typeof commit !== 'string' || !/^[0-9a-f]{7,40}$/.test(commit) || !own) throw roomError('DIFF_INVALID');
-    return { commit, text: commitDiff(this.state.projectDir, commit) };
+    const owner = this.state.plan?.tasks.find(t => t.commit && t.commit === commit);
+    if (typeof commit !== 'string' || !/^[0-9a-f]{7,40}$/.test(commit) || !owner) throw roomError('DIFF_INVALID');
+    return { commit, text: commitDiff(this.taskDir(owner), commit) };
   }
 
   // Every message gets a seq (for "what is new"); routing fields tell the deck where to draw it.
@@ -451,12 +482,26 @@ export class RoomSession {
     return buildPrompt({
       stage, agent, roles: this.state.roles, task: this.state.task,
       planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript,
-      extra: { template: this.state.template, parallel: this.state.parallel, attached: attachmentLines(this.state.attachments, this.state.fileRefs), ownerNotes: this.state.ownerNotes, connectors: this.connectors, ...extra },
+      extra: { template: this.state.template, parallel: this.state.parallel, attached: attachmentLines(this.state.attachments, this.state.fileRefs), ownerNotes: this.state.ownerNotes, connectors: this.connectors, repos: this.repoList, ...extra },
       memory: this.projectMemory(), roleSets: this.state.roleSets ?? [],
     });
   }
 
   get setIds() { return (this.state.roleSets ?? []).map(s => s.id); }
+
+  // Several repos in one session: the main repo first, then the extras, each with the folder its tasks work in.
+  get repoList() {
+    const { repo, projectDir, extraRepos = [] } = this.state;
+    if (!extraRepos.length) return [];
+    return [{ id: basename(repo.dir), dir: projectDir, check: this.state.check }, ...extraRepos.map(e => ({ id: e.id, dir: e.worktree, check: e.check }))];
+  }
+
+  repoOf(task) { return this.repoList.find(r => r.id === task?.repo) ?? null; }
+
+  // Where a task edits, commits and runs its checks; the main folder unless the plan put it in another repo.
+  taskDir(task) { return this.repoOf(task)?.dir ?? this.state.projectDir; }
+
+  taskCheck(task) { return this.repoOf(task) ? this.repoOf(task).check : this.state.check; }
 
   // The session's MCP connectors as settings define them now; one removed from settings since is left out.
   get connectors() { return (this.state.connectors ?? []).map(id => this.settings.connectors?.[id]).filter(Boolean); }
@@ -488,6 +533,8 @@ export class RoomSession {
       const settings = chosen ? { ...this.settings, agents: { ...this.settings.agents, [agent]: { ...this.settings.agents[agent], model: chosen } } } : this.settings;
       const invocation = buildInvocation(agent, mode, prompt, {
         cwd, settings, outFile: join(this.dir, 'codex-last.txt'), subagents: this.state.subagents?.claude !== false, connectors: this.connectors,
+        // A read turn in a session with several repos may look at every repo's worktree; an edit turn stays in its own.
+        addDirs: mode === 'read' ? this.repoList.map(r => r.dir).filter(d => d !== cwd) : [],
       });
       const { timeouts } = this.settings;
       const timeoutMs = mode === 'edit' ? timeouts.build : this.state.mode === 'debate' ? timeouts.debate : timeouts.chat;
@@ -630,7 +677,7 @@ export class RoomSession {
 
   async planStep() {
     const { roles } = this.state;
-    const plan = await this.jsonTurn(roles.orchestrator, this.prompt('plan', roles.orchestrator), 'planning', v => validatePlan(v, roles.coders, this.setIds), []);
+    const plan = await this.jsonTurn(roles.orchestrator, this.prompt('plan', roles.orchestrator), 'planning', v => validatePlan(v, roles.coders, this.setIds, this.repoList.map(r => r.id)), []);
     if (!plan) return;
     this.setPlan(plan.tasks, 'plan: initial plan', plan.options);
     this.state.stage = 'gate-plan';
@@ -678,44 +725,46 @@ export class RoomSession {
         return;
       }
       task.rounds = (task.rounds ?? 0) + 1;
-      rollback(state.projectDir);
+      const dir = this.taskDir(task);
+      const check = this.taskCheck(task);
+      rollback(dir);
       if (!task.race) this.limitAware(task);
       task.status = 'running';
       this.save();
-      const before = headCommit(state.projectDir);
+      const before = headCommit(dir);
       // Where this task's work starts, for a rewind to it; a retry builds on its own earlier attempt.
       task.before ??= before;
       // Bug fix task 1 must go red, which no race can rank, so it never races.
       if (task.race && state.roles.coders.length > 1 && !(state.template === 'bugfix' && task.id === 1)) return this.raceTask(task, before);
-      this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
+      this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}${task.repo ? ` in ${task.repo}` : ''}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
       if (!(await this.gatherAdvice(task))) return;
-      const stopLive = this.startLiveScreen(task);
+      const stopLive = dir === state.projectDir ? this.startLiveScreen(task) : null;
       const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task, live: stopLive ? state.preview.url : null }), 'editing',
-        state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator], { task });
+        state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator], { task, cwd: dir });
       if (stopLive) await this.endLiveScreen(stopLive);
       if (text === null) return;
       const message = `task-${task.id}: ${task.title}`;
       // Codex and agy can run git commit themselves; their commits count as the task's changes.
-      const hash = commitAll(state.projectDir, message) ?? (headCommit(state.projectDir) !== before ? headCommit(state.projectDir) : null);
+      const hash = commitAll(dir, message) ?? (headCommit(dir) !== before ? headCommit(dir) : null);
       if (!hash) return this.taskFailed(task, 'no changes were made');
       task.commit = hash;
       this.say('room', `Committed ${hash} "${message}".`);
-      if (state.check) {
-        const result = await this.runChecks(state.projectDir, `task ${task.id}`);
+      if (check) {
+        const result = await this.runChecks(dir, `task ${task.id}`, check);
         if (result === null) return;
         task.check = result;
         const last = result.output.split('\n').filter(Boolean).at(-1) ?? '';
         // A bug fix starts with a test that reproduces the bug, so task 1 must leave the checks red.
         if (state.template === 'bugfix' && task.id === 1) {
           if (result.ok) {
-            resetTo(state.projectDir, before);
+            resetTo(dir, before);
             task.commit = null;
             return this.taskFailed(task, 'the checks already pass, so the new test does not reproduce the bug. Add a test that fails until the bug is fixed, and do not fix it yet.');
           }
           this.say('room', `Checks fail as expected (exit ${result.code ?? 'none'}): the new test reproduces the bug.`);
         } else {
           this.say('room', result.ok ? `Checks passed (${Math.round(result.ms / 1000)}s).` : `Checks failed (exit ${result.code ?? 'none'}): ${last.slice(0, 300)}`);
-          if (!result.ok) return this.taskFailed(task, `the checks failed (${state.check}):\n${result.output.slice(-3000)}`);
+          if (!result.ok) return this.taskFailed(task, `the checks failed (${check}):\n${result.output.slice(-3000)}`);
         }
       }
       if (!(await this.measure(task))) return;
@@ -797,10 +846,12 @@ export class RoomSession {
     task.passed ??= [];
     for (const pass of this.reviewPasses(task)) {
       if (task.passed.includes(pass.kind)) continue;
-      const screenshot = pass.kind === 'design' ? await this.previewFor(task) : null;
+      // The app preview is the main repo's, so a task in another repo is reviewed from its diff.
+      const screenshot = pass.kind === 'design' && !task.repo ? await this.previewFor(task) : null;
       if (this.state.stage === 'stopped') return null;
-      const prompt = this.prompt('review', pass.agent, { task, pass, screenshot, diff: lastCommitDiff(this.state.projectDir), check: this.state.check });
-      const verdict = await this.jsonTurn(pass.agent, prompt, pass.kind === 'code' ? 'reviewing' : `${pass.kind} review`, validateVerdict, [task.assignee], { task });
+      const dir = this.taskDir(task);
+      const prompt = this.prompt('review', pass.agent, { task, pass, screenshot, diff: lastCommitDiff(dir), check: this.taskCheck(task) });
+      const verdict = await this.jsonTurn(pass.agent, prompt, pass.kind === 'code' ? 'reviewing' : `${pass.kind} review`, validateVerdict, [task.assignee], { task, cwd: dir });
       if (!verdict) return null;
       if (verdict.verdict !== 'ok') {
         return { notes: pass.kind === 'code' ? verdict.notes || 'the reviewer requested changes' : `${pass.kind} review: ${verdict.notes || 'changes requested'}` };
@@ -813,9 +864,9 @@ export class RoomSession {
 
   // The owner's check command, stoppable like an agent turn; null means the session stopped meanwhile.
   // label says what was checked ("task 2", "before any change"); every run's full output is kept for the Checks pane.
-  async runChecks(dir = this.state.projectDir, label = 'checks') {
-    if (dir === this.state.projectDir) this.say('room', `Running checks: ${this.state.check}`);
-    return this.runCommand(this.state.check, dir, label);
+  async runChecks(dir = this.state.projectDir, label = 'checks', command = this.state.check) {
+    if (dir === this.state.projectDir || this.state.extraRepos?.length) this.say('room', `Running checks: ${command}`);
+    return this.runCommand(command, dir, label);
   }
 
   // Runs one of the session's commands (checks, lint, coverage) and keeps its full output for the Checks tab; null when stopped.
@@ -842,6 +893,8 @@ export class RoomSession {
   // false when the session stopped meanwhile.
   async measure(task) {
     const { lint, coverage, projectDir } = this.state;
+    // The lint and coverage commands belong to the main repo.
+    if (task.repo) return true;
     const said = [];
     if (lint) {
       const r = await this.runCommand(lint, projectDir, `task ${task.id} lint`);
@@ -1266,7 +1319,7 @@ export class RoomSession {
     } else if (gate === 'plan') {
       if (decision !== 'approve') throw roomError('DECISION_INVALID');
       if (plan !== undefined) {
-        const checked = validatePlan(plan, state.roles.coders, this.setIds);
+        const checked = validatePlan(plan, state.roles.coders, this.setIds, this.repoList.map(r => r.id));
         if (!checked.ok) throw roomError('PLAN_INVALID', checked.error);
         this.setPlan(checked.value.tasks, 'plan: owner edits');
       }
@@ -1286,6 +1339,22 @@ export class RoomSession {
       // "pr" pushes to a remote, so Hub offers it behind a confirmation and voice gates never do (see attention.mjs).
       if (!['merge', 'pr', 'accept', 'reject'].includes(decision)) throw roomError('DECISION_INVALID');
       const { dir, branch, baseBranch } = state.repo;
+      // Several repos: the same decision for each extra repo first; one that is finished is skipped if the gate is
+      // answered again after a later repo refused (a merge conflict, a failed push).
+      for (const extra of state.extraRepos ?? []) {
+        if (extra.finished) continue;
+        if (decision === 'pr') {
+          extra.prUrl = openPullRequest(extra.dir, extra.branch, extra.baseBranch, {
+            title: state.task.split('\n')[0].slice(0, 72), body: `Part of a session that also changed ${basename(dir)}.\n\n${state.task}`, gh: this.settings.gh,
+          });
+        }
+        finishWorktree(extra.dir, extra.worktree, extra.branch, extra.baseBranch, decision === 'merge' || decision === 'reject' ? decision : 'keep');
+        extra.finished = decision;
+        this.say('room', decision === 'merge' ? `Merged ${extra.branch} into ${extra.baseBranch} in ${extra.id}.`
+          : decision === 'pr' ? `Opened a pull request in ${extra.id}: ${extra.prUrl}`
+          : decision === 'accept' ? `Kept branch ${extra.branch} in ${extra.id}.` : `Deleted branch ${extra.branch} in ${extra.id}.`);
+        this.save();
+      }
       if (decision === 'pr') {
         const summary = join(this.dir, 'SUMMARY.md');
         state.repo.prUrl = openPullRequest(dir, branch, baseBranch, {
@@ -1356,9 +1425,12 @@ export class RoomSession {
       const tasks = state.plan?.tasks ?? [];
       if (!tasks.some(t => t.id === id)) throw roomError('REWIND_INVALID', `There is no task ${id}.`);
       const again = tasks.filter(t => t.id >= id);
-      const start = again.filter(t => t.before).sort((a, b) => a.id - b.id)[0]?.before;
-      rollback(state.projectDir);
-      if (start) resetTo(state.projectDir, start);
+      // Each repo goes back to where its earliest rewound task began (one folder unless the session has several repos).
+      for (const dir of new Set([state.projectDir, ...again.map(t => this.taskDir(t))])) {
+        const start = again.filter(t => t.before && this.taskDir(t) === dir).sort((a, b) => a.id - b.id)[0]?.before;
+        rollback(dir);
+        if (start) resetTo(dir, start);
+      }
       for (const t of again) {
         for (const key of ['commit', 'check', 'lint', 'coverage', 'before', 'raced', 'failures', 'keptGoing', 'extraRounds', 'skillsRead', 'pendingReassign']) delete t[key];
         Object.assign(t, { status: 'pending', attempts: 0, rounds: 0, notes: '', passed: [], reassigned: false });
@@ -1376,8 +1448,6 @@ export class RoomSession {
     return this.kick();
   }
 
-  // Keep-going: true grants one more round, false lets the task pause or be skipped as usual, null when the judge turn paused or stopped.
-  // Session minutes and turns still bound it, because every round and judge turn goes through turn().
   // Every other agent in the session advises once per task, read-only; the advice goes into the coder's prompt for
   // each of its rounds. False when the session paused or stopped during an advice turn.
   async gatherAdvice(task) {
@@ -1395,6 +1465,8 @@ export class RoomSession {
     return true;
   }
 
+  // Keep-going: true grants one more round, false lets the task pause or be skipped as usual, null when the judge turn paused or stopped.
+  // Session minutes and turns still bound it, because every round and judge turn goes through turn().
   async keepGoing(task) {
     if (!this.state.keepGoing || (task.keptGoing ?? 0) >= KEEP_GOING_ROUNDS) return false;
     const { orchestrator } = this.state.roles;

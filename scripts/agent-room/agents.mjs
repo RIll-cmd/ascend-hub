@@ -62,7 +62,8 @@ export function mergeSettings(base, override = {}, warn = console.warn) {
 }
 
 // connectors: the session's MCP servers (see connectors.mjs); Antigravity cannot take them per turn.
-export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile, subagents = true, connectors = [] }) {
+// addDirs: other folders a read turn may look at (a session's other repo worktrees).
+export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile, subagents = true, connectors = [], addDirs = [] }) {
   const agent = settings.agents[agentId];
   if (!agent) throw roomError('AGENT_UNKNOWN', String(agentId));
   if (mode !== 'read' && mode !== 'edit') throw roomError('MODE_INVALID', String(mode));
@@ -87,14 +88,15 @@ export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile,
     return {
       command: agent.command,
       args: [...agent.prefixArgs, '-p', ...(agent.model ? ['--model', agent.model] : []), '--output-format', 'stream-json', '--verbose', '--permission-mode', permission,
-        '--disallowedTools', 'PowerShell', ...(subagents ? [] : ['Agent']), ...(allowed.length ? ['--allowedTools', ...allowed] : []), ...mcp.args],
+        '--disallowedTools', 'PowerShell', ...(subagents ? [] : ['Agent']), ...(allowed.length ? ['--allowedTools', ...allowed] : []), ...mcp.args,
+        ...addDirs.flatMap(d => ['--add-dir', d])],
       stdin: prompt,
       outFile: null,
       stream: 'claude',
     };
   }
   // agy does not read the prompt from stdin; it must be attached to --print. Its stream-json carries tool calls and the reply.
-  return { command: agent.command, args: [...agent.prefixArgs, '--mode', edit ? 'accept-edits' : 'plan', '--output-format', 'stream-json', `--print=${prompt}`], stdin: null, outFile: null, stream: 'agy' };
+  return { command: agent.command, args: [...agent.prefixArgs, '--mode', edit ? 'accept-edits' : 'plan', '--output-format', 'stream-json', ...addDirs.map(d => `--add-dir=${d}`), `--print=${prompt}`], stdin: null, outFile: null, stream: 'agy' };
 }
 
 export function killTree(child) {
