@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { debateRounds, deckView, frameIntervalMs, freshPulses, latestSeq, lookTargets, messageLine, miniSlots, nearBottom, plateText, stepStates } from "../../app/room/deck/deck-view";
+import { agentMood, debateRounds, deckView, frameIntervalMs, freshPulses, latestSeq, lookTargets, messageLine, miniSlots, nearBottom, plateText, stepStates } from "../../app/room/deck/deck-view";
+import type { DeckAgent, DeckView } from "../../app/room/deck/deck-view";
 import type { Message, RoomStatus, SessionView } from "../../app/room/room-types";
 
 const ready: RoomStatus = { online: true, agents: { codex: { state: "ready" }, claude: { state: "ready" }, agy: { state: "offline", detail: "x" } } };
@@ -138,4 +139,15 @@ test("the deck renders at 30 fps while moving and 8 fps idle, fast enough to sho
   assert.equal(frameIntervalMs(true), 33);
   assert.equal(frameIntervalMs(false), 125);
   assert.ok(frameIntervalMs(false) < 140);
+});
+
+test("a mascot is stuck when its CLI is offline or its session paused, done when it finished, working on a turn", () => {
+  const agent = (state: DeckAgent["state"], roles: string[] = ["coder"]) => ({ state, roles }) as DeckAgent;
+  const view = (status: string) => ({ status }) as DeckView;
+  assert.equal(agentMood(agent("offline", []), view("Idle")), "stuck");
+  assert.equal(agentMood(agent("busy"), view("Paused")), "working");
+  assert.equal(agentMood(agent("idle"), view("Paused")), "stuck");
+  assert.equal(agentMood(agent("idle", []), view("Paused")), "idle", "an agent outside the session is not stuck by it");
+  assert.equal(agentMood(agent("idle"), view("Done")), "done");
+  assert.equal(agentMood(agent("checking"), view("Build in progress")), "idle");
 });

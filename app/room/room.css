@@ -587,3 +587,13 @@
 .room-summary-note { color: var(--sum-muted); }
 @media (max-width: 560px) { .room-summary-page dl > div { grid-template-columns: 1fr; gap: 0; } }
 @media print { .room-summary-print { display: none !important; } .room-summary-page { --sum-bg: #fff; --sum-ink: #000; --sum-muted: #444; min-height: 0; padding: 0; } }
+
+/* Agent mascots (app/room/mascot.tsx) */
+.agent-room-mascot { flex: none; overflow: visible; }
+.agent-room-mascot.is-working .agent-room-mascot-bulb { animation: agent-room-mascot-blink 1s steps(2, jump-none) infinite; }
+.agent-room-mascot.is-working .agent-room-mascot-eyes { animation: agent-room-mascot-look 2.4s ease-in-out infinite; }
+.agent-room-mascot.is-done { animation: agent-room-mascot-hop 1.6s ease-in-out 2; }
+@keyframes agent-room-mascot-blink { 50% { opacity: .25; } }
+@keyframes agent-room-mascot-look { 0%, 100% { transform: translateX(-1px); } 50% { transform: translateX(1px); } }
+@keyframes agent-room-mascot-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .agent-room-mascot, .agent-room-mascot * { animation: none !important; } }

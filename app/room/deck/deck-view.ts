@@ -162,3 +162,15 @@ export function debateRounds(session: SessionView): DebateRounds {
   const live = session.stage === "opening" || session.stage === "critique" || session.stage === "verdict" ? session.stage : "done";
   return { opening, critique, verdict: session.answer ?? null, live, speaking: session.active?.agent ?? null, judge: session.judge ?? "codex" };
 }
+
+// How an agent's mascot looks: stuck when its CLI is offline or the session it works in is paused, done when that
+// session finished, working while it has a turn, idle otherwise.
+export type Mood = "idle" | "working" | "stuck" | "done";
+export function agentMood(agent: DeckAgent, view: DeckView): Mood {
+  if (agent.state === "offline") return "stuck";
+  if (agent.state === "busy") return "working";
+  const inSession = agent.roles.length > 0;
+  if (inSession && view.status === "Paused") return "stuck";
+  if (inSession && view.status === "Done") return "done";
+  return "idle";
+}

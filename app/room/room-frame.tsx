@@ -1,7 +1,8 @@
 "use client";
 import { ChevronLeft, Folder, FolderGit2, GitBranch, Layers, Plus, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { messageLine, plateText, type DeckAgent, type DeckView } from "./deck/deck-view";
+import { agentMood, messageLine, plateText, type DeckAgent, type DeckView } from "./deck/deck-view";
+import { Mascot } from "./mascot";
 import { Button } from "@/components/neo/button";
 import { Card } from "@/components/neo/card";
 import { NativeSelect, NativeSelectOption } from "@/components/neo/native-select";
@@ -136,7 +137,7 @@ export function Inspector({ agent, view, session, pinned, onSelect }: {
           {view.agents.map(a => (
             <li key={a.id}>
               <button type="button" className="agent-room-agent-row" onClick={() => onSelect(a.id)} title={`Show ${a.name}'s details`}>
-                <span className="agent-room-swatch" style={{ background: a.color }} />
+                <Mascot mood={agentMood(a, view)} color={a.color} name={a.name} />
                 <b>{a.name}</b>
                 <span className="agent-room-agent-state">{plateText(a)}</span>
               </button>
@@ -150,7 +151,7 @@ export function Inspector({ agent, view, session, pinned, onSelect }: {
   return (
     <Card size="sm" className="agent-room-inspector gap-1 bg-secondary-background px-4" aria-label={`${agent.name} details`}>
       {pinned && <Button type="button" variant="neutral" size="xs" className="self-start" onClick={() => onSelect(agent.id)}><ChevronLeft aria-hidden="true" /> All agents</Button>}
-      <h2><span className="agent-room-swatch" style={{ background: agent.color }} />{agent.name}</h2>
+      <h2><Mascot mood={agentMood(agent, view)} color={agent.color} name={agent.name} />{agent.name}</h2>
       <p className="agent-room-badges">{agent.roles.map(role => <span key={role} className="agent-room-badge">{role}</span>)}</p>
       <h3>Current activity</h3>
       <p>{agent.state === "busy" ? `${agent.activity}… since ${clock(agent.since)}` : agent.state}</p>

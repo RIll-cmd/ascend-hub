@@ -120,7 +120,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Feature | What it gives | Source | Size |
 | --- | --- | --- | --- |
 | Spotify controls | Play, pause, skip and queue on the music TV; needs the `user-modify-playback-state` scope | Hermes Spotify plugin | Done (2026-10-26): `controlPlayback` in `lib/spotify.ts`, `POST /api/spotify/control`, a control bar on the music channel; the login asks for the scope, so an older connection must reconnect; Spotify requires Premium |
-| Reacting mascots | A Bangboo on each status TV or desk that reacts to idle, working, stuck and done (check sprite licences) | Hermes pets | S–M |
+| Reacting mascots | A Bangboo on each status TV or desk that reacts to idle, working, stuck and done (check sprite licences) | Hermes pets | Done (2026-10-26): an original SVG robot per agent (`app/room/mascot.tsx`, `agentMood`) in the Agents list and details card; Bangboo sprites are Zenless Zone Zero art with no licence for this, so none are used |
 | Hermes dashboard channel | A TV channel that embeds `127.0.0.1:9119` when Hermes is installed | Hermes web dashboard | Dropped (2026-10-24): the owner chose not to run Hermes as an agent |
 | Launcher start-up checklist | The mini console checks Core, the CLI logins and free disk space | Hermes `BOOT.md` | Done (2026-10-26): a **Disk** line (system and builds drives, warns under 5 GB) and the agent line names offline CLIs; Core was already shown. Needs `Install-Ascend.ps1` again to reach the installed launcher |
 | Vision wake word | A wake word before gate answers, so stray speech is ignored | Hermes wake word | M |
