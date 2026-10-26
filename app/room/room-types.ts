@@ -74,6 +74,8 @@ export type SessionView = {
   raceGate?: boolean;
   keepGoing?: boolean;
   advisers?: boolean;
+  // Set while the room shows the app live for a UI task; at changes with each capture.
+  screen?: { task: number; agent: AgentId; at: string } | null;
   issue?: { number: number; title: string; url: string };
   pr?: { number: number; title: string; url: string; base: string; head: string; posted: string | null };
   raceTask?: number;

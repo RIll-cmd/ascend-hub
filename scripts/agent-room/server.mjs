@@ -15,7 +15,7 @@ import { attentionNotifier, phonePush } from './notify.mjs';
 import { replyWatcher } from './phone.mjs';
 import { RoomQueue } from './queue.mjs';
 import { sessionDigest, sessionMarkdown } from './export.mjs';
-import { RoomSession, TERMINAL } from './session.mjs';
+import { LIVE_SCREEN, RoomSession, TERMINAL } from './session.mjs';
 import { ghToken, stageSkill } from './github.mjs';
 import { discardStaged, installStaged, listSkills, readRoleSets, removeSkill, saveProposedSkill, viewSkill, writeRoleSets } from './skills.mjs';
 import { readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
@@ -240,10 +240,10 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       res.end(JSON.stringify(body));
     };
     // A file download; the name is sent both plain (ASCII only) and RFC 5987-encoded.
-    const sendBytes = (bytes, type, name) => {
+    const sendBytes = (bytes, type, name, inline = false) => {
       const plain = name.replace(/[^\x20-\x7e]|["\\]/g, '_');
       res.writeHead(200, { 'content-type': type, 'content-length': bytes.length, 'cache-control': 'no-store',
-        'content-disposition': `attachment; filename="${plain}"; filename*=UTF-8''${encodeURIComponent(name)}` });
+        'content-disposition': `${inline ? 'inline' : 'attachment'}; filename="${plain}"; filename*=UTF-8''${encodeURIComponent(name)}` });
       res.end(bytes);
     };
     const auth = Buffer.from(req.headers.authorization ?? '');
@@ -360,6 +360,12 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       if (route === 'POST /skills/remove') { removeSkill(dataDir, body.id); return send(200, { ok: true }); }
       // The owner keeps a skill the agents proposed at the result gate.
       if (route === 'POST /skills/save') return send(201, { saved: saveProposedSkill(dataDir, { ...body, session: session?.state.id }), sets: readRoleSets(dataDir) });
+      // The live screen's latest capture while a UI task is edited (see startLiveScreen).
+      if (route === 'GET /sessions/current/screen') {
+        const file = session?.state.screen ? join(session.state.projectDir, LIVE_SCREEN) : null;
+        if (!file || !existsSync(file)) return send(404, { error: 'NO_SCREEN' });
+        return sendBytes(readFileSync(file), 'image/png', 'live.png', true);
+      }
       if (route === 'GET /sessions/current/live-diff') {
         if (!session || TERMINAL.has(session.state.stage)) return send(404, { error: 'NO_SESSION' });
         return send(200, session.liveDiff());

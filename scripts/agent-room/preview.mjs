@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { killTree } from './agents.mjs';
@@ -45,41 +45,81 @@ function run(command, args, options, timeoutMs, signal) {
   });
 }
 
-// Starts the app, waits until the URL answers, takes a 1280x800 headless screenshot, and always stops the app.
-export async function capturePreview({ dir, command, url, outFile, browser, timeoutMs = 60_000, signal }) {
-  if (!browser) return { ok: false, error: 'No Edge or Chrome was found; set settings.browser.' };
+// Starts the owner's app and waits until its URL answers: { ok, error, stop }. stop() always ends the app.
+export async function startApp({ dir, command, url, timeoutMs = 60_000, signal }) {
   const app = spawn(command, { cwd: dir, shell: true, windowsHide: true, stdio: 'ignore', env: { ...process.env, BROWSER: 'none', FORCE_COLOR: '0' } });
   let exited = false;
   app.on('exit', () => { exited = true; });
   app.on('error', () => { exited = true; });
+  const stop = () => killTree(app);
+  const deadline = Date.now() + timeoutMs;
+  let up = false;
+  while (!up && !exited && !signal?.aborted && Date.now() < deadline) {
+    up = await fetch(url, { signal: AbortSignal.timeout(2000) }).then(r => r.status < 500, () => false);
+    if (!up) await sleep(400);
+  }
+  if (up && !signal?.aborted) return { ok: true, stop };
+  stop();
+  if (signal?.aborted) return { ok: false, error: 'stopped', stop };
+  return { ok: false, error: exited ? `the start command exited before ${url} answered` : `${url} did not answer within ${Math.round(timeoutMs / 1000)}s`, stop };
+}
+
+// One 1280x800 headless screenshot of a URL that already answers: { ok } or { ok: false, error }.
+export async function screenshot({ url, outFile, browser, signal }) {
+  if (!browser) return { ok: false, error: 'No Edge or Chrome was found; set settings.browser.' };
   // One reused throwaway profile: Edge's helper processes can hold it for a while after the screenshot, so it is never deleted.
   const profile = join(tmpdir(), 'ascend-room-preview-profile');
-  try {
-    const deadline = Date.now() + timeoutMs;
-    let up = false;
-    while (!up && !exited && !signal?.aborted && Date.now() < deadline) {
-      up = await fetch(url, { signal: AbortSignal.timeout(2000) }).then(r => r.status < 500, () => false);
-      if (!up) await sleep(400);
-    }
-    if (signal?.aborted) return { ok: false, error: 'stopped' };
-    if (!up) return { ok: false, error: exited ? `the start command exited before ${url} answered` : `${url} did not answer within ${Math.round(timeoutMs / 1000)}s` };
-    mkdirSync(dirname(outFile), { recursive: true });
-    rmSync(outFile, { force: true });
-    // The separate profile keeps the owner's browser profile untouched; the time budget lets client-side code render.
-    const args = [...browser.prefixArgs, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check',
-      `--user-data-dir=${profile}`, '--virtual-time-budget=5000', '--window-size=1280,800', `--screenshot=${outFile}`, url];
-    const shot = await run(browser.command, args, {}, 30_000, signal);
-    // Edge's launcher can exit at once and hand the work to a relaunched process, so wait for a finished file.
-    const until = Date.now() + 30_000;
-    let size = -1;
-    while (!shot.error && !signal?.aborted && Date.now() < until) {
-      const now = existsSync(outFile) ? statSync(outFile).size : -1;
-      if (now > 0 && now === size) return { ok: true };
-      size = now;
-      await sleep(300);
-    }
-    return { ok: false, error: shot.error ?? `the browser saved no screenshot (exit ${shot.code ?? 'none'})` };
-  } finally {
-    killTree(app);
+  mkdirSync(dirname(outFile), { recursive: true });
+  rmSync(outFile, { force: true });
+  // The separate profile keeps the owner's browser profile untouched; the time budget lets client-side code render.
+  const args = [...browser.prefixArgs, '--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--no-default-browser-check',
+    `--user-data-dir=${profile}`, '--virtual-time-budget=5000', '--window-size=1280,800', `--screenshot=${outFile}`, url];
+  const shot = await run(browser.command, args, {}, 30_000, signal);
+  // Edge's launcher can exit at once and hand the work to a relaunched process, so wait for a finished file.
+  const until = Date.now() + 30_000;
+  let size = -1;
+  while (!shot.error && !signal?.aborted && Date.now() < until) {
+    const now = existsSync(outFile) ? statSync(outFile).size : -1;
+    if (now > 0 && now === size) return { ok: true };
+    size = now;
+    await sleep(300);
   }
+  return { ok: false, error: shot.error ?? `the browser saved no screenshot (exit ${shot.code ?? 'none'})` };
+}
+
+// Starts the app, waits until the URL answers, takes a 1280x800 headless screenshot, and always stops the app.
+export async function capturePreview({ dir, command, url, outFile, browser, timeoutMs = 60_000, signal }) {
+  if (!browser) return { ok: false, error: 'No Edge or Chrome was found; set settings.browser.' };
+  const app = await startApp({ dir, command, url, timeoutMs, signal });
+  if (!app.ok) return { ok: false, error: app.error };
+  try {
+    return await screenshot({ url, outFile, browser, signal });
+  } finally {
+    app.stop();
+  }
+}
+
+// The live screen while an agent edits: the app stays up and is captured about every everyMs into outFile (written
+// beside it first, then renamed, so a reader never sees half a file). onShot runs after each capture. Returns stop().
+export function liveScreen({ dir, command, url, outFile, browser, everyMs = 20_000, timeoutMs = 60_000, onShot, onError }) {
+  const controller = new AbortController();
+  let app = null;
+  const loop = (async () => {
+    if (!browser) return onError?.('No Edge or Chrome was found; set settings.browser.');
+    app = await startApp({ dir, command, url, timeoutMs, signal: controller.signal });
+    if (!app.ok) return controller.signal.aborted ? undefined : onError?.(app.error);
+    const temp = `${outFile}.next.png`;
+    while (!controller.signal.aborted) {
+      const shot = await screenshot({ url, outFile: temp, browser, signal: controller.signal });
+      if (controller.signal.aborted) break;
+      if (shot.ok) {
+        try { renameSync(temp, outFile); onShot?.(); } catch { /* a reader held the old file; the next capture replaces it */ }
+      }
+      await new Promise(resolve => {
+        const timer = setTimeout(resolve, everyMs);
+        controller.signal.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
+      });
+    }
+  })().catch(error => onError?.(error.message)).finally(() => app?.stop());
+  return async () => { controller.abort(); await loop; };
 }

@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { paintScreen, screenKey, type ScreenState } from "./screen";
 
-export type Crt = { group: THREE.Group; setScreen(state: ScreenState): void; setGlow(level: number): void; dispose(): void };
+// setLive shows an app screenshot instead of the agent's face until it is set back to null.
+export type Crt = { group: THREE.Group; setScreen(state: ScreenState): void; setLive(image: HTMLImageElement | null): void; setGlow(level: number): void; dispose(): void };
 
 const SCREEN = { w: 512, h: 384 };
 export const SCREEN_Y = 1.22;
@@ -76,13 +77,38 @@ export function buildCrt(color: string, { scale = 1, withDesk = true } = {}): Cr
   group.scale.setScalar(scale);
 
   let key = "";
+  let live: HTMLImageElement | null = null;
   return {
     group,
     setScreen(state) {
+      if (live) return;
       const next = screenKey(state);
       if (next === key) return;
       key = next;
       paintScreen(ctx, SCREEN.w, SCREEN.h, state);
+      texture.needsUpdate = true;
+    },
+    setLive(image) {
+      if (image === live) return;
+      live = image;
+      key = "";
+      if (!image) return;
+      // Cover the tube with the screenshot, then the CRT's scanlines and a LIVE tag on top.
+      const scale = Math.max(SCREEN.w / image.naturalWidth, SCREEN.h / image.naturalHeight);
+      const w = image.naturalWidth * scale;
+      const h = image.naturalHeight * scale;
+      ctx.globalAlpha = 1;
+      ctx.drawImage(image, (SCREEN.w - w) / 2, 0, w, h);
+      ctx.fillStyle = "#000000";
+      ctx.globalAlpha = 0.12;
+      for (let y = 0; y < SCREEN.h; y += 3) ctx.fillRect(0, y, SCREEN.w, 1);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#e5484d";
+      ctx.fillRect(12, 12, 74, 30);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 22px monospace";
+      ctx.textAlign = "left";
+      ctx.fillText("LIVE", 22, 35);
       texture.needsUpdate = true;
     },
     setGlow(level) {

@@ -156,6 +156,12 @@ export function Inspector({ agent, view, session, pinned, onSelect }: {
       <h3>Current activity</h3>
       <p>{agent.state === "busy" ? `${agent.activity}… since ${clock(agent.since)}` : agent.state}</p>
       {agent.task && <p>Task {agent.task.id}: {agent.task.title} ({agent.task.status})</p>}
+      {view.screen?.agent === agent.id && (
+        <a href={view.screen.url} target="_blank" rel="noreferrer" title="Open the latest capture">
+          {/* eslint-disable-next-line @next/next/no-img-element -- a live capture from the room, not a static asset */}
+          <img className="agent-room-live-screen" src={view.screen.url} alt={`The app as ${agent.name} is changing it`} />
+        </a>
+      )}
       {(agent.subagents.length > 0 || agent.waiting) && (
         <>
           <h3>Sub-agents</h3>

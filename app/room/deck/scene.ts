@@ -64,6 +64,19 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
 
   // Live state
   let view: DeckView | null = null;
+  // The live screen: the image for the latest capture url, once it has loaded (a failed load keeps the face).
+  let liveUrl: string | null = null;
+  let live: { agent: DeckView["agents"][number]["id"]; image: HTMLImageElement } | null = null;
+  const syncLive = (next: DeckView) => {
+    const url = next.screen?.url ?? null;
+    if (url === liveUrl) return;
+    liveUrl = url;
+    if (!next.screen || !url) { live = null; return; }
+    const agent = next.screen.agent;
+    const image = new Image();
+    image.onload = () => { if (liveUrl === url) { live = { agent, image }; lastRender = 0; } };
+    image.src = url;
+  };
   let sessionId: string | null | undefined; // undefined = no update yet
   let spawnedSeq = 0;
   const minis = new Map<string, { crt: Crt; agent: AgentId; leftAt: number | null }>();
@@ -189,6 +202,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     for (const agent of view?.agents ?? []) {
       if (now > nextBlink[agent.id] + 140) nextBlink[agent.id] = now + 2500 + Math.random() * 3500;
       const blink = now > nextBlink[agent.id] && agent.state !== "offline";
+      crts[agent.id].setLive(live?.agent === agent.id ? live.image : null);
       crts[agent.id].setScreen({ name: agent.name, color: agent.color, state: agent.state, activity: agent.activity, roles: agent.roles, look: looks?.[agent.id] ?? 0, blink });
       crts[agent.id].setGlow(agent.state === "busy" ? 0.55 + 0.45 * Math.sin(now / 320) : 0);
       rings[agent.id].visible = agent.waiting;
@@ -272,6 +286,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
           retired.clear();
         }
         view = next;
+        syncLive(next);
         syncMinis(next);
         syncDelegation(next);
         for (const pulse of fresh) {

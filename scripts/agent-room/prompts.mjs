@@ -109,6 +109,7 @@ function stageRules(stage, agent, roles, extra, roleSets = []) {
         roleRules(extra.task.role, roleSets),
         generalRules(roleSets, extra.task.role),
         generalRules(roleSets, extra.task.role) && !roleRules(extra.task.role, roleSets).includes(ROOM_WINS) ? ROOM_WINS : '',
+        extra.live ? `The room is running the app at ${extra.live} to show it live; do not start another copy on that port. Use that URL to look at your changes.` : '',
         'Work only inside the current folder. Do not run git commit; the room commits for you.',
         'When you are done, reply with a short summary of what you changed.',
       ].filter(Boolean).join('\n');

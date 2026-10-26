@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import test from 'node:test';
-import { capturePreview, findBrowser, validatePreview } from '../../scripts/agent-room/preview.mjs';
+import { capturePreview, findBrowser, liveScreen, validatePreview } from '../../scripts/agent-room/preview.mjs';
 import { RoomSession } from '../../scripts/agent-room/session.mjs';
 import { writeRoleSets } from '../../scripts/agent-room/skills.mjs';
 import { fakeRunTurn, json, tempRoom, testSettings } from './helpers.mjs';
@@ -106,4 +106,57 @@ test('a failed preview still runs the design review, from the diff alone', async
   await session.gate({ gate: 'plan', decision: 'approve' });
   assert.match(calls.find(c => c.stage === 'review').prompt, /could not be captured/);
   assert.equal(session.state.plan.tasks[0].status, 'done');
+});
+
+test('the live screen keeps the app up, replaces its capture again and again, and stops the app', async () => {
+  const { dataDir } = tempRoom();
+  const port = await freePort();
+  const url = `http://127.0.0.1:${port}/`;
+  const outFile = join(dataDir, 'live', 'live.png');
+  let shots = 0;
+  const errors = [];
+  const stop = liveScreen({ dir: dataDir, command: serve(port), url, outFile, browser: fakeBrowser(dataDir), everyMs: 50, onShot: () => { shots += 1; }, onError: e => errors.push(e) });
+  for (let i = 0; i < 200 && shots < 2; i++) await new Promise(r => { setTimeout(r, 50); });
+  assert.ok(shots >= 2, `two captures at least, got ${shots}`);
+  assert.equal(readFileSync(outFile, 'utf8'), '<h1>hi</h1>');
+  assert.ok(!existsSync(`${outFile}.next.png`) || shots >= 2, 'captures land through a temporary file');
+  await stop();
+  await assert.rejects(fetch(url), 'the app is stopped afterwards');
+  assert.deepEqual(errors, []);
+  const failed = [];
+  const stopNone = liveScreen({ dir: dataDir, command: serve(port), url, outFile, browser: null, onError: e => failed.push(e) });
+  await stopNone();
+  assert.match(failed[0], /No Edge or Chrome/);
+});
+
+test('a UI task is shown live while its coder edits, and the coder is told the app already runs', async () => {
+  const { dataDir, buildsRoot } = tempRoom();
+  writeRoleSets(dataDir, { sets: { frontend: { on: true } } });
+  const port = await freePort();
+  const calls = [];
+  let seen = null;
+  let session;
+  const respond = async ({ stage }) => {
+    if (stage === 'plan') return { text: json({ tasks: [{ title: 'Page', assignee: 'claude', description: 'd', role: 'frontend' }, { title: 'Docs', assignee: 'claude', description: 'e' }] }) };
+    if (stage === 'build') {
+      // The edit turn waits until the room has captured the app at least once.
+      for (let i = 0; i < 200 && !session.state.screen && calls.filter(c => c.stage === 'build').length === 1; i++) await new Promise(r => { setTimeout(r, 50); });
+      seen ??= session.state.screen;
+      return { text: 'ok', files: { [`f${calls.length}.html`]: '<h1>hi</h1>' } };
+    }
+    return { text: stage === 'finish' ? '# Done' : json({ verdict: 'ok' }) };
+  };
+  const settings = { ...testSettings(buildsRoot), browser: fakeBrowser(join(dataDir, 'bin')), liveScreenMs: 50 };
+  session = RoomSession.create({ dataDir, settings, runTurn: fakeRunTurn(respond, calls) },
+    { project: 'live-app', task: 't', roles: { orchestrator: 'codex', coders: ['claude'], reviewer: null }, preview: { command: serve(port), url: `http://127.0.0.1:${port}/` } });
+  await session.kick();
+  await session.gate({ gate: 'plan', decision: 'approve' });
+  assert.equal(seen?.agent, 'claude');
+  assert.equal(seen?.task, 1);
+  const [page, docs] = calls.filter(c => c.stage === 'build');
+  assert.match(page.prompt, new RegExp(`The room is running the app at http://127\.0\.0\.1:${port}/ to show it live`));
+  assert.ok(!docs.prompt.includes('to show it live'), 'a task without a UI role is not shown live');
+  assert.equal(session.state.screen, null, 'the screen clears when the turn ends');
+  assert.ok(existsSync(join(session.state.projectDir, '.ascend', 'preview', 'live.png')));
+  await assert.rejects(fetch(`http://127.0.0.1:${port}/`), 'the app is stopped after the turn');
 });

@@ -125,7 +125,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Launcher start-up checklist | The mini console checks Core, the CLI logins and free disk space | Hermes `BOOT.md` | Done (2026-10-26): a **Disk** line (system and builds drives, warns under 5 GB) and the agent line names offline CLIs; Core was already shown. Needs `Install-Ascend.ps1` again to reach the installed launcher |
 | Vision wake word | A wake word before gate answers, so stray speech is ignored | Hermes wake word | M |
 | Lighter Vision voice | A smaller Kokoro model, when the owner decides (see M5) | M6 follow-ups | S |
-| Live agent screen on a CRT | During UI tasks the agent's browser shows on its desk CRT | Hermes bot screen | L |
+| Live agent screen on a CRT | During UI tasks the agent's browser shows on its desk CRT | Hermes bot screen | Done (2026-10-27): during a frontend or ui-ux task's edit turn the preview app stays up and `liveScreen` captures it every 20 s (`.ascend/preview/live.png`, `GET /sessions/current/screen`); the coder's 3D CRT and details card show it. It is the app as the room sees it, not the agent's own browser; sequential tasks only |
 
 ### Fixes and debt (alongside)
 

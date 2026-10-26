@@ -597,3 +597,4 @@
 @keyframes agent-room-mascot-look { 0%, 100% { transform: translateX(-1px); } 50% { transform: translateX(1px); } }
 @keyframes agent-room-mascot-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-3px); } }
 @media (prefers-reduced-motion: reduce) { .agent-room-mascot, .agent-room-mascot * { animation: none !important; } }
+.agent-room-live-screen { display: block; width: 100%; height: auto; margin: 4px 0; border: 2px solid #000; border-radius: 4px; }

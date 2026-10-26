@@ -17,7 +17,7 @@ import { activeRoleSets, installSkills } from './skills.mjs';
 import { recordOffers, recordRead } from './skill-usage.mjs';
 import { attachmentLines, cleanAttachments, copyAttachments, saveAttachments, taskReferences } from './attachments.mjs';
 import { MAX_WRONG, newCode, phoneChoices } from './phone.mjs';
-import { capturePreview, findBrowser, validatePreview } from './preview.mjs';
+import { capturePreview, findBrowser, liveScreen, validatePreview } from './preview.mjs';
 import { appendJsonLine, readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 
 export const TERMINAL = new Set(['done', 'rejected', 'stopped']);
@@ -38,6 +38,8 @@ function subagentChoice(choice) {
 export { GATES };
 
 const TEMPLATES = ['feature', 'bugfix', 'refactor'];
+// The live screen's latest capture, inside the project folder (excluded from git like the rest of .ascend/).
+export const LIVE_SCREEN = '.ascend/preview/live.png';
 
 // Optional model per agent ("sonnet", "gpt-6-mini"); names only, never flags or paths.
 function cleanModels(value) {
@@ -687,8 +689,10 @@ export class RoomSession {
       if (task.race && state.roles.coders.length > 1 && !(state.template === 'bugfix' && task.id === 1)) return this.raceTask(task, before);
       this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
       if (!(await this.gatherAdvice(task))) return;
-      const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task }), 'editing',
+      const stopLive = this.startLiveScreen(task);
+      const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task, live: stopLive ? state.preview.url : null }), 'editing',
         state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator], { task });
+      if (stopLive) await this.endLiveScreen(stopLive);
       if (text === null) return;
       const message = `task-${task.id}: ${task.title}`;
       // Codex and agy can run git commit themselves; their commits count as the task's changes.
@@ -744,6 +748,31 @@ export class RoomSession {
     if (on.has('security')) passes.push({ kind: 'security', agent: pick('security'), set: 'security' });
     if (on.has('ui-ux') && ['frontend', 'ui-ux'].includes(task.role)) passes.push({ kind: 'design', agent: pick('ui-ux'), set: 'ui-ux' });
     return passes;
+  }
+
+  // While a frontend or UI task is edited, the app stays up and its screenshot refreshes on the coder's CRT. Returns
+  // the stop function, or null when the session has no preview or the task is not a UI task.
+  startLiveScreen(task) {
+    const { preview, projectDir } = this.state;
+    if (!preview || !['frontend', 'ui-ux'].includes(task.role)) return null;
+    excludeFromGit(projectDir, '.ascend/');
+    this.say('room', `Showing the app live on ${AGENT_NAMES[task.assignee]}'s screen while it works on task ${task.id}.`);
+    return liveScreen({
+      dir: projectDir, ...preview, outFile: join(projectDir, LIVE_SCREEN), browser: findBrowser(this.settings),
+      everyMs: this.settings.liveScreenMs ?? 20_000, timeoutMs: this.settings.previewTimeoutMs ?? 60_000,
+      onShot: () => {
+        if (this.state.stage !== 'build') return;
+        this.state.screen = { task: task.id, agent: task.assignee, at: new Date().toISOString() };
+        this.save();
+      },
+      onError: error => this.say('room', `The live screen is off for this task: ${error}`),
+    });
+  }
+
+  async endLiveScreen(stop) {
+    await stop();
+    this.state.screen = null;
+    this.save();
   }
 
   // A screenshot of the running app for a design review, inside the project so every CLI may open it; null without a preview.

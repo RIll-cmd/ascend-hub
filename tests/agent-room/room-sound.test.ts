@@ -3,7 +3,7 @@ import test from "node:test";
 import type { DeckPulse, DeckView } from "../../app/room/deck/deck-view";
 import { soundCues } from "../../app/room/room-sound-cues";
 
-const view = (status: string, mode: DeckView["mode"] = "build"): DeckView => ({ sessionId: "s", mode, status, agents: [], delegation: null });
+const view = (status: string, mode: DeckView["mode"] = "build"): DeckView => ({ sessionId: "s", mode, status, agents: [], delegation: null, screen: null });
 const pulse = (kind: DeckPulse["kind"], seq = 1): DeckPulse => ({ seq, from: "codex", to: ["claude"], kind });
 
 test("soundCues: one cue per kind of event in a batch, never a burst", () => {

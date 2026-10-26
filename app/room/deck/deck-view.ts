@@ -16,7 +16,9 @@ export type DeckAgent = {
   subagents: DeckSubagent[]; waiting: boolean; latest: Message | null;
   task: { id: number; title: string; status: string } | null;
 };
-export type DeckView = { sessionId: string | null; mode: "build" | "debate" | null; status: string; agents: DeckAgent[]; delegation: { from: AgentId; to: AgentId } | null };
+export type DeckView = { sessionId: string | null; mode: "build" | "debate" | null; status: string; agents: DeckAgent[]; delegation: { from: AgentId; to: AgentId } | null;
+  // The app as the room last captured it while an agent edits a UI task; the url changes with every capture.
+  screen: { agent: AgentId; url: string } | null };
 export type DeckPulse = { seq: number; from: AgentId; to: AgentId[] | "owner"; kind: "message" | "assign" | "subagent"; sub?: string };
 
 function statusText(session: SessionView | null): string {
@@ -46,7 +48,8 @@ export function deckView(session: SessionView | null, status: RoomStatus | null)
   });
   const orchestrator = session?.roles?.orchestrator;
   const delegation = current && orchestrator && orchestrator !== current.assignee ? { from: orchestrator, to: current.assignee } : null;
-  return { sessionId: session?.id ?? null, mode, status: statusText(session), agents, delegation };
+  const screen = session?.screen ? { agent: session.screen.agent, url: `/api/room/sessions/current/screen?at=${encodeURIComponent(session.screen.at)}` } : null;
+  return { sessionId: session?.id ?? null, mode, status: statusText(session), agents, delegation, screen };
 }
 
 export const BUILD_STEPS: { label: string; stages: string[] }[] = [
