@@ -105,22 +105,27 @@ export function buildRoom(scene: THREE.Scene, keep: Keep): void {
   // The Hub's staircase poster in a wooden frame.
   const posterTexture = keep(new THREE.TextureLoader().load("/ascend-hub-staircase.webp"));
   posterTexture.colorSpace = THREE.SRGBColorSpace;
-  mesh(new THREE.BoxGeometry(1.16, 1.16, 0.04), frame, -1.55, 2.35, -3.47);
-  mesh(new THREE.PlaneGeometry(1.04, 1.04), keep(new THREE.MeshStandardMaterial({ map: posterTexture, roughness: 0.6 })), -1.55, 2.35, -3.44);
+  // Named so the room's modes can find them (room-modes.ts): the chalkboard replaces the poster.
+  mesh(new THREE.BoxGeometry(1.16, 1.16, 0.04), frame, -1.55, 2.35, -3.47).name = 'poster';
+  mesh(new THREE.PlaneGeometry(1.04, 1.04), keep(new THREE.MeshStandardMaterial({ map: posterTexture, roughness: 0.6 })), -1.55, 2.35, -3.44).name = 'poster';
 
   // Small round table in the middle of the desk arc.
   const tableWood = mat("#6e4930", { roughness: 0.7 });
-  mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 32), tableWood, 0, 0.5, 0.9, true);
-  mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 12), tableWood, 0, 0.25, 0.9, true);
+  mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 32), tableWood, 0, 0.5, 0.9, true).name = 'table';
+  mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 12), tableWood, 0, 0.25, 0.9, true).name = 'table';
 
   // Lamp bulb glow beside the floor lamp prop (Task 8 props sit at x -4.4).
   mesh(new THREE.SphereGeometry(0.11, 16, 16), keep(new THREE.MeshBasicMaterial({ color: "#ffd9a0" })), -4.33, 1.8, -2.68);
   const lamp = new THREE.PointLight("#ffb46a", 1.6, 7);
+  lamp.name = "lamp";
   lamp.position.set(-4.2, 1.8, -2.5);
   scene.add(lamp);
 
-  scene.add(new THREE.AmbientLight("#fff1dc", 0.65));
+  const ambient = new THREE.AmbientLight("#fff1dc", 0.65);
+  ambient.name = "ambient";
+  scene.add(ambient);
   const sun = new THREE.DirectionalLight("#fff3e0", 1.25);
+  sun.name = "sun";
   sun.position.set(-4, 8, 6);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);

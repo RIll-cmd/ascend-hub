@@ -5,6 +5,8 @@ import { buildCrt, SCREEN_Y, type Crt } from "./crt";
 import { AGENT_COLORS, frameIntervalMs, lookTargets, miniSlots, type DeckPulse, type DeckView } from "./deck-view";
 import { arcPoints, easeInOut, pulseProgress, type Vec3 } from "./pulses";
 import { buildRoom } from "./room";
+import { buildModeProps, faceCamera } from "./room-modes";
+import { graphicFor, spots } from "./room-scene";
 
 export type PlatePosition = { id: AgentId; x: number; y: number; visible: boolean };
 export type Deck = {
@@ -41,10 +43,27 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   // Agents
   const crts = {} as Record<AgentId, Crt>;
   const rings = {} as Record<AgentId, THREE.Mesh>;
+  const deskWood = keep(new THREE.MeshStandardMaterial({ color: "#7a5236", roughness: 0.8 }));
+  const deskTop = keep(new THREE.BoxGeometry(1.8, 0.08, 1.1));
+  const deskLeg = keep(new THREE.BoxGeometry(0.07, 0.72, 0.07));
+  const desks = {} as Record<AgentId, THREE.Group>;
   for (const id of AGENT_IDS) {
-    const crt = buildCrt(AGENT_COLORS[id]);
-    crt.group.position.set(...SEATS[id]);
-    crt.group.lookAt(0, 0, 3.2);
+    const crt = buildCrt(AGENT_COLORS[id], { withDesk: false });
+    crt.group.position.set(SEATS[id][0], 0.76, SEATS[id][2]);
+    faceCamera(crt.group);
+    const desk = new THREE.Group();
+    const top = new THREE.Mesh(deskTop, deskWood);
+    top.position.y = 0.72;
+    top.castShadow = top.receiveShadow = true;
+    desk.add(top);
+    for (const [x, z] of [[-0.8, -0.47], [0.8, -0.47], [-0.8, 0.47], [0.8, 0.47]]) {
+      const leg = new THREE.Mesh(deskLeg, deskWood);
+      leg.position.set(x, 0.36, z);
+      desk.add(leg);
+    }
+    desk.position.set(...SEATS[id]);
+    scene.add(desk);
+    desks[id] = desk;
     crt.group.traverse(object => { object.userData.agentId = id; });
     scene.add(crt.group);
     crts[id] = crt;
@@ -61,6 +80,13 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   selection.rotation.x = -Math.PI / 2;
   selection.visible = false;
   scene.add(selection);
+  // The room's modes: idle ready room, coding workshop, debate panel (room-scene.ts says which, room-modes.ts builds it).
+  const modeProps = buildModeProps(scene);
+  const tableParts = scene.children.filter(o => o.name === "table");
+  const where = (id: AgentId): Vec3 => [crts[id].group.position.x, 0, crts[id].group.position.z];
+  const probe = new THREE.Object3D();
+  const goal = new THREE.Vector3();
+  const reducedQuery = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
 
   // Live state
   let view: DeckView | null = null;
@@ -92,8 +118,8 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   let disposed = false;
   const nextBlink = Object.fromEntries(AGENT_IDS.map(id => [id, performance.now() + 1500 + Math.random() * 4000])) as Record<AgentId, number>;
 
-  const miniSpot = (agent: AgentId, index: number): Vec3 => add3(SEATS[agent], [1.15, 0, 0.6 - index * 0.5]);
-  const screenPoint = (agent: AgentId): Vec3 => add3(SEATS[agent], [0, SCREEN_Y, 0]);
+  const miniSpot = (agent: AgentId, index: number): Vec3 => add3(where(agent), [1.15, 0, 0.6 - index * 0.5]);
+  const screenPoint = (agent: AgentId): Vec3 => add3(where(agent), [0, SCREEN_Y, 0]);
 
   function removePulse(index: number) {
     const [pulse] = pulses.splice(index, 1);
@@ -193,18 +219,46 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     pitch += (targetPitch - pitch) * 0.08;
     const spherical = baseSpherical.clone();
     // Narrow (portrait) decks pull the camera back so all three desks stay in frame.
-    spherical.radius *= Math.sqrt(Math.max(1, 1.6 / camera.aspect));
+    // The workshop is wider than the old arc, so very narrow (phone) views pull back a little further still.
+    spherical.radius *= Math.sqrt(Math.max(1, 1.6 / camera.aspect)) * (camera.aspect < 0.75 ? 1.16 : 1);
     spherical.theta += yaw;
     spherical.phi = Math.min(Math.PI / 2.2, Math.max(0.3, spherical.phi + pitch));
     camera.position.setFromSpherical(spherical).add(target);
     camera.lookAt(target);
     const looks = view ? lookTargets(view) : null;
+    const reduced = reducedQuery?.matches ?? false;
+    const room = view?.room ?? null;
+    if (room) {
+      // Desks and TVs ease to the mode's places; each TV turns to face the camera on its own.
+      const seats = spots(room, [...AGENT_IDS]);
+      const k = reduced ? 1 : 0.08;
+      modeProps.update(room, seats, now, live?.image ?? null, reduced);
+      for (const part of tableParts) part.visible = room.kind !== "coding";
+      for (const id of AGENT_IDS) {
+        const spot = seats[id];
+        const desk = desks[id];
+        desk.visible = room.kind !== "coding";
+        desk.position.lerp(goal.set(...spot.desk), k);
+        desk.rotation.y += (spot.deskYaw - desk.rotation.y) * k;
+        const crt = crts[id].group;
+        crt.position.lerp(goal.set(spot.desk[0], 0.76, spot.desk[2]), k);
+        probe.position.copy(crt.position);
+        faceCamera(probe);
+        crt.quaternion.slerp(probe.quaternion, k);
+        rings[id].position.set(crt.position.x, 0.02, crt.position.z);
+      }
+    }
+    const tick = reduced ? 0 : Math.floor(now / 140);
     for (const agent of view?.agents ?? []) {
       if (now > nextBlink[agent.id] + 140) nextBlink[agent.id] = now + 2500 + Math.random() * 3500;
       const blink = now > nextBlink[agent.id] && agent.state !== "offline";
-      crts[agent.id].setLive(live?.agent === agent.id ? live.image : null);
-      crts[agent.id].setScreen({ name: agent.name, color: agent.color, state: agent.state, activity: agent.activity, roles: agent.roles, look: looks?.[agent.id] ?? 0, blink });
-      crts[agent.id].setGlow(agent.state === "busy" ? 0.55 + 0.45 * Math.sin(now / 320) : 0);
+      const graphic = room ? graphicFor(agent.id, agent.state, room) : null;
+      const lines = graphic === "plan" ? room?.plan.map((t, i) => `${t.status === "done" ? "☑" : t.status === "running" ? "▸" : "☐"} ${i + 1} ${t.title}`) : undefined;
+      // The live capture now shows on the shared wall screen, so the coder's own TV keeps showing it at work.
+      crts[agent.id].setLive(null);
+      crts[agent.id].setScreen({ name: agent.name, color: agent.color, state: agent.state, activity: agent.activity, roles: agent.roles, look: looks?.[agent.id] ?? 0, blink, graphic, tick: graphic ? tick : 0, lines });
+      const lit = room?.kind === "debate" ? room.speaker === agent.id || (room.phase === "verdict" && room.judge === agent.id) : agent.state === "busy";
+      crts[agent.id].setGlow(lit && !reduced ? 0.55 + 0.45 * Math.sin(now / 320) : lit ? 0.7 : 0);
       rings[agent.id].visible = agent.waiting;
       rings[agent.id].rotation.z = now / 1500;
     }
@@ -231,7 +285,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     if (frameCb) {
       const { clientWidth: w, clientHeight: h } = canvas;
       frameCb(AGENT_IDS.map(id => {
-        projected.set(...add3(SEATS[id], [0, 1.82, 0])).project(camera);
+        projected.set(...add3(where(id), [0, 1.82, 0])).project(camera);
         return { id, x: ((projected.x + 1) / 2) * w, y: ((1 - projected.y) / 2) * h, visible: projected.z < 1 };
       }));
     }
@@ -308,7 +362,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     },
     select(id) {
       selection.visible = id !== null && id in SEATS;
-      if (id && id in SEATS) selection.position.set(SEATS[id][0], 0.015, SEATS[id][2]);
+      if (id && id in SEATS) selection.position.set(where(id)[0], 0.015, where(id)[2]);
     },
     onSelect(cb) { selectCb = cb; },
     onFrame(cb) { frameCb = cb; },
@@ -327,6 +381,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
         delegationLine.geometry.dispose();
         (delegationLine.material as THREE.Material).dispose();
       }
+      modeProps.dispose();
       disposables.forEach(item => item.dispose());
       renderer.dispose();
     },
