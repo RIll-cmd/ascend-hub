@@ -18,6 +18,7 @@ import { Markdown } from "./markdown";
 import { inlineSummary } from "./markdown-parse";
 import { DiffView } from "./workflow-panel";
 import { ProducedFiles } from "./produced-files";
+import { SkillProposal } from "./skill-proposal";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
 
@@ -733,6 +734,7 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
         <DiffView commit="all" label="Show all changes on the branch" />
         <ProducedFiles sessionId={session.id} />
         <MemoryPicker proposal={proposal} onChange={setMemory} />
+        {session.skillProposal && <SkillProposal key={`${session.id}-skill`} proposal={session.skillProposal} />}
         <Button size="sm" onClick={() => act(GATE, { gate: "result", decision: "merge", memory })}>Merge into {baseBranch}</Button>
         <Button size="sm" variant="neutral" onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Keep branch</Button>
         <Button size="sm" variant="neutral" onClick={() => {
@@ -751,6 +753,7 @@ function GateBarInner({ session, act }: { session: SessionView; act: Act }) {
         <DiffView commit="all" label="Show all changes" />
         <ProducedFiles sessionId={session.id} />
         <MemoryPicker proposal={proposal} onChange={setMemory} />
+        {session.skillProposal && <SkillProposal key={`${session.id}-skill`} proposal={session.skillProposal} />}
         <Button size="sm" onClick={() => act(GATE, { gate: "result", decision: "accept", memory })}>Accept</Button>
         <Button size="sm" variant="danger" onClick={() => act(GATE, { gate: "result", decision: "reject" })}>Reject</Button>
       </div>

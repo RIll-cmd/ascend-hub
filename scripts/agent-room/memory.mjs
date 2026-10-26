@@ -14,11 +14,20 @@ export function cleanNotes(value, max = 5) {
   return (Array.isArray(value) ? value : []).map(oneLine).filter(n => n && n.length <= 200).slice(0, max);
 }
 
+// A reusable procedure the orchestrator proposes as a new skill: one-line name and description, Markdown steps.
+export function cleanSkillProposal(value) {
+  const name = oneLine(value?.name).slice(0, 60);
+  const description = oneLine(value?.description).slice(0, 300);
+  const body = typeof value?.body === 'string' ? value.body.trim().slice(0, 12_000) : '';
+  return name && description && body ? { name, description, body } : null;
+}
+
 export function splitProposal(text) {
   const block = extractJsonBlock(text);
   const notes = block.ok ? cleanNotes(block.value?.memory) : [];
+  const skill = block.ok ? cleanSkillProposal(block.value?.skill) : null;
   const summary = String(text).replace(/```json\s*\n[\s\S]*?```/g, '').trim();
-  return { summary, notes };
+  return { summary, notes, skill };
 }
 
 export function memoryKey({ repo, project }) {

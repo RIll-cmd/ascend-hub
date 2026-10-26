@@ -1,7 +1,9 @@
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { roomError } from './paths.mjs';
 import { excludeFromGit } from './project.mjs';
+import { scanText } from './skill-scan.mjs';
+import { readUsage, usageOf } from './skill-usage.mjs';
 import { readJson, writeJsonAtomic } from './store.mjs';
 
 // Specialist roles an agent can wear. Each set is a list of third-party agent skills (SKILL.md folders);
@@ -95,6 +97,15 @@ export const viewSkill = (dataDir, id) => readFileSync(join(skillDir(dataDir, id
 
 export function removeSkill(dataDir, id) {
   rmSync(skillDir(dataDir, id), { recursive: true, force: true });
+  // A saved proposal leaves the sets it was added to, so a later skill with the same id does not land there.
+  const saved = stored(dataDir);
+  if (!Object.values(saved).some(set => set?.extra?.includes(id))) return;
+  const sets = Object.fromEntries(Object.entries(saved).map(([key, set]) => {
+    if (!set?.extra?.includes(id)) return [key, set];
+    const skills = Object.fromEntries(Object.entries(set.skills ?? {}).filter(([skill]) => skill !== id));
+    return [key, { ...set, skills, extra: set.extra.filter(x => x !== id) }];
+  }));
+  writeJsonAtomic(storeFile(dataDir), { sets });
 }
 
 function stagedDir(dataDir, token) {
@@ -105,6 +116,31 @@ function stagedDir(dataDir, token) {
 
 export function discardStaged(dataDir, token) {
   rmSync(stagedDir(dataDir, token), { recursive: true, force: true });
+}
+
+// A skill the agents proposed at a result gate, as the owner edited it: written to the library with front matter, scanned
+// like a fetched skill (a finding needs confirm: true), and added to one role set, switched on.
+export function saveProposedSkill(dataDir, { id, name, description, body, set, session, confirm = false } = {}) {
+  const line = value => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '');
+  const title = line(name);
+  const summary = line(description);
+  if (!title || title.length > 60 || !summary || summary.length > 300) throw roomError('SKILL_PROPOSAL_INVALID', 'A skill needs a name (60 characters) and a description (300).');
+  if (typeof body !== 'string' || !body.trim() || body.length > 12_000) throw roomError('SKILL_PROPOSAL_INVALID', 'The skill text must be 1 to 12,000 characters.');
+  if (!ROLE_SETS.some(s => s.id === set)) throw roomError('ROLE_SET_INVALID', String(set));
+  const target = id ?? title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+  if (!skillId(target)) throw roomError('SKILL_ID_INVALID', String(target));
+  const dir = join(dataDir, 'skills', target);
+  if (existsSync(dir)) throw roomError('SKILL_EXISTS', `A skill called ${target} is already in the library.`);
+  const text = `---\nname: ${title}\ndescription: ${summary}\n---\n\n${body.trim()}\n`;
+  const findings = scanText('SKILL.md', text);
+  if (findings.length && confirm !== true) throw Object.assign(roomError('SKILL_SCAN', 'The safety scan flagged lines in this skill; read them, then save again to confirm.'), { findings });
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'SKILL.md'), text, 'utf8');
+  writeJsonAtomic(join(dir, 'source.json'), { origin: 'session', session: typeof session === 'string' ? session : null, savedAt: new Date().toISOString() });
+  const saved = stored(dataDir);
+  const next = { ...saved[set], skills: { ...saved[set]?.skills, [target]: true }, extra: [...new Set([...(saved[set]?.extra ?? []), target])] };
+  writeJsonAtomic(storeFile(dataDir), { sets: { ...saved, [set]: next } });
+  return { id: target, findings };
 }
 
 // The owner's Install: the staged folder (see github.mjs) replaces any installed copy, with source.json pinning where it came from.
@@ -127,29 +163,34 @@ export function installStaged(dataDir, token, id) {
 export function listSkills(dataDir) {
   const root = join(dataDir, 'skills');
   if (!isRealDir(root)) return [];
+  const usage = readUsage(dataDir);
   return readdirSync(root).filter(id => SKILL_ID.test(id) && isRealDir(join(root, id)) && existsSync(join(root, id, 'SKILL.md'))).sort().map(id => {
     const dir = join(root, id);
     const { name, description } = frontMatter(readFileSync(join(dir, 'SKILL.md'), 'utf8'));
     const hasScripts = hasScriptFiles(readdirSync(dir, { recursive: true }));
     let source = null;
     try { source = readJson(join(dir, 'source.json')); } catch { /* a broken source.json only hides the source */ }
-    return { id, name: name || id, description, hasScripts, source };
+    return { id, name: name || id, description, hasScripts, source, usage: usageOf(usage, id) };
   });
 }
 
 const storeFile = dataDir => join(dataDir, 'role-sets.json');
 const stored = dataDir => readJson(storeFile(dataDir), {})?.sets ?? {};
 
-// The sets as the room shows them: defaults, then the owner's switches, then what the library holds.
+// The sets as the room shows them: defaults, then the owner's switches, then what the library holds. A set's "extra"
+// skills are ones the owner added to it, such as a skill the agents proposed at a result gate.
 export function readRoleSets(dataDir) {
   const library = new Map(listSkills(dataDir).map(s => [s.id, s]));
   const saved = stored(dataDir);
+  const known = k => ({ installed: library.has(k.id), description: library.get(k.id)?.description ?? '', hasScripts: library.get(k.id)?.hasScripts ?? false,
+    usage: library.get(k.id)?.usage ?? null });
   return ROLE_SETS.map(set => ({
     id: set.id, name: set.name, prompt: set.prompt, always: Boolean(set.always), on: saved[set.id]?.on ?? false,
-    skills: set.skills.map(k => ({
-      id: k.id, name: k.name, source: k.source, on: saved[set.id]?.skills?.[k.id] ?? k.on,
-      installed: library.has(k.id), description: library.get(k.id)?.description ?? '', hasScripts: library.get(k.id)?.hasScripts ?? false,
-    })),
+    skills: [
+      ...set.skills.map(k => ({ id: k.id, name: k.name, source: k.source, on: saved[set.id]?.skills?.[k.id] ?? k.on, ...known(k) })),
+      ...(saved[set.id]?.extra ?? []).filter(id => library.has(id) && !set.skills.some(k => k.id === id))
+        .map(id => ({ id, name: library.get(id).name, source: library.get(id).source?.url ?? '', on: saved[set.id]?.skills?.[id] ?? true, ...known({ id }) })),
+    ],
   }));
 }
 
@@ -170,7 +211,8 @@ export function writeRoleSets(dataDir, body) {
     if ('skills' in change) {
       if (!isObject(change.skills)) throw roomError('ROLE_SET_INVALID', id);
       for (const [skillId, on] of Object.entries(change.skills)) {
-        if (!set.skills.some(k => k.id === skillId) || typeof on !== 'boolean') throw roomError('ROLE_SET_INVALID', `${id}/${skillId}`);
+        const inSet = set.skills.some(k => k.id === skillId) || (saved[id]?.extra ?? []).includes(skillId);
+        if (!inSet || typeof on !== 'boolean') throw roomError('ROLE_SET_INVALID', `${id}/${skillId}`);
         next.skills[skillId] = on;
       }
     }

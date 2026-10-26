@@ -4,9 +4,9 @@ import { Badge } from "@/components/neo/badge";
 import { Button } from "@/components/neo/button";
 import { Checkbox } from "@/components/neo/checkbox";
 import { SideSection } from "./room-parts";
-import { SkillLibrary } from "./skill-library";
+import { SkillLibrary, usageLine, type SkillUsage } from "./skill-library";
 
-type RoleSkill = { id: string; name: string; source: string; on: boolean; installed: boolean; description: string; hasScripts: boolean };
+type RoleSkill = { id: string; name: string; source: string; on: boolean; installed: boolean; description: string; hasScripts: boolean; usage?: SkillUsage | null };
 type RoleSet = { id: string; name: string; prompt: string; on: boolean; always?: boolean; skills: RoleSkill[] };
 type Change = { on?: boolean; skills?: Record<string, boolean> };
 
@@ -45,11 +45,12 @@ export function RoleSets() {
               <ul>
                 {set.skills.map(k => (
                   <li key={k.id}>
-                    <label className="agent-room-check" title={k.description || k.source}>
+                    <label className="agent-room-check" title={`${k.description || k.source}${k.installed ? ` (${usageLine(k.usage)})` : ""}`}>
                       <Checkbox checked={k.on} onCheckedChange={checked => void save(set.id, { skills: { [k.id]: checked } })} aria-label={`${k.name} in ${set.name}`} />
-                      <a href={k.source} target="_blank" rel="noreferrer">{k.name}</a>
+                      {k.source ? <a href={k.source} target="_blank" rel="noreferrer">{k.name}</a> : <span>{k.name}</span>}
                       {!k.installed && <Badge variant="neutral">not installed</Badge>}
                       {k.hasScripts && <Badge>has scripts</Badge>}
+                      {k.usage?.stale && <Badge title={`Offered in ${k.usage.sinceRead} sessions in a row without a read`}>stale</Badge>}
                     </label>
                   </li>
                 ))}

@@ -37,7 +37,8 @@ test('the library is the skill folders with a SKILL.md, with their front matter 
   addSkill(dataDir, 'Bad Name', { 'SKILL.md': skillMd('x', 'y') });
   const skills = listSkills(dataDir);
   assert.deepEqual(skills.map(s => s.id), ['impeccable', 'static-analysis']);
-  assert.deepEqual(skills[0], { id: 'impeccable', name: 'Impeccable', description: 'Design polish rules.', hasScripts: false, source: null });
+  assert.deepEqual(skills[0], { id: 'impeccable', name: 'Impeccable', description: 'Design polish rules.', hasScripts: false, source: null,
+    usage: { offered: 0, read: 0, sinceRead: 0, lastRead: null, stale: false } });
   assert.equal(skills[1].hasScripts, true);
   assert.deepEqual(listSkills(tempRoom().dataDir), [], 'no library folder yet');
 

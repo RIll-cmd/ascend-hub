@@ -40,7 +40,7 @@ Updated 2026-10-24. M1–M7 are done; the open work is under [Next: M8–M13](#n
 | M9 | Unattended sessions | Sessions that wait out a limit window, queue up, run on a schedule and keep going until the checks pass. | Done (2026-10-25) |
 | M10 | GitHub in and out | Start from an issue or PR, review a PR and post comments, resolve merge-queue conflicts, several repos in one session. | In progress: issue starts, PR reviews and the merge arbiter are done; several repos in one session is set aside (3 of 4) |
 | M11 | Seeing the work | Live diff, file viewer, check output, search and export across sessions, lint per task, richer prompt attachments. | Done (2026-10-25) |
-| M12 | More agents and connectors | MCP connectors, a self-maintaining skill library, safety guards. | In progress: the dangerous-command guard is done; the Hermes agent items are dropped |
+| M12 | More agents and connectors | MCP connectors, a self-maintaining skill library, safety guards. | In progress: the dangerous-command guard, the skill scan, skill use counts and skills the agents write are done; the Hermes agent items are dropped |
 | M13 | Hub and Vision polish | Spotify controls, reacting mascots, a launcher start-up checklist, a Vision wake word, a lighter voice. | Not started (the Hermes channel is dropped) |
 
 **Reliability work alongside:**
@@ -109,8 +109,8 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Hermes on the Limits pill | Read `hermes usage --json` | Hermes | Dropped (2026-10-24): the owner chose not to run Hermes as an agent |
 | MCP connectors for agents | A curated list of MCP servers per session, with only the needed environment variables passed | Backlog; Hermes MCP catalogue | M |
 | Hermes skills as a library source | Add `NousResearch/hermes-agent` skills through M7d | Hermes | S |
-| Skills the agents write | The orchestrator proposes a new skill at the result gate; the owner approves it | Hermes self-written skills | M |
-| Skill use counts and stale skills | Use counts per skill and a stale mark in the role-set UI | Hermes curator | S |
+| Skills the agents write | The orchestrator proposes a new skill at the result gate; the owner approves it | Hermes self-written skills | Done (2026-10-26): an optional `skill` in the finish json; the result gate edits it, scans it (findings need a second Save) and adds it to a role set as an extra skill; `POST /skills/save` |
+| Skill use counts and stale skills | Use counts per skill and a stale mark in the role-set UI | Hermes curator | Done (2026-10-26): `skill-usage.json`; offers counted once per session, reads once per skill per session; stale after 5 offers in a row without a read |
 | Advisers and one actor | A build variant where references advise and one agent acts | Hermes Mixture of Agents | M |
 | Dangerous-command guard | Edit turns block `rm -rf`, `git push --force` and `git reset --hard` outside the session worktree | Hermes command approval | Done (2026-10-24): kills the turn when the CLI reports the command |
 | Prompt-injection scan of fetched skills | Flag suspicious instructions on the staged card before Install | Hermes context-file scan | Done (2026-10-25): `skill-scan.mjs`; warns, never blocks; no findings across the 27 installed skills |

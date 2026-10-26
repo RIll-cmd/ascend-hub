@@ -5,8 +5,17 @@ import { Button } from "@/components/neo/button";
 import { Input } from "@/components/neo/input";
 import { Markdown } from "./markdown";
 
-type Source = { url: string; commit: string; license: string | null; fetchedAt: string } | null;
-type Skill = { id: string; name: string; description: string; hasScripts: boolean; source: Source };
+// A fetched skill has url, commit and license; one the agents proposed and the owner saved has origin "session".
+type Source = { url?: string; commit?: string; license?: string | null; fetchedAt?: string; origin?: string } | null;
+export type SkillUsage = { offered: number; read: number; sinceRead: number; lastRead: string | null; stale: boolean };
+
+// "read in 3 of 7 sessions, last 12 Oct", or why it might be stale.
+export function usageLine(u: SkillUsage | null | undefined): string {
+  if (!u || u.offered === 0) return "not offered to a session yet";
+  const last = u.lastRead ? `, last ${new Date(u.lastRead).toLocaleDateString([], { day: "numeric", month: "short" })}` : "";
+  return `read in ${u.read} of ${u.offered} session${u.offered === 1 ? "" : "s"}${last}`;
+}
+type Skill = { id: string; name: string; description: string; hasScripts: boolean; source: Source; usage?: SkillUsage };
 type Staged = { token: string; id: string; name: string; description: string; url: string; commit: string; license: string | null; hasScripts: boolean; files: string[]; skillMd: string; diff: string | null; update: string | null;
   scan?: { file: string; line: number; rule: string; why: string; text: string }[] };
 type Missing = { id: string; name: string; source: string };
@@ -133,10 +142,11 @@ export function SkillLibrary({ open, onClose, onChange, missing }: { open: boole
         <ul className="agent-room-skill-list">
           {skills.map(s => (
             <li key={s.id}>
-              <span><b>{s.name}</b> <small>{s.id}{s.source ? ` · ${s.source.commit.slice(0, 7)} · ${s.source.license ?? "no license"}` : " · added by hand"}</small></span>
+              <span><b>{s.name}</b> <small>{s.id}{s.source?.commit ? ` · ${s.source.commit.slice(0, 7)} · ${s.source.license ?? "no license"}` : s.source?.origin === "session" ? " · written by the agents" : " · added by hand"} · {usageLine(s.usage)}</small></span>
               {s.hasScripts && <Badge>has scripts</Badge>}
+              {s.usage?.stale && <Badge title={`Offered in ${s.usage.sinceRead} sessions in a row without a read. Switch it off or remove it if it does not help.`}>stale</Badge>}
               <Button size="sm" variant="neutral" onClick={() => void view(s.id)}>{viewing?.id === s.id ? "Hide" : "View"}</Button>
-              {s.source && <Button size="sm" variant="neutral" disabled={busy} onClick={() => void fetchSkill(s.source!.url, s.id)}>Update</Button>}
+              {s.source?.url && <Button size="sm" variant="neutral" disabled={busy} onClick={() => void fetchSkill(s.source!.url!, s.id)}>Update</Button>}
               <Button size="sm" variant="neutral" onClick={() => void remove(s.id)}>Remove</Button>
               {viewing?.id === s.id && <div className="agent-room-skill-md"><Markdown text={viewing.text} /></div>}
             </li>

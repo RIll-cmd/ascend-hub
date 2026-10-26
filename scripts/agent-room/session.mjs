@@ -13,6 +13,7 @@ import { cleanLimits, DEFAULT_LIMITS, sessionLimitHit } from './limits.mjs';
 import { addNotes, memoryKey, readMemory, splitProposal } from './memory.mjs';
 import { claudeQuota, latestCodexQuota, NEAR_FULL, retryTime } from './quota.mjs';
 import { activeRoleSets, installSkills } from './skills.mjs';
+import { recordOffers, recordRead } from './skill-usage.mjs';
 import { attachmentLines, cleanAttachments, copyAttachments, saveAttachments, taskReferences } from './attachments.mjs';
 import { MAX_WRONG, newCode, phoneChoices } from './phone.mjs';
 import { capturePreview, findBrowser, validatePreview } from './preview.mjs';
@@ -185,6 +186,7 @@ export class RoomSession {
     session.say('room', repoInfo
       ? `Session started on branch ${repoInfo.branch} of ${repoInfo.dir} (worktree ${projectDir}).`
       : `Session started for project "${project}" in ${projectDir}.`);
+    recordOffers(dataDir, [...new Set(roleSets.flatMap(s => s.skills.map(k => k.id)))]);
     return session;
   }
 
@@ -571,6 +573,12 @@ export class RoomSession {
     if (!read.length) return;
     task.skillsRead ??= {};
     task.skillsRead[agent] = [...new Set([...(task.skillsRead[agent] ?? []), ...read])];
+    // Each skill's first read in a session counts once towards its use.
+    const counted = (this.state.skillsCounted ??= []);
+    for (const id of read.filter(id => !counted.includes(id))) {
+      counted.push(id);
+      recordRead(this.dataDir, id);
+    }
   }
 
   async jsonTurn(agent, prompt, activity, validate, to = [], options = {}) {
@@ -1141,8 +1149,9 @@ export class RoomSession {
     const orchestrator = this.state.roles.orchestrator;
     const text = await this.turn(orchestrator, 'read', this.prompt('finish', orchestrator), 'summarizing', []);
     if (text === null) return;
-    const { summary, notes } = splitProposal(text);
+    const { summary, notes, skill } = splitProposal(text);
     this.state.memoryProposal = notes;
+    this.state.skillProposal = skill;
     if (this.state.repo) {
       writeFileSync(join(this.dir, 'SUMMARY.md'), `${summary}\n`, 'utf8');
     } else {

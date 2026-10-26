@@ -14,8 +14,8 @@ test('notes are short single lines, at most five per proposal', () => {
 
 test('the finish summary carries the proposed notes in a json block that is cut from SUMMARY.md', () => {
   const text = '# Summary\nBuilt it.\n```json\n{"memory": ["Run tests with node --test", "Keep exports ESM"]}\n```\n';
-  assert.deepEqual(splitProposal(text), { summary: '# Summary\nBuilt it.', notes: ['Run tests with node --test', 'Keep exports ESM'] });
-  assert.deepEqual(splitProposal('Plain summary.'), { summary: 'Plain summary.', notes: [] });
+  assert.deepEqual(splitProposal(text), { summary: '# Summary\nBuilt it.', notes: ['Run tests with node --test', 'Keep exports ESM'], skill: null });
+  assert.deepEqual(splitProposal('Plain summary.'), { summary: 'Plain summary.', notes: [], skill: null });
 });
 
 test('memory is stored per project outside the repo, deduplicated and capped at 60 lines', () => {

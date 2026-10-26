@@ -154,7 +154,10 @@ function stageRules(stage, agent, roles, extra, roleSets = []) {
     case 'finish':
       return 'You are the orchestrator. All tasks are finished or skipped. Write the project summary in Markdown: what was built, how to run it, and what was skipped. Do not edit files.\n'
         + 'Then add one fenced json block {"memory": ["..."]} with 0 to 5 short notes for future sessions in this project: decisions, gotchas or commands that work. '
-        + 'Only include a note if it would change how an agent works here; the owner approves each one.';
+        + 'Only include a note if it would change how an agent works here; the owner approves each one.\n'
+        + 'If this session worked out a procedure that would help agents in other projects too, add to the same json block "skill": '
+        + '{"name": "short name", "description": "one sentence on when to use it", "body": "the steps in Markdown"}. '
+        + 'Leave "skill" out unless it is clearly reusable; the owner decides whether to keep it.';
     case 'opening':
       return [
         "This is a debate between three AI agents: Codex (codex), Claude (claude) and Antigravity (agy). Answer the owner's question on your own, without seeing the other agents' answers.",
