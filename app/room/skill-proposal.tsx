@@ -5,7 +5,7 @@ import { Input } from "@/components/neo/input";
 import { Textarea } from "@/components/neo/textarea";
 
 type Proposal = { name: string; description: string; body: string };
-type Finding = { file: string; line: number; why: string; text: string };
+type Finding = { part: "name" | "description" | "steps"; line: number | null; why: string; text: string };
 
 // A skill the orchestrator proposed at the end of the session. The owner edits it, picks a role set, and saves it to the
 // library; a safety-scan finding must be confirmed with a second Save.
@@ -42,7 +42,7 @@ export function SkillProposal({ proposal }: { proposal: Proposal }) {
         </select>
       </label>
       {findings.length > 0 && (
-        <ul className="agent-room-skill-scan" role="alert">{findings.map((f, i) => <li key={i}><code>line {f.line}</code> {f.why}: <q>{f.text}</q></li>)}</ul>
+        <ul className="agent-room-skill-scan" role="alert">{findings.map((f, i) => <li key={i}><code>{f.line ? `steps line ${f.line}` : f.part}</code> {f.why}: <q>{f.text}</q></li>)}</ul>
       )}
       <div className="agent-room-skill-proposal-bar">
         <Button size="sm" variant="neutral" disabled={saved} onClick={() => void save()}>{findings.length ? "Save anyway" : "Save as skill"}</Button>

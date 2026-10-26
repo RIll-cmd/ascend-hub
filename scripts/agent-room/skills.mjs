@@ -132,7 +132,8 @@ export function saveProposedSkill(dataDir, { id, name, description, body, set, s
   const dir = join(dataDir, 'skills', target);
   if (existsSync(dir)) throw roomError('SKILL_EXISTS', `A skill called ${target} is already in the library.`);
   const text = `---\nname: ${title}\ndescription: ${summary}\n---\n\n${body.trim()}\n`;
-  const findings = scanText('SKILL.md', text);
+  // Lines 2 and 3 are the name and description, the steps start on line 6: report where the owner typed it.
+  const findings = scanText('SKILL.md', text).map(f => ({ ...f, part: f.line === 2 ? 'name' : f.line === 3 ? 'description' : 'steps', line: f.line > 5 ? f.line - 5 : null }));
   if (findings.length && confirm !== true) throw Object.assign(roomError('SKILL_SCAN', 'The safety scan flagged lines in this skill; read them, then save again to confirm.'), { findings });
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'SKILL.md'), text, 'utf8');

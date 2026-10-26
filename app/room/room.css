@@ -279,6 +279,14 @@
 .agent-room-composer-bar { display: flex; align-items: center; gap: 8px; }
 .agent-room-composer-bar small { opacity: 0.65; }
 .agent-room-gate .agent-room-produced { flex-basis: 100%; width: 100%; }
+.agent-room-gate .agent-room-skill-proposal { flex-basis: 100%; width: 100%; }
+.agent-room-skill-proposal summary { cursor: pointer; font-weight: 700; }
+.agent-room-skill-proposal[open] { display: flex; flex-direction: column; gap: 6px; }
+.agent-room-skill-proposal label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.agent-room-skill-proposal select { align-self: flex-start; padding: 4px 6px; border: 2px solid currentColor; border-radius: 4px; background: transparent; color: inherit; font: inherit; }
+.agent-room-skill-proposal-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.agent-room-skill-proposal .agent-room-skill-scan { margin: 0; padding-left: 18px; font-size: 12px; max-height: 30vh; overflow: auto; }
+.agent-room-skill-proposal .agent-room-skill-scan li { overflow-wrap: anywhere; }
 .agent-room-produced summary { cursor: pointer; font-weight: 700; }
 .agent-room-produced ul { list-style: none; margin: 6px 0; padding: 0; display: flex; flex-direction: column; gap: 3px; max-height: 240px; overflow: auto; font-size: 13px; }
 .agent-room-produced li { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
@@ -539,7 +547,7 @@
 .agent-room .agent-room-skill-actions label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .agent-room .agent-room-skill-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .agent-room .agent-room-skill-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.agent-room .agent-room-skill-list li > span { flex: 1; min-width: 200px; }
+.agent-room .agent-room-skill-list li > span:first-child { flex: 1; min-width: 200px; }
 .agent-room .agent-room-skill-list a { color: inherit; }
 .agent-room .agent-room-skill-staged { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 2px solid #000; border-radius: 5px; background: var(--paper); color: var(--ink); }
 .agent-room .agent-room-skill-staged h3, .agent-room .agent-room-skill-staged p { margin: 0; }
