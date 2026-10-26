@@ -13,15 +13,16 @@ const subscribe = (onChange: () => void) => {
 };
 const forcedFlat = () => matchMedia(REDUCED).matches || new URLSearchParams(location.search).get("deck") === "flat";
 
-export function DeckCanvas({ view, pulses, selected, onSelect }: {
-  view: DeckView; pulses: DeckPulse[]; selected: AgentId | null; onSelect: (id: AgentId) => void;
+export function DeckCanvas({ view, pulses, selected, onSelect, onTask }: {
+  view: DeckView; pulses: DeckPulse[]; selected: AgentId | null; onSelect: (id: AgentId) => void; onTask?: () => void;
 }) {
   const flat = useSyncExternalStore(subscribe, forcedFlat, () => false);
   const [failed, setFailed] = useState(false);
   const deckRef = useRef<Deck | null>(null);
   const plates = useRef<Partial<Record<AgentId, HTMLButtonElement | null>>>({});
   const onSelectRef = useRef(onSelect);
-  useEffect(() => { onSelectRef.current = onSelect; });
+  const onTaskRef = useRef(onTask);
+  useEffect(() => { onSelectRef.current = onSelect; onTaskRef.current = onTask; });
 
   // A ref callback, not an effect: the deck lives exactly as long as the canvas element.
   const attach = useCallback((canvas: HTMLCanvasElement | null) => {
@@ -34,6 +35,7 @@ export function DeckCanvas({ view, pulses, selected, onSelect }: {
       return;
     }
     deck.onSelect(id => onSelectRef.current(id));
+    deck.onTask(() => onTaskRef.current?.());
     deck.onFrame(positions => {
       for (const p of positions) {
         const plate = plates.current[p.id];

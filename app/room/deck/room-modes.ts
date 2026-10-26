@@ -196,6 +196,8 @@ export function buildModeProps(scene: THREE.Scene) {
 
   let key = "";
   return {
+    // The typewriter: clicking it starts a new task (see scene.ts onTask).
+    taskStation: terminal as THREE.Object3D,
     update(room: RoomScene, seats: Record<AgentId, Spot>, now: number, live: HTMLImageElement | null, reduced: boolean) {
       // Reduced motion: every eased value jumps to its target.
       const k = reduced ? 1 : 0.08;

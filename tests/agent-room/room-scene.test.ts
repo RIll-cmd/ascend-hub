@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { graphicFor, roomScene, spots } from "../../app/room/deck/room-scene";
+import { graphicFor, nowCard, roomScene, spots } from "../../app/room/deck/room-scene";
 import type { QueueView } from "../../app/room/queue-panel";
 import type { PlanTask, SessionView } from "../../app/room/room-types";
 import { AGENT_IDS } from "../../app/room/room-types";
@@ -122,4 +122,28 @@ test("graphicFor follows the turn", () => {
   assert.equal(graphicFor("codex", "busy", debate), "wave");
   assert.equal(graphicFor("agy", "idle", debate), null);
   assert.equal(graphicFor("codex", "idle", roomScene(null, null)), null);
+});
+
+test("the Now card shows the running task's own checks", () => {
+  const card = nowCard(session());
+  assert.equal(card?.task, "Task 2/3 · Task 2");
+  assert.equal(card?.coder, "claude");
+  assert.equal(card?.checks, "not run yet", "task 1 passed, but that is task 1's result");
+  assert.equal(nowCard(session({ checking: { label: "task 2", since: "" } }))?.checks, "running");
+  const failed = session({ plan: { tasks: [task(1, { status: "running", check: { ok: false, code: 1, ms: 1, output: "" } })] } });
+  assert.equal(nowCard(failed)?.checks, "failed");
+});
+
+test("the reviewer is assigned until its turn starts", () => {
+  assert.deepEqual(nowCard(session())?.reviewer, { agent: "agy", state: "assigned, waiting" });
+  const reviewing = session({ active: { agent: "agy", activity: "reviewing", since: "", subagents: [] } });
+  assert.deepEqual(nowCard(reviewing)?.reviewer, { agent: "agy", state: "reviewing" });
+  assert.equal(nowCard(session({ roles: { orchestrator: "codex", coders: ["claude"], reviewer: null } }))?.reviewer, null);
+});
+
+test("no Now card outside coding", () => {
+  assert.equal(nowCard(null), null);
+  assert.equal(nowCard(session({ stage: "done" })), null);
+  assert.equal(nowCard(session({ mode: "debate", stage: "opening" as SessionView["stage"], roles: null, plan: null })), null);
+  assert.equal(nowCard(session({ stage: "gate-plan", plan: { tasks: [task(1), task(2)] } }))?.task, "Plan · 2 tasks", "at the plan gate there is no running task yet");
 });

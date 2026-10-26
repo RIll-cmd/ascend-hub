@@ -4,8 +4,14 @@ import type { AgentId } from "../room-types";
 import { messageLine, plateText, type DeckView } from "./deck-view";
 
 export function FlatDeck({ view, selected, onSelect }: { view: DeckView; selected: AgentId | null; onSelect: (id: AgentId) => void }) {
+  const { room } = view;
+  const label = room.kind === "idle" ? "Ready room" : room.kind === "coding" ? "Workshop" : "Panel";
   return (
     <div className="agent-room-flatdeck">
+      <p className="agent-room-flatroom" role="status">
+        <b>{label}</b>{room.task ? ` · ${room.task}` : ""}{room.check ? ` · checks ${room.check === "running" ? "running" : room.check === "pass" ? "passed" : "failed"}` : ""}
+        {room.gate && <> · <b>NEEDS YOU</b> {room.gate.line}</>}
+      </p>
       {view.agents.map(agent => {
         const latest = agent.latest ? messageLine(agent.latest) : null;
         return (

@@ -96,3 +96,27 @@ export function graphicFor(id: AgentId, state: "offline" | "checking" | "idle" |
   if (busy && scene.roles.reviewer === id) return "review";
   return scene.roles.orchestrator === id ? "plan" : null;
 }
+
+export type NowCard = {
+  task: string;
+  coder: AgentId | null;
+  since: string | null;
+  // The shown task's own checks: an earlier task's pass stays on that task's plan line.
+  checks: "not run yet" | "running" | "passed" | "failed";
+  reviewer: { agent: AgentId; state: "assigned, waiting" | "reviewing" } | null;
+};
+
+// The right column's Now card while the room is a workshop; null in the other rooms.
+export function nowCard(session: SessionView | null): NowCard | null {
+  if (!session || roomScene(session, null).kind !== "coding") return null;
+  const tasks = session.plan?.tasks ?? [];
+  const current = tasks.find(t => t.status === "running" || t.status === "review") ?? null;
+  const reviewer = session.roles?.reviewer ?? null;
+  return {
+    task: current ? `Task ${tasks.indexOf(current) + 1}/${tasks.length} · ${current.title}` : tasks.length ? `Plan · ${tasks.length} tasks` : "Planning",
+    coder: current?.assignee ?? null,
+    since: current && session.active?.agent === current.assignee ? session.active.since : null,
+    checks: session.checking ? "running" : current?.check ? (current.check.ok ? "passed" : "failed") : "not run yet",
+    reviewer: reviewer ? { agent: reviewer, state: session.active?.agent === reviewer ? "reviewing" : "assigned, waiting" } : null,
+  };
+}

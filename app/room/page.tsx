@@ -8,10 +8,11 @@ import { ChecksPanel } from "./checks-panel";
 import { LiveDiffPanel } from "./live-diff-panel";
 import { FilesPanel } from "./files-panel";
 import { QueuePanel, useQueue } from "./queue-panel";
+import { NowCard } from "./now-card";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, LimitsCard, RoomSidebar, SessionCard, TopBar, TranscriptDrawer, type HistoryItem } from "./room-frame";
-import { BriefComposer, BriefSettings, GateBar, TaskBoard, Transcript, useBrief, VerdictPanel, WorktreeCleanup } from "./room-parts";
+import { BriefComposer, BriefSettings, GateBar, SideSection, TaskBoard, Transcript, useBrief, VerdictPanel, WorktreeCleanup } from "./room-parts";
 import { RoleSets } from "./role-sets";
 import { roomSound, soundPref } from "./room-sound";
 import { themePref } from "./theme";
@@ -184,6 +185,8 @@ export default function RoomPage() {
       <RoomSidebar history={history} query={query} onQuery={setQuery} searching={searching} activeId={session?.id ?? null} running={liveRunning} onNew={newSession} onOpen={openSession} soundOn={soundOn} onToggleSound={toggleSound} theme={theme} onTheme={themePref.set} />
       <section className="room-center" aria-label="Room">
         <TopBar session={session} view={view} running={running} act={act} />
+        {/* Phones: the Now card and any approval come before the room (the right column stacks below it). */}
+        {session && view.room.kind === "coding" && <div className="room-now-narrow"><NowCard session={session} room={view.room} /></div>}
         {offline ? (
           <div className="agent-room-offline" role="status">
             <p>Room offline: {offline}</p>
@@ -211,7 +214,8 @@ export default function RoomPage() {
               : shown === "checks" && session ? <ChecksPanel session={session} />
               : shown === "changes" && session ? <LiveDiffPanel sessionId={session.id} />
               : shown === "files" && session && !debate ? <FilesPanel sessionId={session.id} stage={session.stage} />
-                : <DeckCanvas view={view} pulses={isLive ? pulses : []} selected={selected} onSelect={setSelected} />}
+                : <DeckCanvas view={view} pulses={isLive ? pulses : []} selected={selected} onSelect={setSelected}
+                    onTask={() => document.querySelector<HTMLTextAreaElement>(".room-center-foot textarea")?.focus()} />}
             {session && <Transcript messages={messages.slice(-80)} />}
             {session && isLive && <GateBar session={session} act={act} />}
             {failure && failure.liveId === (live?.id ?? null) && <p role="alert" className="agent-room-error">{failure.text}</p>}
@@ -220,17 +224,26 @@ export default function RoomPage() {
         {!offline && composing && <div className="room-center-foot"><BriefComposer brief={brief} act={act} busy={liveRunning} /></div>}
       </section>
       <aside className="room-right" aria-label="Details">
+        {session && view.room.kind === "coding" && <div className="room-now-wide"><NowCard session={session} room={view.room} /></div>}
+        {composing && <BriefSettings brief={brief} quotaWarning={status?.quotaWarning} />}
         {session && <SessionCard session={session} />}
-        <LimitsCard quota={status?.quota} />
-        <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} />
-        {session && <VerdictPanel session={session} act={isLive ? act : undefined} />}
         {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
+        {session && <VerdictPanel session={session} act={isLive ? act : undefined} />}
+        <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} />
         {!offline && <QueuePanel act={act} view={queue} reload={reloadQueue} />}
         {composing && <WorktreeCleanup />}
-        {composing && <BriefSettings brief={brief} quotaWarning={status?.quotaWarning} />}
-        {composing && <RoleSets />}
+        <SettingsSection quota={status?.quota} />
       </aside>
       <TranscriptDrawer open={drawer} onClose={closeDrawer} messages={messages} />
     </main>
+  );
+}
+
+function SettingsSection({ quota }: { quota: RoomStatus["quota"] }) {
+  return (
+    <SideSection title="Settings" value="limits, role sets">
+      <LimitsCard quota={quota} />
+      <RoleSets />
+    </SideSection>
   );
 }

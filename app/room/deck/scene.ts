@@ -13,6 +13,8 @@ export type Deck = {
   update(view: DeckView, pulses: DeckPulse[]): void;
   select(id: AgentId | null): void;
   onSelect(cb: (id: AgentId) => void): void;
+  // The idle room's typewriter was clicked.
+  onTask(cb: () => void): void;
   onFrame(cb: (plates: PlatePosition[]) => void): void;
   dispose(): void;
 };
@@ -113,6 +115,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   let delegationLine: THREE.Line | null = null;
   let delegationKey = "";
   let selectCb: ((id: AgentId) => void) | null = null;
+  let taskCb: (() => void) | null = null;
   let frameCb: ((plates: PlatePosition[]) => void) | null = null;
   let yaw = 0, pitch = 0, targetYaw = 0, targetPitch = 0;
   let disposed = false;
@@ -177,6 +180,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     const rect = canvas.getBoundingClientRect();
     const ndc = new THREE.Vector2(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     raycaster.setFromCamera(ndc, camera);
+    if (modeProps.taskStation.visible && raycaster.intersectObject(modeProps.taskStation, true).length) { taskCb?.(); return; }
     const hit = raycaster.intersectObjects(AGENT_IDS.map(id => crts[id].group), true)[0];
     const id = hit?.object.userData.agentId as AgentId | undefined;
     if (id) selectCb?.(id);
@@ -365,6 +369,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
       if (id && id in SEATS) selection.position.set(where(id)[0], 0.015, where(id)[2]);
     },
     onSelect(cb) { selectCb = cb; },
+    onTask(cb) { taskCb = cb; },
     onFrame(cb) { frameCb = cb; },
     dispose() {
       disposed = true;

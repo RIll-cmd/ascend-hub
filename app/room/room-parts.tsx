@@ -82,7 +82,7 @@ export function TaskBoard({ tasks }: { tasks: PlanTask[] }) {
         {tasks.map(t => (
           <li key={t.id} className={`is-${t.status}`}>
             <span>{t.id}. {t.title}</span>
-            <small>{AGENT_NAMES[t.assignee]}{t.repo ? ` · ${t.repo}` : ""}{t.role ? ` · ${t.role}` : ""} · {t.status}{t.attempts ? ` · retry ${t.attempts}` : ""}{t.commit ? ` · ${t.commit}` : ""}</small>
+            <small>{AGENT_NAMES[t.assignee]}{t.repo ? ` · ${t.repo}` : ""}{t.role ? ` · ${t.role}` : ""} · {t.status}{t.attempts ? ` · retry ${t.attempts}` : ""}{t.check ? (t.check.ok ? " · checks passed" : " · checks failed") : ""}{t.commit ? ` · ${t.commit}` : ""}</small>
           </li>
         ))}
       </ol>
