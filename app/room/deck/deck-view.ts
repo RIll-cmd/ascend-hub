@@ -1,4 +1,6 @@
 import { AGENT_IDS, AGENT_NAMES, TERMINAL_STAGES, rolesOf, type AgentId, type Message, type RoomStatus, type SessionView } from "../room-types";
+import type { QueueView } from "../queue-panel";
+import { roomScene, type RoomScene } from "./room-scene";
 
 export const AGENT_COLORS: Record<AgentId, string> = { codex: "#e28a2b", claude: "#d97757", agy: "#3d7bff" };
 const GATE_STAGES = ["gate-roles", "gate-plan", "gate-race", "gate-result"];
@@ -18,7 +20,8 @@ export type DeckAgent = {
 };
 export type DeckView = { sessionId: string | null; mode: "build" | "debate" | null; status: string; agents: DeckAgent[]; delegation: { from: AgentId; to: AgentId } | null;
   // The app as the room last captured it while an agent edits a UI task; the url changes with every capture.
-  screen: { agent: AgentId; url: string } | null };
+  screen: { agent: AgentId; url: string } | null;
+  room: RoomScene };
 export type DeckPulse = { seq: number; from: AgentId; to: AgentId[] | "owner"; kind: "message" | "assign" | "subagent"; sub?: string };
 
 function statusText(session: SessionView | null): string {
@@ -29,7 +32,7 @@ function statusText(session: SessionView | null): string {
   return session.mode === "debate" ? "Debate in progress" : "Build in progress";
 }
 
-export function deckView(session: SessionView | null, status: RoomStatus | null): DeckView {
+export function deckView(session: SessionView | null, status: RoomStatus | null, queue: QueueView | null = null): DeckView {
   const mode = session ? session.mode ?? "build" : null;
   const tasks = session?.plan?.tasks ?? [];
   const current = mode === "build" ? tasks.find(t => t.status === "running" || t.status === "review") ?? null : null;
@@ -49,7 +52,7 @@ export function deckView(session: SessionView | null, status: RoomStatus | null)
   const orchestrator = session?.roles?.orchestrator;
   const delegation = current && orchestrator && orchestrator !== current.assignee ? { from: orchestrator, to: current.assignee } : null;
   const screen = session?.screen ? { agent: session.screen.agent, url: `/api/room/sessions/current/screen?at=${encodeURIComponent(session.screen.at)}` } : null;
-  return { sessionId: session?.id ?? null, mode, status: statusText(session), agents, delegation, screen };
+  return { sessionId: session?.id ?? null, mode, status: statusText(session), agents, delegation, screen, room: roomScene(session, queue) };
 }
 
 export const BUILD_STEPS: { label: string; stages: string[] }[] = [

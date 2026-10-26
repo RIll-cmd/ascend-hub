@@ -10,8 +10,9 @@ export type QueueView = { items: Item[]; failed: Failed[]; schedules: Schedule[]
 const when = (iso: string) => new Date(iso).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const REPEAT = { once: "once", daily: "every day", weekdays: "weekdays" } as const;
 
-// The room's queue and schedules, refreshed every few seconds; each entry can be removed.
-export function QueuePanel({ act }: { act: Act }) {
+// The room's queue and schedules, refreshed every few seconds; reload() fetches again at once. The page polls once and
+// shares it with the panel and the 3D room.
+export function useQueue(): [QueueView | null, () => void] {
   const [view, setView] = useState<QueueView | null>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -23,9 +24,14 @@ export function QueuePanel({ act }: { act: Act }) {
     const timer = setInterval(load, 5_000);
     return () => { alive = false; clearTimeout(first); clearInterval(timer); };
   }, [tick]);
+  return [view, () => setTick(t => t + 1)];
+}
+
+// Each entry can be removed.
+export function QueuePanel({ act, view, reload }: { act: Act; view: QueueView | null; reload: () => void }) {
   if (!view) return null;
   const count = view.items.length + view.schedules.length;
-  const remove = (id: string) => void act("/api/room/queue/remove", { id }).then(() => setTick(t => t + 1));
+  const remove = (id: string) => void act("/api/room/queue/remove", { id }).then(reload);
   return (
     <SideSection title="Queue" value={count ? `${view.items.length} waiting · ${view.schedules.length} scheduled` : "empty"} open={count > 0 || view.failed.length > 0}>
       <ol className="agent-room-queue" aria-label="Waiting sessions">

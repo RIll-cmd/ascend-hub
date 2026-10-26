@@ -51,7 +51,8 @@ export type SessionView = {
   stage: Stage;
   roles: Roles | null;
   plan: { tasks: PlanTask[] } | null;
-  pause: { reason: string; at: string; kind?: "turns" | "minutes" | "rounds" | "baseline"; task?: number } | null;
+  // retryAt: when a rate-limit pause resumes by itself (null once it waits for the owner).
+  pause: { reason: string; at: string; kind?: "turns" | "minutes" | "rounds" | "baseline" | "guard" | "rate-limit"; task?: number; agent?: AgentId; retryAt?: string | null } | null;
   limits?: { minutes: number; turns: number; rounds: number };
   template?: "feature" | "bugfix" | "refactor";
   models?: Partial<Record<AgentId, string>>;

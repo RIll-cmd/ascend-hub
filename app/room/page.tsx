@@ -7,7 +7,7 @@ import { WorkflowPanel } from "./workflow-panel";
 import { ChecksPanel } from "./checks-panel";
 import { LiveDiffPanel } from "./live-diff-panel";
 import { FilesPanel } from "./files-panel";
-import { QueuePanel } from "./queue-panel";
+import { QueuePanel, useQueue } from "./queue-panel";
 import { DeckCanvas } from "./deck/DeckCanvas";
 import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from "./deck/deck-view";
 import { Inspector, LimitsCard, RoomSidebar, SessionCard, TopBar, TranscriptDrawer, type HistoryItem } from "./room-frame";
@@ -162,8 +162,9 @@ export default function RoomPage() {
   // A blank new session stays blank while another runs, so the next one can be queued.
   const session = viewing && viewing !== live?.id ? pastView : fresh ? null : live;
   const isLive = session !== null && session === live;
-  const view = useMemo(() => deckView(session, status), [session, status]);
-  const liveView = useMemo(() => deckView(live, status), [live, status]);
+  const [queue, reloadQueue] = useQueue();
+  const view = useMemo(() => deckView(session, status, queue), [session, status, queue]);
+  const liveView = useMemo(() => deckView(live, status, queue), [live, status, queue]);
   const { soundOn, toggle: toggleSound } = useRoomSound(liveView, pulses);
   const theme = useSyncExternalStore(themePref.subscribe, themePref.get, () => "wood" as const);
   const running = isLive && liveRunning;
@@ -224,7 +225,7 @@ export default function RoomPage() {
         <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} />
         {session && <VerdictPanel session={session} act={isLive ? act : undefined} />}
         {showBoard && session?.plan && <TaskBoard tasks={session.plan.tasks} />}
-        {!offline && <QueuePanel act={act} />}
+        {!offline && <QueuePanel act={act} view={queue} reload={reloadQueue} />}
         {composing && <WorktreeCleanup />}
         {composing && <BriefSettings brief={brief} quotaWarning={status?.quotaWarning} />}
         {composing && <RoleSets />}
