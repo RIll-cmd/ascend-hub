@@ -126,7 +126,7 @@ The page has three columns: past sessions on the left, the 3D room and the chat 
 
 The big CRT on the home screen is a working television. Click its upper knob to change input and the lower knob to change channel:
 
-- **Music:** the Spotify track you are playing, with its album art, artist and progress.
+- **Music:** the Spotify track you are playing, with its album art, artist and progress. Previous, play/pause, next and **+** (queue a track from its Spotify link) control whichever device Spotify is playing on. Spotify allows this only with Premium, and an account connected before this feature must be connected again to grant it.
 - **Weather:** the current temperature, feels-like, humidity, chance of rain and wind, plus a short forecast, from Visual Crossing. A news-style anchor reads out the conditions.
 - **YouTube:** search a title or paste a link, or tune into curated recommendations.
 - **Video:** Zenless Zone Zero shows and commercials on rotation.

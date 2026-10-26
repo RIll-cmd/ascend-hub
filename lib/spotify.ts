@@ -304,3 +304,53 @@ export async function getCurrentlyPlaying(): Promise<SpotifyPlaybackState> {
     lastUpdated: new Date().toISOString(),
   };
 }
+
+export type SpotifyControl = "play" | "pause" | "next" | "previous" | "queue";
+export const SPOTIFY_CONTROLS: SpotifyControl[] = ["play", "pause", "next", "previous", "queue"];
+export interface SpotifyControlResult { ok: boolean; status: number; message?: string }
+
+// A track to queue, as a spotify:track: URI or an open.spotify.com track link; anything else is null.
+export function spotifyTrackUri(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  const uri = /^spotify:track:([A-Za-z0-9]{22})$/.exec(text);
+  if (uri) return `spotify:track:${uri[1]}`;
+  try {
+    const url = new URL(text);
+    const id = url.hostname === "open.spotify.com" ? /^\/(?:intl-[a-z-]+\/)?track\/([A-Za-z0-9]{22})$/.exec(url.pathname)?.[1] : null;
+    return id ? `spotify:track:${id}` : null;
+  } catch {
+    return null;
+  }
+}
+
+const PLAYER = "https://api.spotify.com/v1/me/player";
+
+// Play, pause, skip or queue on the account's active device. Needs the user-modify-playback-state scope (granted
+// when Spotify is connected after this was added) and, on Spotify's side, a Premium account.
+export async function controlPlayback(
+  action: SpotifyControl,
+  uri: string | null = null,
+  deps: { token?: () => Promise<SpotifyTokenResponse | null>; fetch?: typeof fetch } = {},
+): Promise<SpotifyControlResult> {
+  const creds = getStoredSpotifyTokens();
+  if (!creds.clientId || !creds.clientSecret || !creds.refreshToken) {
+    return { ok: false, status: 409, message: creds.demoMode ? "Demo mode has nothing to control. Connect Spotify first." : "Spotify is not connected." };
+  }
+  if (action === "queue" && !uri) return { ok: false, status: 400, message: "Paste a Spotify track link to queue." };
+  const tokenData = await (deps.token ?? getSpotifyAccessToken)();
+  if (!tokenData?.access_token) return { ok: false, status: 401, message: "Spotify sign-in expired. Reconnect Spotify." };
+  const [method, path] = {
+    play: ["PUT", "/play"], pause: ["PUT", "/pause"], next: ["POST", "/next"], previous: ["POST", "/previous"],
+    queue: ["POST", `/queue?uri=${encodeURIComponent(uri ?? "")}`],
+  }[action];
+  const response = await (deps.fetch ?? fetch)(`${PLAYER}${path}`, { method, headers: { Authorization: `Bearer ${tokenData.access_token}` }, cache: "no-store" });
+  if (response.ok) return { ok: true, status: response.status };
+  const reason = await (response.json() as Promise<{ error?: { reason?: string; message?: string } }>).then(d => d.error?.reason ?? d.error?.message ?? "", () => "");
+  const message = response.status === 404 ? "No active Spotify device. Start playing in Spotify on any device first."
+    : response.status === 401 ? "Spotify sign-in expired. Reconnect Spotify."
+    : response.status === 403 && /premium/i.test(reason) ? "Spotify allows playback control only with Premium."
+    : response.status === 403 ? "Spotify refused. Reconnect Spotify so Hub may control playback."
+    : `Spotify said ${response.status}${reason ? `: ${reason}` : ""}.`;
+  return { ok: false, status: response.status, message };
+}

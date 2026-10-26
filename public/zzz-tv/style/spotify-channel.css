@@ -71,3 +71,18 @@
 
 body:has(.tv-channel-account-open) #tv-info-overlay { visibility: hidden; }
 #tv-container:has(.tv-channel-account-open) #starting-video { visibility: hidden; }
+/* Playback controls, only while an account is linked; hidden behind the account panel. */
+.music-player .tv-channel-controls { display: none; }
+.music-player.tv-channel-spotify-linked .tv-channel-controls {
+  position: absolute; top: 4%; right: 3%; z-index: 30;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 1.2cqw; max-width: 46%;
+}
+.music-player.tv-channel-account-open .tv-channel-controls { visibility: hidden; }
+.music-player .tv-channel-controls button {
+  min-width: 7cqw; height: 7cqw; padding: 0 1.4cqw; border: 1px solid #a6ff00; border-radius: 0;
+  background: #171b12e8; color: #a6ff00; font: 3.6cqw/1 Arial, sans-serif; cursor: pointer;
+}
+.music-player .tv-channel-controls button:hover { filter: brightness(1.2); }
+.music-player .tv-channel-controls button:focus-visible { outline: 2px solid #c7ff52; outline-offset: 2px; }
+.music-player .tv-channel-control-status { flex-basis: 100%; margin: 0; text-align: right; color: #ffcf5a; font: 2.4cqw/1.3 Arial, sans-serif; }
+.music-player .tv-channel-control-status:empty { display: none; }

@@ -146,6 +146,61 @@ export function initSpotifySetup(media) {
     }
   }
   trigger.onclick = () => open();
+
+  // Playback controls while an account is linked: they act on whichever device Spotify is playing on.
+  const bar = document.createElement("div");
+  bar.className = "tv-channel-controls";
+  bar.setAttribute("role", "group");
+  bar.setAttribute("aria-label", "Spotify playback");
+  const status = document.createElement("p");
+  status.className = "tv-channel-control-status";
+  status.setAttribute("role", "status");
+  let playing = false;
+  async function control(action, uri) {
+    status.textContent = "";
+    try {
+      const response = await fetch("/api/spotify/control", { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...(uri ? { uri } : {}) }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) { status.textContent = data.message || "Spotify did not respond."; return false; }
+      setTimeout(() => media.pollSpotify(), 400);
+      return true;
+    } catch {
+      status.textContent = "Hub could not reach Spotify.";
+      return false;
+    }
+  }
+  const button = (label, text, onclick) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = text;
+    b.setAttribute("aria-label", label);
+    b.title = label;
+    b.onclick = onclick;
+    bar.append(b);
+    return b;
+  };
+  button("Previous track", "⏮", () => control("previous"));
+  const toggle = button("Play", "▶", () => control(playing ? "pause" : "play"));
+  button("Next track", "⏭", () => control("next"));
+  button("Queue a track", "+", () => openQueue());
+  bar.append(status);
+  media.container.append(bar);
+  function openQueue() {
+    panel.hidden = false;
+    media.container.classList.add("tv-channel-account-open");
+    panel.innerHTML = `<p class="tv-channel-kicker">SPOTIFY</p><h2 class="tv-channel-title">Queue a track</h2>
+      <form class="tv-channel-form"><label class="tv-channel-field">Track link<input name="uri" autocomplete="off" spellcheck="false" placeholder="https://open.spotify.com/track/…"></label>
+      <p class="tv-channel-notice" role="status"></p>
+      <div class="tv-channel-actions"><button class="tv-channel-primary" type="submit">Queue</button><button class="tv-channel-secondary" type="button">Back</button></div></form>`;
+    const form = panel.querySelector("form");
+    panel.querySelector(".tv-channel-secondary").onclick = close;
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const ok = await control("queue", form.uri.value);
+      if (ok) close(); else notice(status.textContent);
+    };
+    form.uri.focus();
+  }
   window.addEventListener("tv-input-changed", (event) => {
     if (event.detail?.inputType !== "music" && !busy) {
       panel.hidden = true;
@@ -159,6 +214,10 @@ export function initSpotifySetup(media) {
     trigger.textContent = connected ? "Account" : "Connect Spotify";
     trigger.setAttribute("aria-label", connected ? "Manage Spotify account" : "Connect Spotify account");
     media.container.classList.toggle("tv-channel-spotify-linked", connected);
+    playing = Boolean(event.detail.isPlaying);
+    toggle.textContent = playing ? "⏸" : "▶";
+    toggle.setAttribute("aria-label", playing ? "Pause" : "Play");
+    toggle.title = playing ? "Pause" : "Play";
   });
   window.addEventListener("message", (event) => {
     if (event.origin !== location.origin || event.source !== window.parent || event.data?.type !== "SPOTIFY_AUTH_RESULT") return;
