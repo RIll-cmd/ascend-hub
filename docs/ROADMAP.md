@@ -122,7 +122,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Spotify controls | Play, pause, skip and queue on the music TV; needs the `user-modify-playback-state` scope | Hermes Spotify plugin | S–M |
 | Reacting mascots | A Bangboo on each status TV or desk that reacts to idle, working, stuck and done (check sprite licences) | Hermes pets | S–M |
 | Hermes dashboard channel | A TV channel that embeds `127.0.0.1:9119` when Hermes is installed | Hermes web dashboard | Dropped (2026-10-24): the owner chose not to run Hermes as an agent |
-| Launcher start-up checklist | The mini console checks Core, the CLI logins and free disk space | Hermes `BOOT.md` | S |
+| Launcher start-up checklist | The mini console checks Core, the CLI logins and free disk space | Hermes `BOOT.md` | Done (2026-10-26): a **Disk** line (system and builds drives, warns under 5 GB) and the agent line names offline CLIs; Core was already shown. Needs `Install-Ascend.ps1` again to reach the installed launcher |
 | Vision wake word | A wake word before gate answers, so stray speech is ignored | Hermes wake word | M |
 | Lighter Vision voice | A smaller Kokoro model, when the owner decides (see M5) | M6 follow-ups | S |
 | Live agent screen on a CRT | During UI tasks the agent's browser shows on its desk CRT | Hermes bot screen | L |

@@ -44,7 +44,25 @@ function Get-AgentSummary($room) {
     if ($states.Count -eq 0) { return 'Offline' }
     if (@($states | Where-Object { $_ -ne 'checking' }).Count -eq 0) { return 'Starting' }
     $up = @($states | Where-Object { $_ -notin @('offline','checking') }).Count
-    "$up of $($states.Count) agents"
+    # Name the ones that need attention, usually a CLI that is signed out or missing.
+    $names = @{ codex = 'Codex'; claude = 'Claude'; agy = 'Antigravity' }
+    $down = @($room.agents.PSObject.Properties | Where-Object { [string]$_.Value.state -eq 'offline' } | ForEach-Object { if ($names[$_.Name]) { $names[$_.Name] } else { $_.Name } })
+    if ($down.Count) { "$up of $($states.Count) agents, $($down -join ' and ') offline" } else { "$up of $($states.Count) agents" }
+}
+# Free space on each drive Hub writes to (the system drive for npm and temp files, the builds folder for sessions).
+# $free maps a drive root to its free bytes, so tests need no real drives; below $minGb the line warns.
+function Get-DiskSummary([string[]]$paths, $free = $null, [double]$minGb = 5) {
+    $roots = @($paths | Where-Object { $_ } | ForEach-Object { try { [IO.Path]::GetPathRoot($_).ToUpperInvariant() } catch { $null } } | Where-Object { $_ } | Select-Object -Unique)
+    if ($roots.Count -eq 0) { return [pscustomobject]@{ Text = 'Not checked'; Low = $false } }
+    $low = $false
+    $parts = foreach ($root in $roots) {
+        $bytes = if ($null -ne $free) { $free[$root] } else { try { ([IO.DriveInfo]::new($root)).AvailableFreeSpace } catch { $null } }
+        $drive = $root.TrimEnd('\')
+        if ($null -eq $bytes) { "$drive unknown"; continue }
+        $gb = [math]::Floor($bytes / 1GB)
+        if ($gb -lt $minGb) { $low = $true; "$drive $gb GB free, low" } else { "$drive $gb GB free" }
+    }
+    [pscustomobject]@{ Text = ($parts -join ', '); Low = $low }
 }
 # First candidate that is a rooted, existing msedge.exe; App Paths values may arrive quoted.
 function Resolve-EdgePath([string[]]$candidates) {
@@ -69,6 +87,7 @@ function Get-HubStepText([string]$stage) {
 }
 # Hub's compact window: plain headings, one primary action, status lines only while Hub is open.
 $script:HubAgentSummary = 'Offline'
+$script:HubDisk = [pscustomobject]@{ Text = 'Not checked'; Low = $false }
 function Set-HubDot($window, [string]$name, [string]$tone) {
     $window.FindName($name).Fill = $window.Resources[$(switch ($tone) { 'good' { 'Good' } 'warn' { 'Warn' } default { 'Edge' } })]
 }
@@ -92,7 +111,9 @@ function Set-HubSnapshot($window, $snapshot, [string]$agents) {
     $window.FindName('AgentStatus').Text = $agents
     $window.FindName('CoreStatus').Text = $core
     Set-HubDot $window 'UiDot' $(if ($ui -eq 'Running') { 'good' } else { 'warn' })
-    Set-HubDot $window 'AgentDot' $(if ($agents -match '^[1-9]\d* of ') { 'good' } elseif ($agents -eq 'Starting') { 'warn' } else { 'off' })
+    Set-HubDot $window 'AgentDot' $(if ($agents -match '^[1-9]\d* of \d+ agents$') { 'good' } elseif ($agents -match '^[1-9]\d* of ' -or $agents -eq 'Starting') { 'warn' } else { 'off' })
+    $window.FindName('DiskStatus').Text = $script:HubDisk.Text
+    Set-HubDot $window 'DiskDot' $(if ($script:HubDisk.Text -eq 'Not checked') { 'off' } elseif ($script:HubDisk.Low) { 'warn' } else { 'good' })
     Set-HubDot $window 'CoreDot' $(if ($core -eq 'Available') { 'good' } elseif ($core -eq 'Not checked') { 'off' } else { 'warn' })
     $primary = $window.FindName('Primary')
     $primary.Content = if ($open) { '_Open Hub' } elseif ($starting) { 'Starting...' } elseif ($state -eq 'failed') { '_Retry' } elseif ($state -in @('stopping','stop_failed')) { 'Stopping...' } else { '_Start Hub' }

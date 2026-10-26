@@ -43,6 +43,11 @@
           <TextBlock Grid.Column="1" Text="Core status" Foreground="{DynamicResource Secondary}"/>
           <TextBlock x:Name="CoreStatus" Grid.Column="2" Text="Not checked"/>
         </Grid>
+        <Grid Style="{StaticResource Line}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <Ellipse x:Name="DiskDot" Width="8" Height="8" Fill="{DynamicResource Edge}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="Disk" Foreground="{DynamicResource Secondary}"/>
+          <TextBlock x:Name="DiskStatus" Grid.Column="2" Text="Not checked" TextWrapping="Wrap" TextAlignment="Right" MaxWidth="220"/>
+        </Grid>
       </StackPanel>
       <Button x:Name="Primary" Style="{DynamicResource PrimaryAction}" Content="_Start Hub" AutomationProperties.Name="Start Hub" Margin="0,14,0,8"/>
       <WrapPanel>

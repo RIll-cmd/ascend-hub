@@ -67,7 +67,11 @@ try {
         $script:roomPolledAt=[DateTime]::UtcNow
         $client=New-Object Net.WebClient;$client.Proxy=$null;$script:roomClient=$client
         $client.Add_DownloadStringCompleted({param($sender,$e)
-            try{$script:HubAgentSummary=if($e.Error -or $e.Cancelled){'Offline'}else{Get-AgentSummary ($e.Result|ConvertFrom-Json)}}catch{$script:HubAgentSummary='Offline'}
+            try{
+                $room=if($e.Error -or $e.Cancelled){$null}else{$e.Result|ConvertFrom-Json}
+                $script:HubAgentSummary=Get-AgentSummary $room
+                $script:HubDisk=Get-DiskSummary @($env:SystemDrive,$(if($room){$room.buildsRoot}))
+            }catch{$script:HubAgentSummary='Offline'}
             finally{$sender.Dispose();$script:roomClient=$null}
         })
         try{$client.DownloadStringAsync([Uri]($url+'api/room'))}catch{$client.Dispose();$script:roomClient=$null;$script:HubAgentSummary='Offline'}

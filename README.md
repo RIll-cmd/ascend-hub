@@ -140,6 +140,7 @@ The big CRT on the home screen is a working television. Click its upper knob to 
 - **Ascend Hub** and **Ascend Vision** desktop shortcuts with a small native console: Start, Open, Stop, Force stop, Retry and diagnostics.
 - Hub opens in an Edge app window when it is ready and keeps a tray icon with *Open Hub*, *Show launcher*, *Stop Hub* and *Quit*.
 - Hub runs from a production build: it starts in about 2 seconds and uses about 150 MB of memory.
+- While Hub runs, the console checks Hub, the Agent Room (naming any agent whose CLI is offline, usually signed out), Core status, and free disk space on the system drive and the builds drive, warning below 5 GB.
 
 ## Screenshots
 

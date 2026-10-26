@@ -35,7 +35,16 @@ try {
   Assert ((Get-AgentSummary $null) -eq 'Offline') 'no room'
   Assert ((Get-AgentSummary ([pscustomobject]@{online=$false})) -eq 'Offline') 'room offline'
   $room=[pscustomobject]@{online=$true;agents=[pscustomobject]@{codex=[pscustomobject]@{state='ready'};claude=[pscustomobject]@{state='busy'};agy=[pscustomobject]@{state='offline'}}}
-  Assert ((Get-AgentSummary $room) -eq '2 of 3 agents') 'agent count'
+  Assert ((Get-AgentSummary $room) -eq '2 of 3 agents, Antigravity offline') 'agent count names the offline one'
+  $room.agents.agy.state='ready'
+  Assert ((Get-AgentSummary $room) -eq '3 of 3 agents') 'all up'
+  $room.agents.agy.state='offline';$room.agents.codex.state='offline'
+  Assert ((Get-AgentSummary $room) -eq '1 of 3 agents, Codex and Antigravity offline') 'two offline'
+  $disk=Get-DiskSummary @('C:\','D:\ascend-builds','d:\other') @{'C:\'=[int64]40GB;'D:\'=[int64]3GB}
+  Assert ($disk.Text -eq 'C: 40 GB free, D: 3 GB free, low' -and $disk.Low) 'disk per drive, low under 5 GB'
+  Assert (-not (Get-DiskSummary @('C:\') @{'C:\'=[int64]40GB}).Low) 'disk fine'
+  Assert ((Get-DiskSummary @($null,'')).Text -eq 'Not checked') 'no paths'
+  Assert ((Get-DiskSummary @('Q:\x') @{}).Text -eq 'Q: unknown') 'unknown drive'
   $room.agents.agy.state='checking';$room.agents.codex.state='checking';$room.agents.claude.state='checking'
   Assert ((Get-AgentSummary $room) -eq 'Starting') 'all checking means starting'
   $edge=Join-Path $root 'msedge.exe';[IO.File]::WriteAllText($edge,'')
