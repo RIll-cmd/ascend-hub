@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/neo/button";
 import { Markdown } from "../../markdown";
 
 type Digest = { title: string; facts: [string, string][]; taskHeading: string; task: string; plan: string[]; summary: string | null; verdict: string | null };
@@ -26,7 +25,7 @@ export default function SessionSummaryPage() {
       <header>
         <p className="room-summary-kicker">Agent Room session</p>
         <h1>{digest.title}</h1>
-        <Button size="sm" variant="neutral" className="room-summary-print" onClick={() => window.print()}>Print or save as PDF</Button>
+        <button type="button" className="room-summary-print" onClick={() => window.print()}>Print or save as PDF</button>
       </header>
       <dl>{digest.facts.map(([k, v]) => <div key={k}><dt>{k}</dt><dd><Markdown text={v} /></dd></div>)}</dl>
       <section><h2>{digest.taskHeading}</h2><Markdown text={digest.task} /></section>

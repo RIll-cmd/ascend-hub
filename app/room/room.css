@@ -585,6 +585,9 @@
 .room-summary-page h2 { font-size: 18px; margin: 24px 0 8px; }
 .room-summary-page section pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .room-summary-note { color: var(--sum-muted); }
+.room-summary-print { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border: 2px solid currentColor; border-radius: 5px; background: transparent; color: inherit; cursor: pointer; }
+.room-summary-print:hover { background: var(--sum-line); }
+.room-summary-print:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 @media (max-width: 560px) { .room-summary-page dl > div { grid-template-columns: 1fr; gap: 0; } }
 @media print { .room-summary-print { display: none !important; } .room-summary-page { --sum-bg: #fff; --sum-ink: #000; --sum-muted: #444; min-height: 0; padding: 0; } }
 

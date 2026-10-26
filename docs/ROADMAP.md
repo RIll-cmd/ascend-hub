@@ -36,12 +36,12 @@ Updated 2026-10-24. M1–M7 are done; the open work is under [Next: M8–M13](#n
 | M5 | Light Vision | An Assistant mode that never loads the camera models (YOLO, MediaPipe, torch), with an optional int8 Kokoro voice. Target under 500 MB. | Done (2026-10-14): Assistant mode, 622 MB in use (733 MB reserved), 0.08 cores. The owner keeps the fp32 Kokoro voice, so the 500 MB target is not met. |
 | M6 | Harness extras | Budgets and loop guard, a quota meter, session templates, per-role models, decision memory, best-of-N, parallel tasks with a merge queue, and small M4 follow-ups (see the M6 plan below). | Done (2026-10-14) |
 | M7 | Role sets and skills | The owner gives agents specialist roles (UI/UX, frontend, backend, code reviewer, security), each a switchable set of agent skills, and tasks go to the agent wearing the matching role (see the M7 plan below). | Done (2026-10-17) |
-| M8 | Reach the owner away from the PC | A phone push when a gate waits, then answering gates from the phone. | In progress: the phone push and answering gates from the phone are done (2 of 4) |
+| M8 | Reach the owner away from the PC | A phone push when a gate waits, then answering gates from the phone. | In progress: the phone push, answering gates from the phone and the summary page are done (3 of 4); voice-note answers are Vision work |
 | M9 | Unattended sessions | Sessions that wait out a limit window, queue up, run on a schedule and keep going until the checks pass. | Done (2026-10-25) |
 | M10 | GitHub in and out | Start from an issue or PR, review a PR and post comments, resolve merge-queue conflicts, several repos in one session. | Done (2026-10-27) |
 | M11 | Seeing the work | Live diff, file viewer, check output, search and export across sessions, lint per task, richer prompt attachments. | Done (2026-10-25) |
-| M12 | More agents and connectors | MCP connectors, a self-maintaining skill library, safety guards. | In progress: MCP connectors, the dangerous-command guard, the skill scan, skill use counts and skills the agents write are done; the Hermes agent items are dropped |
-| M13 | Hub and Vision polish | Spotify controls, reacting mascots, a launcher start-up checklist, a Vision wake word, a lighter voice. | Not started (the Hermes channel is dropped) |
+| M12 | More agents and connectors | MCP connectors, a self-maintaining skill library, safety guards. | Done (2026-10-27): MCP connectors, advisers and one actor, the dangerous-command guard, the skill scan, skill use counts and skills the agents write; the Hermes items are dropped |
+| M13 | Hub and Vision polish | Spotify controls, reacting mascots, a launcher start-up checklist, a Vision wake word, a lighter voice. | In progress: Spotify controls, mascots, the launcher checklist and the live agent screen are done (2026-10-27); the wake word and the lighter voice are Vision work; the Hermes channel is dropped |
 
 **Reliability work alongside:**
 - Room sessions keep a pending gate across restarts.
