@@ -25,13 +25,13 @@ export function buildModeProps(scene: THREE.Scene) {
   const wood = new THREE.MeshStandardMaterial({ color: "#7a5236", roughness: 0.8 });
 
   // Individual desks (idle, debate) and the L bench (coding).
-  const benchLong = new THREE.Mesh(new THREE.BoxGeometry(3.7, 0.08, 1.1), wood);
-  benchLong.position.set(-1.2, 0.72, -1.55);
+  const benchLong = new THREE.Mesh(new THREE.BoxGeometry(4.25, 0.08, 1.1), wood);
+  benchLong.position.set(-0.925, 0.72, -1.55);
   const benchReturn = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.08, 2.6), wood);
   benchReturn.position.set(1.75, 0.72, 0.05);
   for (const m of [benchLong, benchReturn]) { m.castShadow = m.receiveShadow = true; group.add(m); }
   const benchLegs = new THREE.Group();
-  for (const [x, z] of [[-3.0, -2.05], [0.6, -2.05], [-3.0, -1.05], [1.25, -1.05], [2.25, -1.2], [2.25, 1.3], [1.25, 1.3]]) {
+  for (const [x, z] of [[-3.0, -2.05], [1.15, -2.05], [-3.0, -1.05], [2.25, -1.2], [2.25, 1.3], [1.25, 1.3]]) {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.72, 0.07), wood);
     leg.position.set(x, 0.36, z);
     benchLegs.add(leg);
@@ -138,6 +138,7 @@ export function buildModeProps(scene: THREE.Scene) {
   const cloth = canvasPlane(0.85, 0.4, 340, 160);
   cloth.mesh.position.set(0.44, 0.7, 0);
   const tray = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.06, 0.42), new THREE.MeshStandardMaterial({ color: "#c9a24a" }));
+  tray.position.y = 0.03;
   flag.add(pole, cloth.mesh, tray);
   group.add(flag);
 
@@ -185,6 +186,16 @@ export function buildModeProps(scene: THREE.Scene) {
   const levels = { idle: { ambient: 0.22, sun: 0.3, lamp: 2.4 }, coding: { ambient: 0.26, sun: 0.4, lamp: 1.8 }, debate: { ambient: 0.45, sun: 0.8, lamp: 1.4 } };
   const named = (n: string) => scene.getObjectByName(n) as THREE.Light | undefined;
 
+  const paintSheet = (cursor: boolean) => {
+    const c = brief.ctx;
+    c.fillStyle = "#fffaf0"; c.fillRect(0, 0, 372, 312);
+    c.fillStyle = "#e8dcc6";
+    for (let y = 150; y < 312; y += 34) c.fillRect(24, y, 324, 2);
+    c.textAlign = "left"; c.fillStyle = "#14100c";
+    c.font = "bold 50px 'Courier New', monospace"; c.fillText("NEW TASK", 26, 88);
+    c.font = "30px 'Courier New', monospace"; c.fillText(`type here${cursor ? "_" : ""}`, 28, 140);
+    brief.texture.needsUpdate = true;
+  };
   const text = (ctx: CanvasRenderingContext2D, w: number, h: number, bg: string, lines: [string, string, number][]) => {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = bg;
@@ -195,12 +206,13 @@ export function buildModeProps(scene: THREE.Scene) {
   };
 
   let key = "";
+  let sheetBlink: boolean | null = null;
+  let shadowDrawn = false;
   return {
     // The typewriter: clicking it starts a new task (see scene.ts onTask).
     taskStation: terminal as THREE.Object3D,
-    update(room: RoomScene, seats: Record<AgentId, Spot>, now: number, live: HTMLImageElement | null, reduced: boolean) {
-      // Reduced motion: every eased value jumps to its target.
-      const k = reduced ? 1 : 0.08;
+    // k: how far eased values move toward their targets this frame (1 jumps there; the deck makes it time-based).
+    update(room: RoomScene, seats: Record<AgentId, Spot>, now: number, live: HTMLImageElement | null, reduced: boolean, k: number) {
       const coding = room.kind === "coding";
       const idle = room.kind === "idle";
       const debate = room.kind === "debate";
@@ -214,7 +226,10 @@ export function buildModeProps(scene: THREE.Scene) {
       // Coding: the long bench's front-left corner, cloth to the left; panel: the centre table, cloth to the right.
       // Either way it covers no TV from the camera.
       flag.visible = Boolean(room.gate) && !idle;
-      if (coding) { flag.position.set(-2.95, 0.76, -1.05); cloth.mesh.position.x = -0.44; } else { flag.position.set(0.6, 0.525, 0.95); cloth.mesh.position.x = 0.44; }
+      // On the centre table the tray shrinks and stays inside its edge (radius 0.5).
+      if (coding) { flag.position.set(-2.95, 0.76, -1.05); cloth.mesh.position.x = -0.44; tray.scale.setScalar(1); } else { flag.position.set(0.2, 0.525, 0.95); cloth.mesh.position.x = 0.44; tray.scale.setScalar(0.6); }
+      // Lower on the table, so the cloth stays under the TV behind it.
+      cloth.mesh.position.y = coding ? 0.7 : 0.42;
       faceCamera(flag);
       judgeSign.mesh.visible = debate && Boolean(room.judge);
       if (debate && room.judge && seats[room.judge]) {
@@ -233,6 +248,9 @@ export function buildModeProps(scene: THREE.Scene) {
       spot.position.set(lightAt.x, 4.2, lightAt.z + 0.9);
       spotTarget.position.copy(lightAt);
       spot.intensity = 26 * lightLevel;
+      // The shadow map is drawn once so the shaders always have one, then only while the light is on.
+      spot.shadow.autoUpdate = lightLevel > 0.01 || !shadowDrawn;
+      shadowDrawn = true;
       pool.position.set(lightAt.x, 0.02, lightAt.z);
       poolMat.opacity = lightLevel;
       beam.position.set(lightAt.x, 2.55, lightAt.z + 0.45);
@@ -258,21 +276,16 @@ export function buildModeProps(scene: THREE.Scene) {
       benchLight.intensity += ((coding ? 3.2 : 0) - benchLight.intensity) * k;
       tableScale += ((idle ? 2.1 : 1) - tableScale) * k;
       for (const part of table) part.scale.set(tableScale, 1, tableScale);
-      const blinkOn = !reduced && Math.floor(now / 600) % 2 === 0;
-      const next = JSON.stringify([room, blinkOn, live?.src ?? null]);
+      const blinkOn = idle && !reduced && Math.floor(now / 600) % 2 === 0;
+      if (idle && blinkOn !== sheetBlink) {
+        sheetBlink = blinkOn;
+        paintSheet(blinkOn);
+      }
+      const next = JSON.stringify([room, live?.src ?? null]);
       if (next === key) return;
       key = next;
+      paintSheet(blinkOn);
       // Paint the canvases for the current mode.
-      {
-        const c = brief.ctx;
-        c.fillStyle = "#fffaf0"; c.fillRect(0, 0, 372, 312);
-        c.fillStyle = "#e8dcc6";
-        for (let y = 150; y < 312; y += 34) c.fillRect(24, y, 324, 2);
-        c.textAlign = "left"; c.fillStyle = "#14100c";
-        c.font = "bold 50px 'Courier New', monospace"; c.fillText("NEW TASK", 26, 88);
-        c.font = "30px 'Courier New', monospace"; c.fillText(`type here${blinkOn ? "_" : ""}`, 28, 140);
-      }
-      brief.texture.needsUpdate = true;
       {
         const c = topPage.ctx;
         c.fillStyle = "#f6efe0"; c.fillRect(0, 0, 300, 225);
@@ -333,6 +346,9 @@ export function buildModeProps(scene: THREE.Scene) {
           chalkText("Up next", 384, 120, 72);
           chalkText((room.upNext ?? "nothing queued").slice(0, 22), 384, 270, 56);
           if (room.queued > 1) chalkText(`and ${room.queued - 1} more`, 384, 380, 40, "#d8dccf");
+        } else if (!room.phase) {
+          chalkText("Planning", 384, 112, 72);
+          chalkText("discuss → roles → plan", 384, 300, 46, "#d8dccf");
         } else {
           chalkText("Debate", 384, 112, 72);
           const phases = ["opening", "critique", "verdict"];

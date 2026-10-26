@@ -157,7 +157,8 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   }
 
   function syncDelegation(next: DeckView) {
-    const key = next.delegation ? `${next.delegation.from}>${next.delegation.to}` : "";
+    const ends = next.delegation ? [...where(next.delegation.from), ...where(next.delegation.to)].map(v => v.toFixed(1)).join(",") : "";
+    const key = next.delegation ? `${next.delegation.from}>${next.delegation.to}@${ends}` : "";
     if (key === delegationKey) return;
     delegationKey = key;
     if (delegationLine) {
@@ -212,12 +213,18 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
   // Loop: full rate while something moves, about 30 fps otherwise; rAF pauses in hidden tabs.
   let raf = 0;
   let lastRender = 0;
+  // Mode changes ease over about a second at full frame rate; the first room after creating the deck is placed at once.
+  let easeUntil = 0;
+  let roomKey = "";
+  let placed = false;
+  let selectedId: AgentId | null = null;
   const projected = new THREE.Vector3();
   const frame = (now: number) => {
     const busy = view?.agents.some(a => a.state === "busy") ?? false;
-    const moving = pulses.length > 0 || [...minis.values()].some(m => m.leftAt !== null) || busy
+    const moving = pulses.length > 0 || [...minis.values()].some(m => m.leftAt !== null) || busy || now < easeUntil
       || Math.abs(yaw - targetYaw) > 1e-4 || Math.abs(pitch - targetPitch) > 1e-4;
     if (now - lastRender < frameIntervalMs(moving)) return;
+    const dt = lastRender ? Math.min(now - lastRender, 250) : 16;
     lastRender = now;
     yaw += (targetYaw - yaw) * 0.08;
     pitch += (targetPitch - pitch) * 0.08;
@@ -235,8 +242,12 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
     if (room) {
       // Desks and TVs ease to the mode's places; each TV turns to face the camera on its own.
       const seats = spots(room, [...AGENT_IDS]);
-      const k = reduced ? 1 : 0.08;
-      modeProps.update(room, seats, now, live?.image ?? null, reduced);
+      const nextKey = `${room.kind}|${room.roles.orchestrator}|${room.roles.coders.join()}|${room.roles.reviewer}`;
+      if (nextKey !== roomKey) { roomKey = nextKey; easeUntil = now + 1600; }
+      // Time-based easing (about 1 s to settle); reduced motion and the first frame jump straight to the end.
+      const k = reduced || !placed ? 1 : 1 - Math.exp(-dt / 220);
+      placed = true;
+      modeProps.update(room, seats, now, live?.image ?? null, reduced, k);
       for (const part of tableParts) part.visible = room.kind !== "coding";
       for (const id of AGENT_IDS) {
         const spot = seats[id];
@@ -251,6 +262,8 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
         crt.quaternion.slerp(probe.quaternion, k);
         rings[id].position.set(crt.position.x, 0.02, crt.position.z);
       }
+      if (selectedId) selection.position.set(crts[selectedId].group.position.x, 0.015, crts[selectedId].group.position.z);
+      if (now < easeUntil && view) syncDelegation(view);
     }
     const tick = reduced ? 0 : Math.floor(now / 140);
     for (const agent of view?.agents ?? []) {
@@ -365,6 +378,7 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
       }
     },
     select(id) {
+      selectedId = id && id in SEATS ? id : null;
       selection.visible = id !== null && id in SEATS;
       if (id && id in SEATS) selection.position.set(where(id)[0], 0.015, where(id)[2]);
     },

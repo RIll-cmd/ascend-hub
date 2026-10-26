@@ -18,6 +18,9 @@ export type RoomScene = {
   judge: AgentId | null;
   queued: number;
   upNext: string | null;
+  // Coders whose task is running (every racing coder in a race), and whoever is in a review turn right now.
+  working: AgentId[];
+  reviewing: AgentId | null;
 };
 export type Spot = { desk: [number, number, number]; deskYaw: number };
 
@@ -35,10 +38,17 @@ function upNextOf(queue: QueueView | null): string | null {
   return next ? `${next.title} · ${new Date(next.nextRun).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : null;
 }
 
+// Who is reviewing right now: the agent in a turn on a task under review that is not its own coder (any review pass).
+function reviewerAtWork(session: SessionView): AgentId | null {
+  const current = session.plan?.tasks.find(t => t.status === "review") ?? null;
+  const agent = session.active?.agent ?? null;
+  return current && agent && agent !== current.assignee ? agent : null;
+}
+
 export function roomScene(session: SessionView | null, queue: QueueView | null): RoomScene {
   const base: RoomScene = {
     kind: "idle", gate: null, roles: { orchestrator: null, coders: [], reviewer: null }, plan: [], task: null, check: null,
-    phase: null, speaker: null, judge: null, queued: queue?.items.length ?? 0, upNext: upNextOf(queue),
+    phase: null, speaker: null, judge: null, queued: queue?.items.length ?? 0, upNext: upNextOf(queue), working: [], reviewing: null,
   };
   if (!session || TERMINAL.has(session.stage)) return base;
   const debate = session.mode === "debate";
@@ -51,15 +61,18 @@ export function roomScene(session: SessionView | null, queue: QueueView | null):
   const tasks = session.plan?.tasks ?? [];
   const current = tasks.find(t => t.status === "running" || t.status === "review") ?? null;
   const check = session.checking ? "running" : current?.check ? (current.check.ok ? "pass" : "fail") : null;
+  const reviewing = reviewerAtWork(session);
+  const racing = session.active?.activity?.startsWith("racing") ?? false;
+  const working = [...new Set([...tasks.filter(t => t.status === "running").map(t => t.assignee), ...(racing ? roles.coders : [])])];
   let strip: string | null = null;
   if (current) {
     const index = tasks.indexOf(current) + 1;
     const coder = `${AGENT_NAMES[current.assignee]} ${current.status === "review" ? "done" : "coding"}`;
-    const reviewer = roles.reviewer ? ` · ${AGENT_NAMES[roles.reviewer]} ${session.active?.agent === roles.reviewer ? "reviewing" : "assigned"}` : "";
+    const reviewer = roles.reviewer ? ` · ${AGENT_NAMES[roles.reviewer]} ${reviewing === roles.reviewer ? "reviewing" : "assigned"}` : "";
     strip = `Task ${index}/${tasks.length} · ${coder}${reviewer}`;
   }
   return {
-    ...base, kind, gate, roles, check, task: strip,
+    ...base, kind, gate, roles, check, task: strip, working, reviewing,
     plan: tasks.map(t => ({ title: t.title, status: PLAN_STATUS[t.status] })),
     phase: debate && PHASES.has(session.stage) ? (session.stage as RoomScene["phase"]) : null,
     speaker: kind === "debate" ? session.active?.agent ?? null : null,
@@ -81,19 +94,25 @@ export function spots(scene: RoomScene, ids: AgentId[]): Record<AgentId, Spot> {
     return out;
   }
   const { orchestrator, coders, reviewer } = scene.roles;
-  const order = [orchestrator, ...coders, reviewer, ...ids].filter((id, i, all): id is AgentId => Boolean(id) && all.indexOf(id) === i && ids.includes(id as AgentId));
-  order.forEach((id, i) => { out[id] = BENCH[i % BENCH.length]; });
+  // The reviewer takes the return unless it also plans or codes; everyone else fills the long side first.
+  const aside = reviewer && reviewer !== orchestrator && !coders.includes(reviewer) && ids.includes(reviewer) ? reviewer : null;
+  const order = [orchestrator, ...coders, ...ids].filter((id, i, all): id is AgentId => Boolean(id) && all.indexOf(id) === i && ids.includes(id as AgentId) && id !== aside);
+  const long = aside ? order.slice(0, 2) : order;
+  long.forEach((id, i) => { out[id] = BENCH[i % BENCH.length]; });
+  if (aside) {
+    out[aside] = BENCH[2];
+    order.slice(2).forEach(id => { out[id] = BENCH[1]; });
+  }
   return out;
 }
 
 // What an agent's TV shows instead of its eye, from what it is doing right now. An offline agent always shows NO SIGNAL.
 export function graphicFor(id: AgentId, state: "offline" | "checking" | "idle" | "busy", scene: RoomScene): "code" | "review" | "plan" | "wave" | null {
   if (state === "offline") return null;
-  const busy = state === "busy";
-  if (scene.kind === "debate") return busy && scene.speaker === id ? "wave" : null;
+  if (scene.kind === "debate") return state === "busy" && scene.speaker === id ? "wave" : null;
   if (scene.kind !== "coding") return null;
-  if (busy && scene.roles.coders.includes(id)) return "code";
-  if (busy && scene.roles.reviewer === id) return "review";
+  if (scene.reviewing === id) return "review";
+  if (scene.working.includes(id)) return "code";
   return scene.roles.orchestrator === id ? "plan" : null;
 }
 
@@ -117,6 +136,6 @@ export function nowCard(session: SessionView | null): NowCard | null {
     coder: current?.assignee ?? null,
     since: current && session.active?.agent === current.assignee ? session.active.since : null,
     checks: session.checking ? "running" : current?.check ? (current.check.ok ? "passed" : "failed") : "not run yet",
-    reviewer: reviewer ? { agent: reviewer, state: session.active?.agent === reviewer ? "reviewing" : "assigned, waiting" } : null,
+    reviewer: reviewer ? { agent: reviewer, state: reviewerAtWork(session) === reviewer ? "reviewing" : "assigned, waiting" } : null,
   };
 }

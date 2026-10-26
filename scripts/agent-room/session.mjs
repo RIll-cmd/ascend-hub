@@ -255,6 +255,8 @@ export class RoomSession {
   static load({ settings, runTurn }, dir) {
     const state = readJson(join(dir, 'state.json'));
     state.active = null;
+    // A check that was running when the room stopped is not running any more.
+    state.checking = null;
     const session = new RoomSession({ dir, settings, runTurn, state, transcript: readJsonLines(join(dir, 'transcript.jsonl')) });
     session.save();
     session.scheduleRetry();
@@ -864,9 +866,19 @@ export class RoomSession {
 
   // The owner's check command, stoppable like an agent turn; null means the session stopped meanwhile.
   // label says what was checked ("task 2", "before any change"); every run's full output is kept for the Checks pane.
+  // While any check runs the room shows "checks running" (the deck's lamp, the Now card); race attempts check at once,
+  // so the field clears only when the last of them ends. Lint and coverage runs do not count.
   async runChecks(dir = this.state.projectDir, label = 'checks', command = this.state.check) {
     if (dir === this.state.projectDir || this.state.extraRepos?.length) this.say('room', `Running checks: ${command}`);
-    return this.runCommand(command, dir, label);
+    this.checksRunning = (this.checksRunning ?? 0) + 1;
+    this.state.checking = { label, since: new Date().toISOString() };
+    this.save();
+    try {
+      return await this.runCommand(command, dir, label);
+    } finally {
+      this.checksRunning -= 1;
+      if (this.checksRunning === 0) { this.state.checking = null; this.save(); }
+    }
   }
 
   // Runs one of the session's commands (checks, lint, coverage) and keeps its full output for the Checks tab; null when stopped.
@@ -874,17 +886,8 @@ export class RoomSession {
     const controller = new AbortController();
     this.controllers.add(controller);
     const started = new Date().toISOString();
-    // The room shows "checks running" while this is set (the deck's check lamp, the Now card).
-    this.state.checking = { label, since: started };
-    this.save();
-    let ran;
-    try {
-      ran = await runCheck(dir, command, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: controller.signal });
-    } finally {
-      this.state.checking = null;
-      this.controllers.delete(controller);
-    }
-    const { log, ...result } = ran;
+    const { log, ...result } = await runCheck(dir, command, { timeoutMs: this.settings.timeouts?.check ?? 900_000, signal: controller.signal });
+    this.controllers.delete(controller);
     this.recordCheck(label, command, started, result, log);
     return this.state.stage === 'stopped' ? null : result;
   }

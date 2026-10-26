@@ -113,10 +113,9 @@ test("graphicFor follows the turn", () => {
   const coding = roomScene(session(), null);
   assert.equal(graphicFor("claude", "busy", coding), "code");
   assert.equal(graphicFor("agy", "idle", coding), null, "an assigned reviewer waiting shows its eye");
-  assert.equal(graphicFor("agy", "busy", coding), "review");
+  const underReview = roomScene(session({ plan: { tasks: [task(1, { status: "review" })] }, active: { agent: "agy", activity: "reviewing", since: "", subagents: [] } }), null);
+  assert.equal(graphicFor("agy", "busy", underReview), "review");
   assert.equal(graphicFor("codex", "idle", coding), "plan", "the orchestrator keeps the plan up");
-  const race = roomScene(session({ roles: { orchestrator: "codex", coders: ["claude", "agy"], reviewer: null } }), null);
-  assert.deepEqual([graphicFor("claude", "busy", race), graphicFor("agy", "busy", race)], ["code", "code"], "racing coders both type");
   assert.equal(graphicFor("claude", "offline", coding), null, "an offline agent shows NO SIGNAL");
   const debate = roomScene(session({ mode: "debate", stage: "opening" as SessionView["stage"], roles: null, plan: null, judge: "claude", active: { agent: "codex", activity: "x", since: "", subagents: [] } }), null);
   assert.equal(graphicFor("codex", "busy", debate), "wave");
@@ -136,7 +135,7 @@ test("the Now card shows the running task's own checks", () => {
 
 test("the reviewer is assigned until its turn starts", () => {
   assert.deepEqual(nowCard(session())?.reviewer, { agent: "agy", state: "assigned, waiting" });
-  const reviewing = session({ active: { agent: "agy", activity: "reviewing", since: "", subagents: [] } });
+  const reviewing = session({ plan: { tasks: [task(1, { status: "review" })] }, active: { agent: "agy", activity: "reviewing", since: "", subagents: [] } });
   assert.deepEqual(nowCard(reviewing)?.reviewer, { agent: "agy", state: "reviewing" });
   assert.equal(nowCard(session({ roles: { orchestrator: "codex", coders: ["claude"], reviewer: null } }))?.reviewer, null);
 });
@@ -146,4 +145,33 @@ test("no Now card outside coding", () => {
   assert.equal(nowCard(session({ stage: "done" })), null);
   assert.equal(nowCard(session({ mode: "debate", stage: "opening" as SessionView["stage"], roles: null, plan: null })), null);
   assert.equal(nowCard(session({ stage: "gate-plan", plan: { tasks: [task(1), task(2)] } }))?.task, "Plan · 2 tasks", "at the plan gate there is no running task yet");
+});
+
+test("parallel tasks and races: every coder at work shows the code graphic", () => {
+  const parallel = roomScene(session({ roles: { orchestrator: "codex", coders: ["claude", "agy"], reviewer: null },
+    plan: { tasks: [task(1, { status: "running" }), task(2, { status: "running", assignee: "agy" })] } }), null);
+  assert.deepEqual([graphicFor("claude", "busy", parallel), graphicFor("agy", "idle", parallel)], ["code", "code"]);
+  const race = roomScene(session({ roles: { orchestrator: "codex", coders: ["claude", "agy"], reviewer: null },
+    plan: { tasks: [task(1, { status: "running", race: true })] }, active: { agent: "claude", activity: "racing 2 attempts", since: "", subagents: [] } }), null);
+  assert.equal(graphicFor("agy", "idle", race), "code", "a racing coder types even though only the first is the active agent");
+});
+
+test("a reviewer who also plans or codes reviews only in its review turn", () => {
+  const roles = { orchestrator: "codex", coders: ["claude"], reviewer: "codex" } as const;
+  const planning = roomScene(session({ roles: { ...roles, coders: ["claude"] }, active: { agent: "codex", activity: "planning", since: "", subagents: [] } }), null);
+  assert.equal(graphicFor("codex", "busy", planning), "plan");
+  assert.match(planning.task ?? "", /Codex assigned$/);
+  const reviewing = session({ roles: { ...roles, coders: ["claude"] }, plan: { tasks: [task(1, { status: "review" })] }, active: { agent: "codex", activity: "reviewing", since: "", subagents: [] } });
+  assert.equal(graphicFor("codex", "busy", roomScene(reviewing, null)), "review");
+  assert.deepEqual(nowCard(reviewing)?.reviewer, { agent: "codex", state: "reviewing" });
+  const coderReviews = roomScene(session({ roles: { orchestrator: "codex", coders: ["claude", "agy"], reviewer: "claude" },
+    plan: { tasks: [task(1, { status: "review", assignee: "agy" })] }, active: { agent: "claude", activity: "reviewing", since: "", subagents: [] } }), null);
+  assert.equal(graphicFor("claude", "busy", coderReviews), "review", "a coder reviewing another coder's task shows the review");
+});
+
+test("spots: the reviewer always takes the bench's return", () => {
+  const scene = roomScene(session({ roles: { orchestrator: "codex", coders: ["codex"], reviewer: "claude" } }), null);
+  const places = spots(scene, [...AGENT_IDS]);
+  assert.equal(places.claude.deskYaw, -Math.PI / 2, "the return faces sideways");
+  assert.equal(distinct(places), 3);
 });
