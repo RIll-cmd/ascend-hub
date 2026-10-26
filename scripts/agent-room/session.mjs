@@ -106,6 +106,7 @@ export class RoomSession {
     if (body.parallel !== undefined && body.parallel !== null && typeof body.parallel !== 'boolean') throw roomError('PARALLEL_INVALID');
     if (body.raceGate !== undefined && body.raceGate !== null && typeof body.raceGate !== 'boolean') throw roomError('RACE_GATE_INVALID');
     if (body.keepGoing !== undefined && body.keepGoing !== null && typeof body.keepGoing !== 'boolean') throw roomError('KEEP_GOING_INVALID');
+    if (body.advisers !== undefined && body.advisers !== null && typeof body.advisers !== 'boolean') throw roomError('ADVISERS_INVALID');
     const subagents = subagentChoice(body.subagents);
     const connectors = chooseConnectors(body.connectors, settings);
     const issue = given(body.issue) ? body.issue : null;
@@ -182,6 +183,8 @@ export class RoomSession {
       raceGate: body.raceGate === true,
       // A failing task asks the orchestrator whether it is still making progress instead of pausing or being skipped.
       keepGoing: body.keepGoing === true,
+      // Advisers and one actor: before a task's first round the other agents advise read-only, then its coder acts.
+      advisers: body.advisers === true,
       ...(connectors.length ? { connectors } : {}),
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
@@ -683,6 +686,7 @@ export class RoomSession {
       // Bug fix task 1 must go red, which no race can rank, so it never races.
       if (task.race && state.roles.coders.length > 1 && !(state.template === 'bugfix' && task.id === 1)) return this.raceTask(task, before);
       this.say('room', `Task ${task.id}: ${task.title} → ${AGENT_NAMES[task.assignee]}`, { kind: 'assign', by: state.roles.orchestrator, to: [task.assignee] });
+      if (!(await this.gatherAdvice(task))) return;
       const text = await this.turn(task.assignee, 'edit', this.prompt('build', task.assignee, { task }), 'editing',
         state.roles.reviewer ? [state.roles.reviewer] : [state.roles.orchestrator], { task });
       if (text === null) return;
@@ -1345,6 +1349,23 @@ export class RoomSession {
 
   // Keep-going: true grants one more round, false lets the task pause or be skipped as usual, null when the judge turn paused or stopped.
   // Session minutes and turns still bound it, because every round and judge turn goes through turn().
+  // Every other agent in the session advises once per task, read-only; the advice goes into the coder's prompt for
+  // each of its rounds. False when the session paused or stopped during an advice turn.
+  async gatherAdvice(task) {
+    const { roles } = this.state;
+    if (!this.state.advisers || task.advice) return true;
+    const advisers = [...new Set([roles.orchestrator, ...roles.coders, roles.reviewer])].filter(id => id && id !== task.assignee);
+    const advice = [];
+    for (const agent of advisers) {
+      const text = await this.turn(agent, 'read', this.prompt('advise', agent, { task }), 'advising', [task.assignee], { task });
+      if (text === null) return false;
+      advice.push({ agent, text: text.trim().slice(0, 1500) });
+    }
+    task.advice = advice;
+    this.save();
+    return true;
+  }
+
   async keepGoing(task) {
     if (!this.state.keepGoing || (task.keptGoing ?? 0) >= KEEP_GOING_ROUNDS) return false;
     const { orchestrator } = this.state.roles;

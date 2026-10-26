@@ -256,6 +256,7 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [parallel, setParallel] = useState(false);
   const [raceGate, setRaceGate] = useState(false);
   const [keepGoing, setKeepGoing] = useState(false);
+  const [advisers, setAdvisers] = useState(false);
   const [lint, setLint] = useState("");
   // Files for the agents: a pasted screenshot, a PDF spec, notes. The room checks them again.
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -285,14 +286,14 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
     : { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}), ...(chosenConnectors.length ? { connectors: chosenConnectors } : {}), ...(attachments.length ? { attachments: attachments.map(({ name, data }) => ({ name, data })) } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(advisers ? { advisers } : {}),...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}), ...(chosenConnectors.length ? { connectors: chosenConnectors } : {}), ...(attachments.length ? { attachments: attachments.map(({ name, data }) => ({ name, data })) } : {}) };
   // valid: the form is complete; canStart also needs every agent ready. A queued or scheduled session checks readiness when it starts.
   const valid = !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   const canStart = missing.length === 0 && valid;
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, connectorChoices, chosenConnectors, setConnectors, needsCheck, missing, body, valid, canStart, folders, repos, buildsRoot,
+    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, advisers, setAdvisers, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, connectorChoices, chosenConnectors, setConnectors, needsCheck, missing, body, valid, canStart, folders, repos, buildsRoot,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -408,6 +409,9 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
             </label>
             <label className="agent-room-check" title="When a task would pause at its round limit or be skipped, the orchestrator judges whether it is still making progress and, if so, gives it another round (up to 5). Session minutes and turns still apply.">
               <Checkbox checked={b.keepGoing} onCheckedChange={checked => b.setKeepGoing(checked)} /> Keep going on failing tasks
+            </label>
+            <label className="agent-room-check" title="Before each task's first round, every other agent in the session reads the task and gives short read-only advice; the assigned coder then does the work with that advice in its prompt. One extra turn per adviser per task.">
+              <Checkbox checked={b.advisers} onCheckedChange={checked => b.setAdvisers(checked)} /> Advisers and one actor
             </label>
             <label className="agent-room-check"><Checkbox checked={b.ownRoles} onCheckedChange={checked => b.setOwnRoles(checked)} /> Set roles myself</label>
             {b.ownRoles && <RolesEditor value={b.roles} onChange={b.setRoles} />}

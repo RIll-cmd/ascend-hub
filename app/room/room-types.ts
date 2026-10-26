@@ -73,6 +73,7 @@ export type SessionView = {
   ownerNotes?: { at: string; text: string }[];
   raceGate?: boolean;
   keepGoing?: boolean;
+  advisers?: boolean;
   issue?: { number: number; title: string; url: string };
   pr?: { number: number; title: string; url: string; base: string; head: string; posted: string | null };
   raceTask?: number;

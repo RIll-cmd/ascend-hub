@@ -105,12 +105,20 @@ function stageRules(stage, agent, roles, extra, roleSets = []) {
         `Do ONLY task ${extra.task.id}: ${extra.task.title}`,
         cap(extra.task.description, 2000),
         extra.task.notes ? `Your previous attempt was not accepted: ${cap(extra.task.notes, 4000)}\nFix that.` : '',
+        extra.task.advice?.length ? `ADVICE from the other agents before you started. Weigh it; you decide and you act:\n${extra.task.advice.map(a => `- ${AGENT_NAMES[a.agent]}: ${cap(a.text, 1500)}`).join('\n')}` : '',
         roleRules(extra.task.role, roleSets),
         generalRules(roleSets, extra.task.role),
         generalRules(roleSets, extra.task.role) && !roleRules(extra.task.role, roleSets).includes(ROOM_WINS) ? ROOM_WINS : '',
         'Work only inside the current folder. Do not run git commit; the room commits for you.',
         'When you are done, reply with a short summary of what you changed.',
       ].filter(Boolean).join('\n');
+    case 'advise':
+      return [
+        `You are an adviser. ${AGENT_NAMES[extra.task.assignee]} will do task ${extra.task.id}: ${extra.task.title}`,
+        cap(extra.task.description, 2000),
+        'Do not edit files or run commands that change anything. Read what you need, then advise in at most 8 short bullet points: the approach, the files to touch, the pitfalls, and how to check the result.',
+        'Reply with the advice only.',
+      ].join('\n');
     case 'review': {
       const pass = REVIEW_PASSES[extra.pass?.kind ?? 'code'];
       const skills = roleRules(extra.pass?.set, roleSets);
