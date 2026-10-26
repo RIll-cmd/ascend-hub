@@ -27,9 +27,9 @@ function summaryOf(state, transcript) {
   return final ? splitProposal(final.text).summary : null;
 }
 
-// One session as a Markdown document: facts, task, plan, summary or verdict, then every message in order.
-export function sessionMarkdown(state, transcript) {
-  const meta = [
+// What a session came to, without its conversation: the Markdown export and the read-only summary page share it.
+export function sessionDigest(state, transcript) {
+  const facts = [
     ['Session', `${state.id} · ${state.mode === 'debate' ? 'debate' : state.template ?? 'feature'} · ${state.stage}`],
     ['Started', state.createdAt],
     ['Project', state.project],
@@ -42,18 +42,31 @@ export function sessionMarkdown(state, transcript) {
     ['Checks', state.check && `\`${state.check}\``],
     ['Usage', usageLine(state.usage)],
   ].filter(([, v]) => v);
-  const summary = summaryOf(state, transcript);
+  return {
+    title: String(state.task ?? '').split('\n')[0].slice(0, 120) || state.project,
+    facts,
+    taskHeading: state.mode === 'debate' ? 'Question' : 'Task',
+    task: String(state.task ?? '').trim(),
+    plan: (state.plan?.tasks ?? []).map(taskLine),
+    summary: summaryOf(state, transcript),
+    verdict: state.answer?.trim() || null,
+  };
+}
+
+// One session as a Markdown document: facts, task, plan, summary or verdict, then every message in order.
+export function sessionMarkdown(state, transcript) {
+  const d = sessionDigest(state, transcript);
   return [
-    `# ${String(state.task ?? '').split('\n')[0].slice(0, 120) || state.project}`,
+    `# ${d.title}`,
     '',
-    ...meta.map(([k, v]) => `- **${k}:** ${v}`),
+    ...d.facts.map(([k, v]) => `- **${k}:** ${v}`),
     '',
-    state.mode === 'debate' ? '## Question' : '## Task',
+    `## ${d.taskHeading}`,
     '',
-    String(state.task ?? '').trim(),
-    ...(state.plan?.tasks?.length ? ['', '## Plan', '', ...state.plan.tasks.map(taskLine)] : []),
-    ...(summary ? ['', '## Summary', '', summary] : []),
-    ...(state.answer ? ['', '## Verdict', '', state.answer.trim()] : []),
+    d.task,
+    ...(d.plan.length ? ['', '## Plan', '', ...d.plan] : []),
+    ...(d.summary ? ['', '## Summary', '', d.summary] : []),
+    ...(d.verdict ? ['', '## Verdict', '', d.verdict] : []),
     '',
     `## Transcript (${transcript.length} message${transcript.length === 1 ? '' : 's'})`,
     ...transcript.flatMap(m => ['', `### ${m.at.slice(0, 16).replace('T', ' ')} UTC · ${who(m.from)}${m.to?.length ? ` to ${names(m.to)}` : ''}`, '', String(m.text).trim()]),

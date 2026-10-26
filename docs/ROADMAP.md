@@ -62,7 +62,7 @@ Everything not built yet, from the Room ideas backlog (2026-10-16), the handoff'
 | Phone push when a gate waits | One `POST` to a private ntfy topic whenever the session's `attention` changes, with the gate summary | Backlog; Hermes ntfy | Done (2026-10-24): `notify.ntfy` in settings |
 | Answer a gate from the phone | A signed, single-use link per decision, or a paired chat bot (Core's `phone-chat-discord` worktrees). Needs pairing and an allowlist first | Hermes gateway | Done (2026-10-25), the safest form: ntfy buttons post to a private reply topic the room polls (no open port); one-time code per wait, five wrong codes lock it, no merge, pull request or reject from the phone |
 | Voice-note answers | A voice note on the phone becomes a gate reply through Vision's faster-whisper | Hermes voice memos | M |
-| Publish the session summary as a page | A shareable read-only summary after the result gate | Backlog | M |
+| Publish the session summary as a page | A shareable read-only summary after the result gate | Backlog | Done (2026-10-26): **Summary page** on the Session card opens `/room/summary/<id>` (facts, task, plan outcomes, summary or verdict; no transcript), print-styled for PDF; shared as a file because Hub answers only on loopback |
 
 ### M9 — Unattended sessions
 

@@ -14,7 +14,7 @@ import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
 import { attentionNotifier, phonePush } from './notify.mjs';
 import { replyWatcher } from './phone.mjs';
 import { RoomQueue } from './queue.mjs';
-import { sessionMarkdown } from './export.mjs';
+import { sessionDigest, sessionMarkdown } from './export.mjs';
 import { RoomSession, TERMINAL } from './session.mjs';
 import { ghToken, stageSkill } from './github.mjs';
 import { discardStaged, installStaged, listSkills, readRoleSets, removeSkill, saveProposedSkill, viewSkill, writeRoleSets } from './skills.mjs';
@@ -147,11 +147,11 @@ function readCheckRun(dataDir, id, n) {
 }
 
 // A whole session as Markdown, from disk with its full transcript (the page only holds the last 200 messages).
-function exportSession(dataDir, id) {
+function exportSession(dataDir, id, as = sessionMarkdown) {
   if (!SESSION_ID.test(id)) throw roomError('SESSION_ID_INVALID');
   const dir = join(dataDir, 'sessions', id);
   const state = readJson(join(dir, 'state.json'));
-  return state ? sessionMarkdown(state, readJsonLines(join(dir, 'transcript.jsonl'))) : null;
+  return state ? as(state, readJsonLines(join(dir, 'transcript.jsonl'))) : null;
 }
 
 // One past session as the room page shows it, read from disk without changing it.
@@ -322,6 +322,11 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       if (exported) {
         const markdown = exportSession(dataDir, exported[1]);
         return markdown ? send(200, { markdown }) : send(404, { error: 'NO_SESSION' });
+      }
+      const digest = req.method === 'GET' && /^\/sessions\/([^/]+)\/summary$/.exec(new URL(req.url, 'http://room').pathname);
+      if (digest) {
+        const summary = exportSession(dataDir, digest[1], sessionDigest);
+        return summary ? send(200, { summary }) : send(404, { error: 'NO_SESSION' });
       }
       const past = req.method === 'GET' && /^\/sessions\/([^/]+)$/.exec(new URL(req.url, 'http://room').pathname);
       if (past) {

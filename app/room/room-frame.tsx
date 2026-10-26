@@ -104,6 +104,8 @@ export function SessionCard({ session }: { session: SessionView }) {
       </ul>
       <Button variant="neutral" size="sm" className="self-start" onClick={() => void exportSession(session).then(setError)}
         title="The task, plan, summary or verdict and every message, as one Markdown file">Export .md</Button>
+      <Button variant="neutral" size="sm" className="self-start" onClick={() => window.open(`/room/summary/${session.id}`, "_blank", "noopener")}
+        title="What the session came to on one read-only page, without the conversation; print it or save it as PDF to share">Summary page</Button>
       {error && <p role="alert" className="agent-room-error">{error}</p>}
     </SideSection>
   );

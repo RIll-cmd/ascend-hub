@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { sessionMarkdown } from '../../scripts/agent-room/export.mjs';
+import { sessionDigest, sessionMarkdown } from '../../scripts/agent-room/export.mjs';
 import { RoomSession } from '../../scripts/agent-room/session.mjs';
 import { fakeRunTurn, json, tempRoom, testSettings } from './helpers.mjs';
 
@@ -70,6 +70,29 @@ test('the room exports a session with its whole transcript, past the 200 message
     assert.match(markdown, /Wrote hello\.js\./, 'the earliest messages are there too');
     assert.equal((await call('/sessions/..%2Fx/export')).status, 400);
     assert.equal((await call('/sessions/1-abcdef/export')).status, 404);
+  } finally {
+    await room.close();
+  }
+});
+
+test('the summary page gets the same facts, plan and summary without any of the conversation', async () => {
+  const { startRoomServer } = await import('../../scripts/agent-room/server.mjs');
+  const { s, opts } = await finishedBuild();
+  const digest = sessionDigest(s.state, s.transcript);
+  assert.equal(digest.title, 'Make hello.js');
+  assert.equal(digest.taskHeading, 'Task');
+  assert.deepEqual(digest.facts.find(([k]) => k === 'Roles'), ['Roles', 'orchestrator Codex, coders Claude, no reviewer']);
+  assert.match(digest.plan[0], /^1\. \*\*Write hello\*\* \(Claude\): done, commit [0-9a-f]{7}, checks passed$/);
+  assert.equal(digest.summary, '# Summary\nhello.js returns hi.');
+  assert.equal(digest.verdict, null);
+  const room = await startRoomServer({ ...opts, probe: async () => ({ state: 'ready' }), port: 0 });
+  try {
+    const call = path => fetch(`http://127.0.0.1:${room.port}${path}`, { headers: { authorization: `Bearer ${room.token}` } });
+    const { summary } = await (await call(`/sessions/${s.state.id}/summary`)).json();
+    assert.deepEqual(summary, JSON.parse(JSON.stringify(digest)));
+    assert.ok(!JSON.stringify(summary).includes('Wrote hello.js'), 'no transcript on the page');
+    assert.equal((await call('/sessions/..%2Fx/summary')).status, 400);
+    assert.equal((await call('/sessions/1-abcdef/summary')).status, 404);
   } finally {
     await room.close();
   }
