@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { buildInvocation, runTurn as realRunTurn } from './agents.mjs';
+import { chooseConnectors } from './connectors.mjs';
 import { errorText, RATE_LIMITED, shellCommands, skillReads, subagentEvent, usageEvent } from './events.mjs';
 import { dangerousCommand } from './guard.mjs';
 import { AGENT_IDS, extractJsonBlock, isReady, validateJudge, validatePlan, validateProgress, validateReassign, validateRoles, validateVerdict } from './parse.mjs';
@@ -106,6 +107,7 @@ export class RoomSession {
     if (body.raceGate !== undefined && body.raceGate !== null && typeof body.raceGate !== 'boolean') throw roomError('RACE_GATE_INVALID');
     if (body.keepGoing !== undefined && body.keepGoing !== null && typeof body.keepGoing !== 'boolean') throw roomError('KEEP_GOING_INVALID');
     const subagents = subagentChoice(body.subagents);
+    const connectors = chooseConnectors(body.connectors, settings);
     const issue = given(body.issue) ? body.issue : null;
     const ownTask = task ?? '';
     if (typeof ownTask !== 'string' || (!ownTask.trim() && !issue) || ownTask.length > 4000) throw roomError('TASK_INVALID');
@@ -180,6 +182,7 @@ export class RoomSession {
       raceGate: body.raceGate === true,
       // A failing task asks the orchestrator whether it is still making progress instead of pausing or being skipped.
       keepGoing: body.keepGoing === true,
+      ...(connectors.length ? { connectors } : {}),
     };
     const session = new RoomSession({ dir: join(dataDir, 'sessions', id), settings, runTurn, state, transcript: [] });
     session.save();
@@ -443,12 +446,15 @@ export class RoomSession {
     return buildPrompt({
       stage, agent, roles: this.state.roles, task: this.state.task,
       planText: this.state.plan ? renderPlan(this.state.plan.tasks) : '', transcript: this.transcript,
-      extra: { template: this.state.template, parallel: this.state.parallel, attached: attachmentLines(this.state.attachments, this.state.fileRefs), ownerNotes: this.state.ownerNotes, ...extra },
+      extra: { template: this.state.template, parallel: this.state.parallel, attached: attachmentLines(this.state.attachments, this.state.fileRefs), ownerNotes: this.state.ownerNotes, connectors: this.connectors, ...extra },
       memory: this.projectMemory(), roleSets: this.state.roleSets ?? [],
     });
   }
 
   get setIds() { return (this.state.roleSets ?? []).map(s => s.id); }
+
+  // The session's MCP connectors as settings define them now; one removed from settings since is left out.
+  get connectors() { return (this.state.connectors ?? []).map(id => this.settings.connectors?.[id]).filter(Boolean); }
 
   // Sessions live in <dataDir>/sessions/<id>; project memory sits beside them.
   get dataDir() { return dirname(dirname(this.dir)); }
@@ -476,7 +482,7 @@ export class RoomSession {
       const chosen = this.state.models?.[agent];
       const settings = chosen ? { ...this.settings, agents: { ...this.settings.agents, [agent]: { ...this.settings.agents[agent], model: chosen } } } : this.settings;
       const invocation = buildInvocation(agent, mode, prompt, {
-        cwd, settings, outFile: join(this.dir, 'codex-last.txt'), subagents: this.state.subagents?.claude !== false,
+        cwd, settings, outFile: join(this.dir, 'codex-last.txt'), subagents: this.state.subagents?.claude !== false, connectors: this.connectors,
       });
       const { timeouts } = this.settings;
       const timeoutMs = mode === 'edit' ? timeouts.build : this.state.mode === 'debate' ? timeouts.debate : timeouts.chat;

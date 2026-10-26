@@ -2,6 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseJsonLine, streamResultText } from './events.mjs';
+import { claudeMcp, cleanConnectors, codexMcp } from './connectors.mjs';
 import { cleanNotify } from './notify.mjs';
 import { roomError } from './paths.mjs';
 
@@ -55,11 +56,13 @@ export function mergeSettings(base, override = {}, warn = console.warn) {
     ...override,
     timeouts: cleanTimeouts(base.timeouts, override.timeouts, warn),
     notify: cleanNotify(override.notify, warn),
+    connectors: cleanConnectors(override.connectors, warn),
     agents: Object.fromEntries(Object.entries(base.agents).map(([id, agent]) => [id, { ...agent, ...override.agents?.[id] }])),
   };
 }
 
-export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile, subagents = true }) {
+// connectors: the session's MCP servers (see connectors.mjs); Antigravity cannot take them per turn.
+export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile, subagents = true, connectors = [] }) {
   const agent = settings.agents[agentId];
   if (!agent) throw roomError('AGENT_UNKNOWN', String(agentId));
   if (mode !== 'read' && mode !== 'edit') throw roomError('MODE_INVALID', String(mode));
@@ -68,17 +71,23 @@ export function buildInvocation(agentId, mode, prompt, { cwd, settings, outFile,
     // Codex has no working switch for sub-agents (--disable multi_agent still spawned them in the spike).
     return {
       command: agent.command,
-      args: [...agent.prefixArgs, 'exec', '-m', agent.model, '--sandbox', edit ? 'workspace-write' : 'read-only', '--skip-git-repo-check', '--json', '-C', cwd, '-o', outFile, '-'],
+      args: [...agent.prefixArgs, 'exec', '-m', agent.model, '--sandbox', edit ? 'workspace-write' : 'read-only', '--skip-git-repo-check', '--json', '-C', cwd, '-o', outFile,
+        ...codexMcp(connectors, settings.envFile), '-'],
       stdin: prompt,
       outFile,
       stream: 'codex',
     };
   }
   if (agentId === 'claude') {
+    const mcp = claudeMcp(connectors, settings.envFile);
+    const allowed = [...(edit ? CLAUDE_ALLOWED_TOOLS : []), ...mcp.allowed];
+    // Plan mode refuses every MCP tool, so a read turn with connectors runs in default mode: headless, that still
+    // refuses edits and commands, and the session's servers are allowed by name.
+    const permission = edit ? 'acceptEdits' : mcp.allowed.length ? 'default' : 'plan';
     return {
       command: agent.command,
-      args: [...agent.prefixArgs, '-p', ...(agent.model ? ['--model', agent.model] : []), '--output-format', 'stream-json', '--verbose', '--permission-mode', edit ? 'acceptEdits' : 'plan',
-        '--disallowedTools', 'PowerShell', ...(subagents ? [] : ['Agent']), ...(edit ? ['--allowedTools', ...CLAUDE_ALLOWED_TOOLS] : [])],
+      args: [...agent.prefixArgs, '-p', ...(agent.model ? ['--model', agent.model] : []), '--output-format', 'stream-json', '--verbose', '--permission-mode', permission,
+        '--disallowedTools', 'PowerShell', ...(subagents ? [] : ['Agent']), ...(allowed.length ? ['--allowedTools', ...allowed] : []), ...mcp.args],
       stdin: prompt,
       outFile: null,
       stream: 'claude',

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildInvocation, defaultSettings, mergeSettings, runTurn as realRunTurn } from './agents.mjs';
+import { connectorList } from './connectors.mjs';
 import { AGENT_IDS } from './parse.mjs';
 import { listDebateFolders, listRepos, resolveRepo, roomDataDir, roomError } from './paths.mjs';
 import { finishWorktree, producedBlob, producedFiles, producedZip, projectFile, projectFiles, rootCommit, suggestCheck } from './project.mjs';
@@ -254,7 +255,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         if (Date.now() - probedAt > PROBE_TTL_MS && !busy()) refreshProbes();
         const repos = listRepos(settings).map(dir => ({ dir, check: suggestCheck(dir, settings.checks) }));
         refreshCodexQuota();
-        return send(200, { online: true, agents, buildsRoot: settings.buildsRoot, folders: listDebateFolders(settings), repos, quota, quotaWarning: quotaWarning(quota), session: session?.summary() ?? null });
+        return send(200, { online: true, agents, buildsRoot: settings.buildsRoot, folders: listDebateFolders(settings), repos, connectors: connectorList(settings), quota, quotaWarning: quotaWarning(quota), session: session?.summary() ?? null });
       }
       // The meter alone: unlike /status it never starts readiness probes, so a page can poll it for free.
       if (route === 'GET /quota') {
@@ -417,7 +418,8 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const hubRoot = fileURLToPath(new URL('../../', import.meta.url));
   const dataDir = roomDataDir(hubRoot);
-  const settings = mergeSettings(defaultSettings(), readJson(join(dataDir, 'settings.json'), {}));
+  // envFile: where connector variables are read when the room's environment lacks them (see connectors.mjs).
+  const settings = { ...mergeSettings(defaultSettings(), readJson(join(dataDir, 'settings.json'), {})), envFile: join(hubRoot, '.env.local') };
   const token = ensureRoomToken(join(hubRoot, '.env.local'));
   const room = await startRoomServer({ dataDir, settings, token, port: Number(process.env.ASCEND_ROOM_PORT ?? 5181) });
   const shutdown = () => room.close().then(() => process.exit(0));

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES, TERMINAL_STAGES,
   type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
+  type ConnectorChoice,
   type RepoChoice,
 } from "./room-types";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/neo/accordion";
@@ -238,7 +239,7 @@ function SessionSets({ value, onChange }: { value: string[] | null; onChange: (s
 export const TEMPLATE_LABELS ={ feature: "Feature", bugfix: "Bug fix", refactor: "Refactor", review: "Review only" } as const;
 
 // Everything a new session needs. The settings live in the side panel, the task in the composer under the chat.
-export function useBrief(agents?: Record<AgentId, Availability>, folders: string[] = [], repos: RepoChoice[] = [], buildsRoot = "D:\\ascend-builds") {
+export function useBrief(agents?: Record<AgentId, Availability>, folders: string[] = [], repos: RepoChoice[] = [], buildsRoot = "D:\\ascend-builds", connectorChoices: ConnectorChoice[] = []) {
   const [kind, setKind] = useState<SessionMode>("build");
   const [project, setProject] = useState("");
   const [task, setTask] = useState("");
@@ -266,6 +267,9 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [preview, setPreview] = useState({ command: "", url: "" });
   // null: the session takes the role sets switched on in the Role sets section.
   const [sessionSets, setSessionSets] = useState<string[] | null>(null);
+  const [connectors, setConnectors] = useState<string[]>([]);
+  // A connector removed from settings since it was ticked is dropped.
+  const chosenConnectors = connectors.filter(id => connectorChoices.some(c => c.id === id));
   const missing = AGENT_IDS.filter(id => agents?.[id]?.state !== "ready");
   const chosenFolder = folders.includes(folder) ? folder : folders[0] ?? "";
   const inRepo = where === "repo" && repos.length > 0;
@@ -281,14 +285,14 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
     : { mode: "debate", question: `Code review only; do not change anything. Give prioritised findings with file and line references for: ${task}`, folder: chosenRepo?.dir ?? chosenFolder, judge: "codex", subagents: { claude: claudeSubagents } };
   const body = kind === "debate"
     ? { mode: "debate", question, folder: chosenFolder, judge, subagents: { claude: claudeSubagents } }
-    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}), ...(attachments.length ? { attachments: attachments.map(({ name, data }) => ({ name, data })) } : {}) };
+    : template === "review" ? reviewBody : { template, models: chosenModels, project, task, ...(ownRoles ? { roles } : {}), subagents: { claude: claudeSubagents }, ...(inRepo ? { repo: chosenRepo?.dir } : {}), ...(inRepo && githubRef ? { issue: githubRef } : {}), ...(checkCommand.trim() ? { check: checkCommand.trim() } : {}), ...(lint.trim() ? { lint: lint.trim() } : {}), ...(coverage.trim() ? { coverage: coverage.trim() } : {}), limits, ...(parallel && template !== "bugfix" ? { parallel } : {}), ...(raceGate ? { raceGate } : {}), ...(keepGoing ? { keepGoing } : {}), ...(preview.command.trim() && preview.url.trim() ? { preview: { command: preview.command.trim(), url: preview.url.trim() } } : {}), ...(sessionSets ? { roleSets: sessionSets } : {}), ...(chosenConnectors.length ? { connectors: chosenConnectors } : {}), ...(attachments.length ? { attachments: attachments.map(({ name, data }) => ({ name, data })) } : {}) };
   // valid: the form is complete; canStart also needs every agent ready. A queued or scheduled session checks readiness when it starts.
   const valid = !(kind === "debate" && !chosenFolder) && !(kind === "build" && needsCheck && !checkCommand.trim());
   const canStart = missing.length === 0 && valid;
   return {
     kind, setKind, project, setProject, task, setTask, ownRoles, setOwnRoles, roles, setRoles, question, setQuestion, chosenFolder, setFolder,
     judge, setJudge, claudeSubagents, setClaudeSubagents, setWhere, inRepo, chosenRepo, setRepoDir, checkCommand, setCheck, limits, setLimits,
-    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, needsCheck, missing, body, valid, canStart, folders, repos, buildsRoot,
+    parallel, setParallel, raceGate, setRaceGate, keepGoing, setKeepGoing, attachments, setAttachments, lint, setLint, coverage, setCoverage, github, setGithub, template, setTemplate, models, setModels, preview, setPreview, sessionSets, setSessionSets, connectorChoices, chosenConnectors, setConnectors, needsCheck, missing, body, valid, canStart, folders, repos, buildsRoot,
   };
 }
 export type Brief = ReturnType<typeof useBrief>;
@@ -365,6 +369,17 @@ export function BriefSettings({ brief: b, quotaWarning }: { brief: Brief; quotaW
               <Input value={b.coverage} onChange={e => b.setCoverage(e.target.value)} maxLength={500} placeholder="npx c8 npm test" spellCheck={false} />
             </label>
             <SessionSets value={b.sessionSets} onChange={b.setSessionSets} />
+            {b.connectorChoices.length > 0 && (
+              <fieldset className="agent-room-limits is-stacked" title="MCP servers from room settings. Claude and Codex get their tools in every turn; Antigravity keeps the servers in its own agy mcp list.">
+                <legend>MCP connectors</legend>
+                {b.connectorChoices.map(c => (
+                  <label key={c.id} className="agent-room-check" title={c.description || c.id}>
+                    <Checkbox checked={b.chosenConnectors.includes(c.id)} onCheckedChange={checked => b.setConnectors(list => checked ? [...list, c.id] : list.filter(id => id !== c.id))} /> {c.name}
+                    {c.missing.length > 0 && <small className="is-problem">{c.missing.join(", ")} not set</small>}
+                  </label>
+                ))}
+              </fieldset>
+            )}
             <fieldset className="agent-room-limits is-stacked" title="Before a design review the room starts the app, opens the URL in headless Edge or Chrome and gives the reviewer a screenshot. Leave empty to review the diff only.">
               <legend>App preview for design reviews</legend>
               <label>Start command <Input className="h-9" value={b.preview.command} onChange={e => b.setPreview(p => ({ ...p, command: e.target.value }))} maxLength={500} placeholder="npm run dev" spellCheck={false} /></label>

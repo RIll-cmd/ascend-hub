@@ -211,6 +211,8 @@ export function buildPrompt({ stage, agent, roles, task, planText = '', transcri
     DEBATE_STAGES.has(stage) ? 'QUESTION:' : 'OWNER TASK:',
     cap(task, 4000),
     extra.attached ?? '',
+    extra.connectors?.length ? `
+MCP CONNECTORS for this session (Claude and Codex have their tools; Antigravity does not): ${extra.connectors.map(c => `${c.name} (${c.id})${c.description ? `: ${c.description}` : ''}`).join('; ')}` : '',
     extra.ownerNotes?.length ? `\nOWNER NOTES, added while the session runs (newest last). Follow them:\n${extra.ownerNotes.map(n => `- ${cap(n.text, 1000)}`).join('\n')}` : '',
     planText ? `\nPLAN.md:\n${cap(planText, 6000)}` : '',
     extra.diff && (stage === 'opening' || stage === 'critique') ? `\nPULL REQUEST DIFF:\n${cap(extra.diff, 12_000)}` : '',

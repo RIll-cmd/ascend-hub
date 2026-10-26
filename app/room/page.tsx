@@ -143,7 +143,7 @@ export default function RoomPage() {
   const [viewing, setViewing] = useState<string | null>(null);
   // "New session" hides the live session it was pressed over; any newer live session shows again by itself.
   const [freshOver, setFreshOver] = useState<string | null | undefined>(undefined);
-  const brief = useBrief(status?.agents, status?.folders, status?.repos, status?.buildsRoot);
+  const brief = useBrief(status?.agents, status?.folders, status?.repos, status?.buildsRoot, status?.connectors);
   const liveIdRef = useRef<string | null>(null);
   useEffect(() => { liveIdRef.current = live?.id ?? null; }, [live?.id]);
   const { setTask, setQuestion, setAttachments } = brief;

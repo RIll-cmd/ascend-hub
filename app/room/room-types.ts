@@ -31,10 +31,12 @@ export type Message = {
 };
 export type Availability = { state: "checking" | "ready" | "offline"; detail?: string };
 export type RepoChoice = { dir: string; check: string };
+// An MCP server from room settings; missing lists its variables that have no value yet.
+export type ConnectorChoice = { id: string; name: string; description: string; missing: string[] };
 export type QuotaWindow = { usedPercent: number | null; resetsAt: string | null } | null;
 export type AgentQuota = { fiveHour: QuotaWindow; weekly: QuotaWindow; seenAt?: string } | null;
 export type RoomStatus = {
-  online: true; agents: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[]; buildsRoot?: string;
+  online: true; agents: Record<AgentId, Availability>; folders?: string[]; repos?: RepoChoice[]; buildsRoot?: string; connectors?: ConnectorChoice[];
   quota?: Partial<Record<AgentId, AgentQuota>>; quotaWarning?: string | null;
 };
 
