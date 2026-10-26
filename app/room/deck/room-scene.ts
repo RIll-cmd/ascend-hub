@@ -85,3 +85,14 @@ export function spots(scene: RoomScene, ids: AgentId[]): Record<AgentId, Spot> {
   order.forEach((id, i) => { out[id] = BENCH[i % BENCH.length]; });
   return out;
 }
+
+// What an agent's TV shows instead of its eye, from what it is doing right now. An offline agent always shows NO SIGNAL.
+export function graphicFor(id: AgentId, state: "offline" | "checking" | "idle" | "busy", scene: RoomScene): "code" | "review" | "plan" | "wave" | null {
+  if (state === "offline") return null;
+  const busy = state === "busy";
+  if (scene.kind === "debate") return busy && scene.speaker === id ? "wave" : null;
+  if (scene.kind !== "coding") return null;
+  if (busy && scene.roles.coders.includes(id)) return "code";
+  if (busy && scene.roles.reviewer === id) return "review";
+  return scene.roles.orchestrator === id ? "plan" : null;
+}

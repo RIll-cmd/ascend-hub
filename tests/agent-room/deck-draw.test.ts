@@ -89,3 +89,26 @@ test("screenKey changes with gaze and blink", () => {
   assert.notEqual(screenKey(base), screenKey({ ...base, look: 1 }));
   assert.notEqual(screenKey(base), screenKey({ ...base, blink: true }));
 });
+
+test("paintScreen: each graphic draws its own marks instead of the eye", () => {
+  const code = recorder();
+  paintScreen(code.ctx, 256, 192, { ...base, graphic: "code", tick: 9 });
+  assert.ok(code.calls.filter(c => c.op === "fillRect" && c.fillStyle === "#d97757").length >= 1, "code lines in the agent colour");
+  assert.ok(!code.calls.some(c => c.op === "arc"), "no eye");
+  assert.ok(code.texts().includes("CLAUDE"), "the name stays");
+  const wave = recorder();
+  paintScreen(wave.ctx, 256, 192, { ...base, graphic: "wave", tick: 3 });
+  assert.ok(wave.calls.filter(c => c.op === "fillRect" && c.fillStyle === "#d97757").length >= 20, "at least 20 bars");
+  const plan = recorder();
+  paintScreen(plan.ctx, 256, 192, { ...base, graphic: "plan", lines: ["☑ 1 Build", "▸ 2 Verify"] });
+  assert.ok(plan.texts().includes("☑ 1 Build") && plan.texts().includes("▸ 2 Verify"));
+  const review = recorder();
+  paintScreen(review.ctx, 256, 192, { ...base, graphic: "review", tick: 4 });
+  assert.ok(review.calls.some(c => c.op === "arc"), "the magnifier");
+  assert.ok(review.calls.some(c => c.op === "fillRect" && c.fillStyle === "#ff8a8a"), "removed lines");
+});
+
+test("screenKey changes with tick only for an animated graphic", () => {
+  assert.notEqual(screenKey({ ...base, graphic: "code", tick: 1 }), screenKey({ ...base, graphic: "code", tick: 2 }));
+  assert.equal(screenKey({ ...base, graphic: null, tick: 1 }), screenKey({ ...base, graphic: null, tick: 2 }));
+});

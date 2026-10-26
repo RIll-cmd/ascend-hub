@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { roomScene, spots } from "../../app/room/deck/room-scene";
+import { graphicFor, roomScene, spots } from "../../app/room/deck/room-scene";
 import type { QueueView } from "../../app/room/queue-panel";
 import type { PlanTask, SessionView } from "../../app/room/room-types";
 import { AGENT_IDS } from "../../app/room/room-types";
@@ -107,4 +107,19 @@ test("spots: two coders take the long side and the return", () => {
 test("spots: no roles yet (panel) still places everyone", () => {
   const scene = roomScene(session({ stage: "discuss", roles: null }), null);
   assert.equal(distinct(spots(scene, [...AGENT_IDS])), 3);
+});
+
+test("graphicFor follows the turn", () => {
+  const coding = roomScene(session(), null);
+  assert.equal(graphicFor("claude", "busy", coding), "code");
+  assert.equal(graphicFor("agy", "idle", coding), null, "an assigned reviewer waiting shows its eye");
+  assert.equal(graphicFor("agy", "busy", coding), "review");
+  assert.equal(graphicFor("codex", "idle", coding), "plan", "the orchestrator keeps the plan up");
+  const race = roomScene(session({ roles: { orchestrator: "codex", coders: ["claude", "agy"], reviewer: null } }), null);
+  assert.deepEqual([graphicFor("claude", "busy", race), graphicFor("agy", "busy", race)], ["code", "code"], "racing coders both type");
+  assert.equal(graphicFor("claude", "offline", coding), null, "an offline agent shows NO SIGNAL");
+  const debate = roomScene(session({ mode: "debate", stage: "opening" as SessionView["stage"], roles: null, plan: null, judge: "claude", active: { agent: "codex", activity: "x", since: "", subagents: [] } }), null);
+  assert.equal(graphicFor("codex", "busy", debate), "wave");
+  assert.equal(graphicFor("agy", "idle", debate), null);
+  assert.equal(graphicFor("codex", "idle", roomScene(null, null)), null);
 });
