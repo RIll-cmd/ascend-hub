@@ -20,8 +20,8 @@ import { ghToken, stageSkill } from './github.mjs';
 import { discardStaged, installStaged, listSkills, readRoleSets, removeSkill, saveProposedSkill, viewSkill, writeRoleSets } from './skills.mjs';
 import { readJson, readJsonLines, writeJsonAtomic } from './store.mjs';
 import { ensureRoomToken } from './token.mjs';
+import { PROBE_TTL_MS, defaultTask, sessionsToday, trayView } from './tray.mjs';
 
-const PROBE_TTL_MS = 10 * 60_000;
 const MAX_BODY = 64 * 1024;
 // Starting a session may carry attachments: 12 MB of files, base64-encoded.
 const MAX_START_BODY = 17 * 1024 * 1024;
@@ -168,6 +168,12 @@ function readSession(dataDir, id) {
 
 const STATUS_FOR = { SKILL_SCAN: 409, SKILL_EXISTS: 409, BODY_TOO_LARGE: 413, PROJECT_EXISTS: 409, SKILL_PICK: 409, SKILL_FETCH_FAILED: 502, GITHUB_FAILED: 502, REVIEW_POSTED: 409 };
 
+// ASCEND_ROOM_IDLE_MS: how long the room waits without requests before it exits; 0 never exits.
+export function idleFromEnv(env) {
+  const value = Number(env.ASCEND_ROOM_IDLE_MS);
+  return env.ASCEND_ROOM_IDLE_MS !== undefined && Number.isFinite(value) && value >= 0 ? value : 30 * 60_000;
+}
+
 export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, fetchImpl = globalThis.fetch, port = 5181, idleMs = 30 * 60_000, queueMs = 15_000, replyMs = 10_000, token = randomBytes(32).toString('hex') }) {
   // The readiness probe is a real turn, so it also refreshes Claude's quota before any session runs.
   const probeOne = probe ?? (id => probeAgent(id, settings, runTurn, event => {
@@ -177,12 +183,13 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   const expected = Buffer.from(`Bearer ${token}`);
   const agents = Object.fromEntries(AGENT_IDS.map(id => [id, { state: 'checking' }]));
   let probedAt = 0;
+  // Resolves once every probe has answered, for callers that must act on fresh readiness (the tray's task box).
   const refreshProbes = () => {
     probedAt = Date.now();
-    for (const id of AGENT_IDS) {
+    return Promise.all(AGENT_IDS.map(id => {
       agents[id] = { state: 'checking' };
-      probeOne(id).then(result => { agents[id] = result; }, error => { agents[id] = { state: 'offline', detail: error.message }; });
-    }
+      return probeOne(id).then(result => { agents[id] = result; }, error => { agents[id] = { state: 'offline', detail: error.message }; });
+    }));
   };
   let session = null;
   const busy = () => Boolean(session && !TERMINAL.has(session.state.stage));
@@ -212,6 +219,8 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     return s;
   };
   let lastRequest = Date.now();
+  // When a Hub page last reached the room (Hub's proxy marks its requests); the launcher stops Hub after a quiet spell.
+  let lastViewerAt = null;
   const queue = new RoomQueue(dataDir);
   // The queue runner: due schedules join the queue, and the next item starts once no session runs and every agent is ready.
   // A start that fails (a bad body, a missing repo) is kept with its reason and the queue moves on.
@@ -248,9 +257,30 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     };
     const auth = Buffer.from(req.headers.authorization ?? '');
     if (auth.length !== expected.length || !timingSafeEqual(auth, expected)) return send(401, { error: 'UNAUTHORIZED' });
+    if (req.headers['x-ascend-viewer'] === '1') lastViewerAt = new Date().toISOString();
     try {
       const route = `${req.method} ${new URL(req.url, 'http://room').pathname}`;
       const body = req.method === 'POST' ? await readBody(req, route === 'POST /sessions' ? MAX_START_BODY : MAX_BODY) : null;
+      // The launcher's tray remote: never probes unless asked to refresh readiness that has gone stale.
+      if (route === 'GET /tray') {
+        const refresh = new URL(req.url, 'http://room').searchParams.get('refresh') === '1';
+        if (refresh && Date.now() - probedAt > PROBE_TTL_MS && !busy()) await refreshProbes();
+        const now = Date.now();
+        return send(200, trayView({ agents, session: session?.view() ?? null, sessions: sessionsToday(dataDir, now), probedAt, lastViewerAt, nowMs: now, buildsRoot: settings.buildsRoot }));
+      }
+      if (route === 'POST /viewer') { res.writeHead(204, { 'cache-control': 'no-store' }); return res.end(); }
+      if (route === 'POST /tray/task') {
+        const text = String(body?.text ?? '').trim();
+        if (!text) return send(400, { error: 'TEXT_REQUIRED', message: 'Type a task first.' });
+        const brief = defaultTask(text);
+        if (busy()) return send(201, { queued: true, item: queue.add(brief), ...queue.view() });
+        if (Date.now() - probedAt > PROBE_TTL_MS) await refreshProbes();
+        const missing = AGENT_IDS.filter(id => agents[id].state !== 'ready');
+        if (missing.length) return send(409, { error: 'AGENTS_NOT_READY', message: `Not ready: ${missing.join(', ')}.` });
+        session = watch(RoomSession.create({ dataDir, settings, runTurn }, brief));
+        session.kick();
+        return send(201, { session: session.summary() });
+      }
       if (route === 'GET /status') {
         if (Date.now() - probedAt > PROBE_TTL_MS && !busy()) refreshProbes();
         const repos = listRepos(settings).map(dir => ({ dir, check: suggestCheck(dir, settings.checks) }));
@@ -420,8 +450,9 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     await new Promise(resolveClose => server.close(resolveClose));
   };
   // Queued or scheduled work keeps the room up, or nothing would start it.
-  const idleTimer = setInterval(() => { if (!busy() && !queue.waiting && Date.now() - lastRequest > idleMs) void close(); }, 60_000);
-  idleTimer.unref();
+  // idleMs 0: never idle out (the desktop launcher owns the room and would only start it again).
+  const idleTimer = idleMs > 0 ? setInterval(() => { if (!busy() && !queue.waiting && Date.now() - lastRequest > idleMs) void close(); }, 60_000) : null;
+  idleTimer?.unref();
 
   return { port: actualPort, token, close, getSession: () => session, pollReplies: () => replies?.poll() };
 }
@@ -432,7 +463,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   // envFile: where connector variables are read when the room's environment lacks them (see connectors.mjs).
   const settings = { ...mergeSettings(defaultSettings(), readJson(join(dataDir, 'settings.json'), {})), envFile: join(hubRoot, '.env.local') };
   const token = ensureRoomToken(join(hubRoot, '.env.local'));
-  const room = await startRoomServer({ dataDir, settings, token, port: Number(process.env.ASCEND_ROOM_PORT ?? 5181) });
+  const room = await startRoomServer({ dataDir, settings, token, port: Number(process.env.ASCEND_ROOM_PORT ?? 5181), idleMs: idleFromEnv(process.env) });
   const shutdown = () => room.close().then(() => process.exit(0));
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);

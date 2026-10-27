@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import test from 'node:test';
-import { startRoomServer } from '../../scripts/agent-room/server.mjs';
+import { idleFromEnv, startRoomServer } from '../../scripts/agent-room/server.mjs';
 import { RoomSession } from '../../scripts/agent-room/session.mjs';
 import { fakeRunTurn, json, tempRoom, testSettings } from './helpers.mjs';
 
@@ -147,4 +147,54 @@ test('status lists debate folders and a debate session starts through the API', 
   assert.equal(bad.status, 400);
   assert.equal((await bad.json()).error, 'FOLDER_NOT_ALLOWED');
   await room.close();
+});
+
+test('GET /tray never probes; refresh=1 does not probe again while readiness is fresh', async () => {
+  let probes = 0;
+  const { room, call } = await boot({ probe: async () => { probes++; return { state: 'ready' }; } });
+  // The room probes once at start; after that only stale readiness is refreshed.
+  const fresh = await (await call('GET', '/tray?refresh=1')).json();
+  assert.equal(probes, 3);
+  assert.deepEqual(fresh.tvs.map(t => t.bug), ['IDLE', 'IDLE', 'IDLE']);
+  await call('GET', '/tray');
+  await call('GET', '/tray?refresh=1');
+  assert.equal(probes, 3);
+  await room.close();
+});
+
+test('a viewer header stamps lastViewerAt; the launcher\'s own calls do not', async () => {
+  const { room, call } = await boot();
+  assert.equal((await (await call('GET', '/tray')).json()).lastViewerAt, null);
+  const res = await fetch(`http://127.0.0.1:${room.port}/viewer`, { method: 'POST', headers: { authorization: `Bearer ${room.token}`, 'x-ascend-viewer': '1' } });
+  assert.equal(res.status, 204);
+  assert.match((await (await call('GET', '/tray')).json()).lastViewerAt, /^\d{4}-\d\d-\d\dT/);
+  await room.close();
+});
+
+test('POST /tray/task starts a feature build, or queues it while busy', async () => {
+  const { room, call } = await boot();
+  assert.equal((await call('POST', '/tray/task', { text: '  ' })).status, 400);
+  const started = await call('POST', '/tray/task', { text: 'Build a todo app' });
+  assert.equal(started.status, 201);
+  assert.equal((await started.json()).session.project, 'build-a-todo');
+  const queued = await call('POST', '/tray/task', { text: 'Then a timer' });
+  assert.equal(queued.status, 201);
+  const body = await queued.json();
+  assert.equal(body.queued, true);
+  assert.equal(body.item.body.task, 'Then a timer');
+  await room.close();
+});
+
+test('POST /tray/task names the agents that are not ready', async () => {
+  const { room, call } = await boot({ probe: async id => ({ state: id === 'agy' ? 'offline' : 'ready' }) });
+  const res = await call('POST', '/tray/task', { text: 'Build a todo app' });
+  assert.equal(res.status, 409);
+  assert.match((await res.json()).message, /agy/);
+  await room.close();
+});
+
+test('ASCEND_ROOM_IDLE_MS 0 turns the idle exit off', () => {
+  assert.equal(idleFromEnv({}), 30 * 60_000);
+  assert.equal(idleFromEnv({ ASCEND_ROOM_IDLE_MS: '0' }), 0);
+  assert.equal(idleFromEnv({ ASCEND_ROOM_IDLE_MS: 'soon' }), 30 * 60_000);
 });
