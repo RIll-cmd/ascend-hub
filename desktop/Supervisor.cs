@@ -22,6 +22,8 @@ namespace Ascend.Desktop {
         public int port { get; set; }
         public string[] fixtureArguments { get; set; }
         public int startupSeconds { get; set; }
+        // Hub on demand: minutes without a Hub page before the launcher stops Hub; null means 10, 0 turns it off.
+        public int? idleStopMinutes { get; set; }
     }
     public sealed class Profile {
         public int schemaVersion { get; set; }

@@ -38,16 +38,51 @@ function Get-HubFailureText([string]$code) {
     }
 }
 # $room is the parsed /api/room reply, or $null when Hub or the room is unreachable.
-function Get-AgentSummary($room) {
-    if ($null -eq $room -or -not $room.online -or $null -eq $room.agents) { return 'Offline' }
-    $states = @($room.agents.PSObject.Properties | ForEach-Object { [string]$_.Value.state })
-    if ($states.Count -eq 0) { return 'Offline' }
-    if (@($states | Where-Object { $_ -ne 'checking' }).Count -eq 0) { return 'Starting' }
-    $up = @($states | Where-Object { $_ -notin @('offline','checking') }).Count
+# The agent line, from the room's GET /tray reply (each TV carries its agent's state).
+function Get-AgentSummary($tray) {
+    if ($null -eq $tray -or $null -eq $tray.tvs) { return 'Offline' }
+    $tvs = @($tray.tvs)
+    if ($tvs.Count -eq 0) { return 'Offline' }
+    if (@($tvs | Where-Object { $_.state -ne 'checking' }).Count -eq 0) { return 'Starting' }
+    $up = @($tvs | Where-Object { $_.state -notin @('offline','checking') }).Count
     # Name the ones that need attention, usually a CLI that is signed out or missing.
     $names = @{ codex = 'Codex'; claude = 'Claude'; agy = 'Antigravity' }
-    $down = @($room.agents.PSObject.Properties | Where-Object { [string]$_.Value.state -eq 'offline' } | ForEach-Object { if ($names[$_.Name]) { $names[$_.Name] } else { $_.Name } })
-    if ($down.Count) { "$up of $($states.Count) agents, $($down -join ' and ') offline" } else { "$up of $($states.Count) agents" }
+    $down = @($tvs | Where-Object { $_.state -eq 'offline' } | ForEach-Object { if ($names[$_.id]) { $names[$_.id] } else { $_.id } })
+    if ($down.Count) { "$up of $($tvs.Count) agents, $($down -join ' and ') offline" } else { "$up of $($tvs.Count) agents" }
+}
+# The launcher's room line: the room runs whether or not Hub does.
+function Get-RoomLine([string]$roomState, [string]$agents) {
+    switch ($roomState) { 'running' { $agents } 'adopted' { "$agents (started elsewhere)" } 'starting' { 'Starting' } default { 'Agent room stopped' } }
+}
+# Hub on demand: 'none', 'countdown:N' (whole minutes left, shown for the last 2) or 'stop'. Quiet time counts from
+# the later of Hub becoming ready and the last Hub page heartbeat; $minutes 0 turns auto-stop off.
+function Get-HubIdleAction($lastViewerAt, [DateTime]$hubReadyAt, [DateTime]$now, [int]$minutes) {
+    if ($minutes -le 0) { return 'none' }
+    $since = $hubReadyAt.ToUniversalTime()
+    if ($lastViewerAt) { $seen = ([DateTime]::Parse([string]$lastViewerAt, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind)).ToUniversalTime(); if ($seen -gt $since) { $since = $seen } }
+    $left = $minutes - ($now.ToUniversalTime() - $since).TotalMinutes
+    if ($left -le 0) { 'stop' } elseif ($left -le 2) { "countdown:$([math]::Ceiling($left))" } else { 'none' }
+}
+# NotifyIcon tooltips stop at 63 characters.
+function Get-TrayTooltip($tray, [bool]$hubOn) {
+    $tip = if ($tray -and $tray.needs) { "Ascend Hub: $($tray.needs)" } elseif ($hubOn) { 'Ascend Hub: Hub on' } else { 'Ascend Hub: Hub off' }
+    $tip.Substring(0, [math]::Min(63, $tip.Length))
+}
+function Get-QuitPrompt([bool]$running, [bool]$roomOwned) {
+    if (-not $running) { return $null }
+    if ($roomOwned) { 'A session is running. Quit stops it and the agent room.' } else { 'The agent room was started elsewhere and keeps running.' }
+}
+# The tray icon with an amber dot in its lower right, while a session waits for the owner.
+function New-AttentionIcon([Drawing.Icon]$base) {
+    $bitmap = New-Object Drawing.Bitmap 32, 32
+    $graphics = [Drawing.Graphics]::FromImage($bitmap)
+    try {
+        $graphics.SmoothingMode = 'AntiAlias'
+        $graphics.DrawIcon((New-Object Drawing.Icon $base, 32, 32), (New-Object Drawing.Rectangle 0, 0, 32, 32))
+        $graphics.FillEllipse((New-Object Drawing.SolidBrush ([Drawing.ColorTranslator]::FromHtml('#ef9f27'))), 18, 18, 13, 13)
+        $graphics.DrawEllipse((New-Object Drawing.Pen ([Drawing.Color]::Black), 1.5), 18, 18, 13, 13)
+    } finally { $graphics.Dispose() }
+    [Drawing.Icon]::FromHandle($bitmap.GetHicon())
 }
 # Free space on each drive Hub writes to (the system drive for npm and temp files, the builds folder for sessions).
 # $free maps a drive root to its free bytes, so tests need no real drives; below $minGb the line warns.
@@ -111,7 +146,9 @@ function Set-HubSnapshot($window, $snapshot, [string]$agents) {
     $window.FindName('AgentStatus').Text = $agents
     $window.FindName('CoreStatus').Text = $core
     Set-HubDot $window 'UiDot' $(if ($ui -eq 'Running') { 'good' } else { 'warn' })
-    Set-HubDot $window 'AgentDot' $(if ($agents -match '^[1-9]\d* of \d+ agents$') { 'good' } elseif ($agents -match '^[1-9]\d* of ' -or $agents -eq 'Starting') { 'warn' } else { 'off' })
+    Set-HubDot $window 'AgentDot' $(if ($agents -match '^[1-9]\d* of \d+ agents( \(started elsewhere\))?$') { 'good' } elseif ($agents -match '^[1-9]\d* of ' -or $agents -eq 'Starting') { 'warn' } else { 'off' })
+    $roomStart = $window.FindName('RoomStart')
+    if ($null -ne $roomStart) { $stopped = $agents -eq 'Agent room stopped'; $roomStart.Visibility = if ($stopped) { 'Visible' } else { 'Collapsed' }; $roomStart.IsEnabled = $stopped }
     $window.FindName('DiskStatus').Text = $script:HubDisk.Text
     Set-HubDot $window 'DiskDot' $(if ($script:HubDisk.Text -eq 'Not checked') { 'off' } elseif ($script:HubDisk.Low) { 'warn' } else { 'good' })
     Set-HubDot $window 'CoreDot' $(if ($core -eq 'Available') { 'good' } elseif ($core -eq 'Not checked') { 'off' } else { 'warn' })

@@ -57,7 +57,7 @@ export function trayView({ agents, session, sessions, probedAt, lastViewerAt, no
     const s = tvStatus(agent, scene, graphicFor(id, state, scene), nowMs);
     // Readiness only goes stale for an agent at rest: one at work has answered just now.
     const old = stale && (state === 'idle' || state === 'offline') && s.bug !== 'WAIT';
-    return { id, channel: s.channel, color: AGENT_COLORS[id], bug: s.bug, mood: s.mood, headline: s.headline,
+    return { id, state, channel: s.channel, color: AGENT_COLORS[id], bug: s.bug, mood: s.mood, headline: s.headline,
       sub: old ? `${s.sub} · checked ${ageOf(nowMs - probedAt)} ago` : s.sub, banner: s.banner, stale: old };
   });
   const lead = (tvs.find(t => t.bug === 'WAIT') ?? tvs.find(t => t.bug === 'LIVE'))?.id ?? null;

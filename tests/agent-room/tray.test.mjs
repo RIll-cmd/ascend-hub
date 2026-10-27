@@ -23,7 +23,7 @@ test('the lead is the TV that needs you, then one at work', () => {
   const coding = view({ session: session() });
   assert.equal(coding.lead, 'claude');
   assert.deepEqual(coding.tvs.map(t => t.id), ['codex', 'claude', 'agy']);
-  assert.deepEqual(coding.tvs[1], { id: 'claude', channel: 'CH 05', color: '#d97757', bug: 'LIVE', mood: 'working', headline: 'CLAUDE · CODING', sub: 'task 2/3 · Login form · 4m', banner: '#d97757', stale: false });
+  assert.deepEqual(coding.tvs[1], { id: 'claude', state: 'busy', channel: 'CH 05', color: '#d97757', bug: 'LIVE', mood: 'working', headline: 'CLAUDE · CODING', sub: 'task 2/3 · Login form · 4m', banner: '#d97757', stale: false });
   const quiet = view({});
   assert.deepEqual([quiet.lead, quiet.needs, quiet.running, quiet.buildsRoot], [null, null, false, 'D:\\builds']);
 });

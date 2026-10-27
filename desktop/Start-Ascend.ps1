@@ -16,7 +16,7 @@ try {
     $references = @([object].Assembly.Location,[System.Net.IPAddress].Assembly.Location,
         [System.Linq.Enumerable].Assembly.Location,[System.Web.Script.Serialization.JavaScriptSerializer].Assembly.Location)
     Add-Type -Path @((Join-Path $desktopDirectory 'ProcessHost.cs'),(Join-Path $desktopDirectory 'Supervisor.cs'),
-        (Join-Path $desktopDirectory 'ProductOwner.cs')) -ReferencedAssemblies $references
+        (Join-Path $desktopDirectory 'ProductOwner.cs'),(Join-Path $desktopDirectory 'RoomHost.cs')) -ReferencedAssemblies $references
     . (Join-Path $desktopDirectory 'LauncherPresentation.ps1')
     if ($product -eq 'Hub') { Add-Type -AssemblyName System.Windows.Forms, System.Drawing }
     $ownerSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
@@ -40,7 +40,16 @@ try {
     if($product -eq 'Vision'){$ui['ChatRecovery']=$window.FindName('ChatRecovery')}
     $supervisor=[Ascend.Desktop.Supervisor]::new($ProfilePath,$diagnosticsDirectory,[bool]$FixtureMode,$component)
     $script:closeRequested=$false
-    $script:quitting=$false;$script:autoOpened=$false;$script:trayHinted=$false;$script:roomClient=$null;$script:roomPolledAt=[DateTime]::MinValue
+    $script:quitting=$false;$script:autoOpened=$false;$script:trayHinted=$false;$script:roomClient=$null;$script:trayPolledAt=[DateTime]::MinValue
+    # Hub on demand: the launcher owns the agent room (RoomHost), reads the tray remote's view from it, and stops Hub
+    # after idleStopMinutes without a Hub page. Fixture runs never start a real room.
+    $script:roomHost=$null;$script:Tray=$null;$script:hubReadyAt=$null;$script:IdleAction='none';$script:popupOpen=$false;$script:TrayChanged=$null;$script:idleMinutes=10;$script:attentionShown=$false
+    if($product -eq 'Hub' -and -not $FixtureMode){
+        try{
+            $hubProfile=[Ascend.Desktop.Profile]::Read($ProfilePath).hub
+            if($null -ne $hubProfile){$script:roomHost=[Ascend.Desktop.RoomHost]::new($hubProfile.executable,$hubProfile.root);if($null -ne $hubProfile.idleStopMinutes){$script:idleMinutes=[int]$hubProfile.idleStopMinutes}}
+        }catch{$script:roomHost=$null}
+    }
     function Show-Launcher {$window.Show();$window.WindowState='Normal';[void]$window.Activate()}
     # Edge's App Paths entries first, then its standard install folders; Resolve-EdgePath keeps only a real msedge.exe.
     function Get-EdgeCandidates {
@@ -61,22 +70,33 @@ try {
         $start=New-Object Diagnostics.ProcessStartInfo($parsed.AbsoluteUri);$start.UseShellExecute=$true
         [void][Diagnostics.Process]::Start($start)
     }
-    # One request at a time, at most every 5 seconds; the reply arrives on the UI thread through WebClient's sync context.
-    function Start-RoomPoll([string]$url) {
-        if($null -ne $script:roomClient -or ([DateTime]::UtcNow-$script:roomPolledAt).TotalSeconds -lt 5){return}
-        $script:roomPolledAt=[DateTime]::UtcNow
-        $client=New-Object Net.WebClient;$client.Proxy=$null;$script:roomClient=$client
+    # GET /tray on the room, one request at a time: every 2 s while the tray remote is open, every 15 s otherwise (and
+    # at once with $refresh, which also renews stale readiness). The reply arrives on the UI thread through WebClient.
+    function Start-TrayPoll([bool]$refresh=$false) {
+        $room=$script:roomHost
+        if($null -eq $room -or $room.State -notin @('running','adopted')){
+            $script:Tray=$null;$script:HubAgentSummary=Get-RoomLine $(if($room){$room.State}else{'stopped'}) 'Offline'
+            if($script:TrayChanged){& $script:TrayChanged};return
+        }
+        $every=if($script:popupOpen){2}else{15}
+        if($null -ne $script:roomClient -or (-not $refresh -and ([DateTime]::UtcNow-$script:trayPolledAt).TotalSeconds -lt $every)){return}
+        $script:trayPolledAt=[DateTime]::UtcNow
+        $conn=$room.Env
+        $client=New-Object Net.WebClient;$client.Proxy=$null;$client.Encoding=[Text.Encoding]::UTF8;$client.Headers['Authorization']="Bearer $($conn.Token)";$script:roomClient=$client
         $client.Add_DownloadStringCompleted({param($sender,$e)
             try{
-                $room=if($e.Error -or $e.Cancelled){$null}else{$e.Result|ConvertFrom-Json}
-                $script:HubAgentSummary=Get-AgentSummary $room
-                $script:HubDisk=Get-DiskSummary @($env:SystemDrive,$(if($room){$room.buildsRoot}))
-            }catch{$script:HubAgentSummary='Offline'}
+                $script:Tray=if($e.Error -or $e.Cancelled){$null}else{$e.Result|ConvertFrom-Json}
+                $script:HubAgentSummary=Get-RoomLine $script:roomHost.State (Get-AgentSummary $script:Tray)
+                $script:HubDisk=Get-DiskSummary @($env:SystemDrive,$(if($script:Tray){$script:Tray.buildsRoot}))
+                if($script:TrayChanged){& $script:TrayChanged}
+            }catch{$script:Tray=$null}
             finally{$sender.Dispose();$script:roomClient=$null}
         })
-        try{$client.DownloadStringAsync([Uri]($url+'api/room'))}catch{$client.Dispose();$script:roomClient=$null;$script:HubAgentSummary='Offline'}
+        try{$client.DownloadStringAsync([Uri]("http://127.0.0.1:$($conn.Port)/tray"+$(if($refresh){'?refresh=1'}else{''})))}catch{$client.Dispose();$script:roomClient=$null;$script:Tray=$null}
     }
     function Invoke-Quit {
+        $prompt=Get-QuitPrompt ([bool]($script:Tray -and $script:Tray.running)) ([bool]($script:roomHost -and $script:roomHost.Owned))
+        if($prompt -and -not $FixtureMode -and [Windows.MessageBox]::Show("$prompt Quit anyway?",'Quit Ascend Hub','YesNo','Warning') -ne 'Yes'){return}
         $script:quitting=$true
         $snapshot=$supervisor.Get($component)
         if($snapshot.State -in @('stopped','failed') -and -not $snapshot.Owned){$window.Close();return}
@@ -117,12 +137,22 @@ try {
             if($product -eq 'Hub'){
                 if($snapshot.State -in @('ready','degraded') -and -not [string]::IsNullOrWhiteSpace($snapshot.Url)){
                     if(-not $script:autoOpened){$script:autoOpened=$true;try{Open-AscendUrl}catch{$ui['ProfileStatus'].Text="Couldn't open the browser. Press Open Hub to try again."}}
-                    Start-RoomPoll $snapshot.Url
-                } elseif($snapshot.State -in @('checking','starting')){$script:autoOpened=$false}
-                else{$script:HubAgentSummary='Offline'}
+                    if($null -eq $script:hubReadyAt){$script:hubReadyAt=[DateTime]::UtcNow}
+                    # Without the room there is no heartbeat to read, so Hub never stops for lack of one.
+                    $script:IdleAction=if($script:Tray){Get-HubIdleAction $script:Tray.lastViewerAt $script:hubReadyAt ([DateTime]::UtcNow) $script:idleMinutes}else{'none'}
+                    if($script:IdleAction -eq 'stop'){$script:IdleAction='none';$supervisor.ForceStop($component)}
+                } else {
+                    if($snapshot.State -in @('checking','starting')){$script:autoOpened=$false}
+                    $script:hubReadyAt=$null;$script:IdleAction='none'
+                }
+                Start-TrayPoll
             }
             Set-LauncherSnapshot $window $snapshot $product
-            if($null -ne $tray){$tip="Ascend Hub - $($ui['State'].Text)";$tray.Text=$tip.Substring(0,[math]::Min(63,$tip.Length))}
+            if($null -ne $tray){
+                $tray.Text=Get-TrayTooltip $script:Tray ($snapshot.State -in @('ready','degraded'))
+                $needs=[bool]($script:Tray -and $script:Tray.needs)
+                if($needs -ne $script:attentionShown){$script:attentionShown=$needs;$tray.Icon=if($needs){$attentionIcon}else{$baseIcon}}
+            }
             if($script:closeRequested -and $snapshot.State -eq 'stopped'){$window.Close()}
             if($script:quitting -and $snapshot.State -in @('stopped','failed')){$window.Close()}
         } catch {$ui['ProfileStatus'].Text='Status update failed. Expand Diagnostics for local startup information.'}
@@ -131,14 +161,13 @@ try {
         $snapshot=$supervisor.Get($component)
         $busy=$snapshot.State -notin @('stopped','failed') -or $snapshot.Owned
         if($product -eq 'Hub'){
-            # A running Hub hides to the tray; Quit waits for the stop, then the tick closes the window.
-            if($busy){
+            # While Hub runs or the launcher looks after the agent room, it lives in the tray and only Quit closes it;
+            # Quit waits for Hub's stop, then the tick closes the window. With neither, closing exits as before.
+            if(-not $script:quitting -and ($busy -or $null -ne $script:roomHost)){
                 $_.Cancel=$true
-                if(-not $script:quitting){
-                    [void]$window.Dispatcher.BeginInvoke([Action]{$window.Hide()})
-                    if(-not $script:trayHinted -and -not $FixtureMode -and $null -ne $tray){$script:trayHinted=$true;$tray.ShowBalloonTip(4000,'Ascend Hub','Ascend Hub keeps running here. Right-click to stop it.',[Windows.Forms.ToolTipIcon]::Info)}
-                }
-            }
+                [void]$window.Dispatcher.BeginInvoke([Action]{$window.Hide()})
+                if(-not $script:trayHinted -and -not $FixtureMode -and $null -ne $tray){$script:trayHinted=$true;$tray.ShowBalloonTip(4000,'Ascend Hub','Ascend Hub keeps running here. Click the icon for the agents; right-click to quit.',[Windows.Forms.ToolTipIcon]::Info)}
+            } elseif($busy){$_.Cancel=$true}
             return
         }
         if($busy){
@@ -155,7 +184,8 @@ try {
     $tray=$null
     if($product -eq 'Hub'){
         $tray=New-Object Windows.Forms.NotifyIcon
-        $tray.Icon=New-Object Drawing.Icon (Join-Path $desktopDirectory 'assets\hub.ico')
+        $baseIcon=New-Object Drawing.Icon (Join-Path $desktopDirectory 'assets\hub.ico');$attentionIcon=New-AttentionIcon $baseIcon
+        $tray.Icon=$baseIcon
         $tray.Text='Ascend Hub'
         $menu=New-Object Windows.Forms.ContextMenuStrip
         $menu.Items.Add('Open Hub').Add_Click({try{Open-AscendUrl}catch{Show-Launcher}})
@@ -167,10 +197,12 @@ try {
         $tray.Add_DoubleClick({if($supervisor.Get($component).State -in @('ready','degraded')){try{Open-AscendUrl}catch{Show-Launcher}}else{Show-Launcher}})
         $tray.Visible=$true
     }
-    $window.Add_Closed({$timer.Stop();if($null -ne $tray){$tray.Visible=$false;$tray.Dispose()};$supervisor.Dispose();if($product -eq 'Hub'){$window.Dispatcher.InvokeShutdown()}})
+    if($product -eq 'Hub'){$window.FindName('RoomStart').Add_Click({if($script:roomHost){$script:roomHost.Start()}})}
+    $window.Add_Closed({$timer.Stop();if($null -ne $tray){$tray.Visible=$false;$tray.Dispose()};if($script:roomHost){$script:roomHost.Dispose()};$supervisor.Dispose();if($product -eq 'Hub'){$window.Dispatcher.InvokeShutdown()}})
     Set-LauncherSnapshot $window ($supervisor.Get($component)) $product
     if($SelfTest){if($null -ne $tray){$tray.Dispose()};$supervisor.Dispose();"launcher-$component-components-loaded";return}
     $timer.Start()
+    if($script:roomHost){$script:roomHost.Start()}
     if($Target -ne 'None'){[void]$supervisor.Start($component,$false)}
     # Hiding a ShowDialog window ends its modal loop, so the Hub launcher (which hides to the tray) runs its own dispatcher loop.
     if($product -eq 'Hub'){$window.Show();[Windows.Threading.Dispatcher]::Run()}else{[void]$window.ShowDialog()}

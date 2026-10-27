@@ -27,16 +27,20 @@
       </Border>
       <TextBlock x:Name="Stage" Foreground="{DynamicResource Secondary}" FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap"/>
       <ProgressBar x:Name="Progress" IsIndeterminate="True" Height="6" Margin="0,10,0,0" Foreground="{DynamicResource Accent}" Background="{DynamicResource Surface}" BorderThickness="0" Visibility="Collapsed"/>
+      <!-- The agent room runs whether or not Hub does. -->
+      <StackPanel Margin="0,12,0,0">
+        <Grid Style="{StaticResource Line}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <Ellipse x:Name="AgentDot" Width="8" Height="8" Fill="{DynamicResource Good}" Margin="0,0,8,0" VerticalAlignment="Center"/>
+          <TextBlock Grid.Column="1" Text="Agent room" Foreground="{DynamicResource Secondary}"/>
+          <TextBlock x:Name="AgentStatus" Grid.Column="2" Text="Offline"/>
+        </Grid>
+        <Button x:Name="RoomStart" Content="Start the _agent room" AutomationProperties.Name="Start the agent room" HorizontalAlignment="Left" Visibility="Collapsed"/>
+      </StackPanel>
       <StackPanel x:Name="StatusLines" Margin="0,12,0,0" Visibility="Collapsed">
         <Grid Style="{StaticResource Line}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <Ellipse x:Name="UiDot" Width="8" Height="8" Fill="{DynamicResource Good}" Margin="0,0,8,0" VerticalAlignment="Center"/>
           <TextBlock Grid.Column="1" Text="Hub" Foreground="{DynamicResource Secondary}"/>
           <TextBlock x:Name="UiStatus" Grid.Column="2" Text="Not checked"/>
-        </Grid>
-        <Grid Style="{StaticResource Line}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-          <Ellipse x:Name="AgentDot" Width="8" Height="8" Fill="{DynamicResource Good}" Margin="0,0,8,0" VerticalAlignment="Center"/>
-          <TextBlock Grid.Column="1" Text="Agent room" Foreground="{DynamicResource Secondary}"/>
-          <TextBlock x:Name="AgentStatus" Grid.Column="2" Text="Offline"/>
         </Grid>
         <Grid Style="{StaticResource Line}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <Ellipse x:Name="CoreDot" Width="8" Height="8" Fill="{DynamicResource Warn}" Margin="0,0,8,0" VerticalAlignment="Center"/>
