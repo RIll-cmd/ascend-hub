@@ -57,6 +57,7 @@ import {
 import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../components/RetroMediaCenter";
 import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
+import { RoomWindow } from "../components/RoomWindow";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
 import { RetroCdBrowserModal } from "../components/RetroCdBrowserModal";
 import { getShelfTvAccessibleLabel, ShelfStatusTv, type StatusMediaIssue } from "../components/status/ShelfStatusTv";
@@ -1835,10 +1836,7 @@ export default function Home() {
                                           }}
                                           onPointerLeave={event => { event.currentTarget.style.transform = ""; }}
                                         >
-                                          <div className="framed-poster-art">
-                                            <img src="/ascend-hub-staircase.webp" alt="Ascend Hub — One level at a time" draggable={false} />
-                                            <span className="framed-poster-glass" aria-hidden="true" />
-                                          </div>
+                                          <RoomWindow />
                                         </a>
                                       ) : (
                                         <div

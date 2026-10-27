@@ -220,7 +220,7 @@ Then double-click **Ascend Hub** on the desktop. Closing the launcher window whi
 
 ## Using the Agent Room
 
-1. Open **http://127.0.0.1:5173/room**, or click the *Ascend Hub* poster on the shelf. Wait until all three agents show as ready.
+1. Open **http://127.0.0.1:5173/room**, or click the *Agent Room* window in the middle of the shelf. The window shows three little TVs and the same headline the room's TVs use: "ALL QUIET" with how many agents are ready, the agent at work (for example "CLAUDE · CODING"), or "NEEDS YOU" with what to approve; "ROOM CLOSED" means the room process is not running. Wait until all three agents show as ready.
 2. Under **New session** in the right column, choose **Build** or **Debate**.
 3. For a build, pick the **Kind of work** and either a **New project** name or an **Existing repo**. Under **Options**, add a **check** command such as `npm test`. It is required for *Bug fix* and *Refactor*.
 4. Also under **Options**, optionally set models, limits, sub-agents, **Keep going on failing tasks** and **Run independent tasks at the same time**. Tick **Set roles myself** to skip the discussion.

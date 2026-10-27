@@ -462,8 +462,143 @@ a.framed-poster { display: block; color: inherit; cursor: pointer; }
   background: linear-gradient(122deg, #fff2 0%, transparent 20%, transparent 76%, #fff1 100%);
   box-shadow: inset 0 0 18px #0005;
 }
+/* The poster as a window into the Agent Room: three TVs on a bench, a channel bug and a lower third. */
+.room-window {
+  container-type: size;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(ellipse at 50% 38%, #3a2c22 0%, #1a1410 62%, #0e0b09 100%);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: #f1efe8;
+  user-select: none;
+}
+.room-window-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5cqw 6cqw 0;
+  font-size: 5.2cqw;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+.room-window-title { color: #f3d6a6; text-shadow: 0 0 8px #e1ae6966; }
+.room-window-bug { display: flex; align-items: center; gap: 1.6cqw; font-size: 4.2cqw; color: #d3d1c7; }
+.room-window-bug i { width: 2.6cqw; height: 2.6cqw; border-radius: 50%; background: var(--bug, #888780); }
+.room-window[data-bug="LIVE"] { --bug: #e24b4a; }
+.room-window[data-bug="WAIT"] { --bug: #ef9f27; }
+.room-window[data-bug="IDLE"] { --bug: #888780; }
+.room-window[data-bug="OFF"] { --bug: #5f5e5a; }
+.room-window[data-bug="LIVE"] .room-window-bug i,
+.room-window[data-bug="WAIT"] .room-window-bug i { animation: room-window-blink 1.2s steps(2, jump-none) infinite; }
+.room-window-scene { position: relative; flex: 1; }
+.room-window-scene::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 16%;
+  background: linear-gradient(180deg, #2a1d14, #1a120c);
+}
+.room-window-shelf {
+  position: absolute;
+  top: 10%;
+  width: 14%;
+  height: 52%;
+  background: repeating-linear-gradient(180deg, #4b3424 0 2px, #2a1d14 2px 33%);
+  box-shadow: inset 0 0 0 1px #6b4a3166;
+}
+.room-window-shelf--left { left: 6%; }
+.room-window-shelf--right { right: 6%; }
+.room-window-bench {
+  position: absolute;
+  z-index: 1;
+  left: 10%;
+  right: 10%;
+  bottom: 12%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 0 3%;
+  border-bottom: 2.4cqw solid #5a3e2a;
+  box-shadow: 0 2.4cqw 0 #00000080;
+}
+.room-window-tv {
+  width: 30%;
+  aspect-ratio: 4 / 3.3;
+  padding: 1.6cqw;
+  border-radius: 2cqw;
+  background: linear-gradient(160deg, #3d3a34, #1d1b18);
+  box-shadow: 0 0 0 1px #000a;
+}
+.room-window-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2.6cqw;
+  width: 100%;
+  height: 100%;
+  border-radius: 1.4cqw;
+  background: #22211e;
+  box-shadow: inset 0 0 3cqw #000c;
+}
+.room-window-screen i { width: 1.6cqw; height: 1.6cqw; border-radius: 50%; background: #3a3936; }
+.room-window-tv[data-mood="working"] .room-window-screen,
+.room-window-tv[data-mood="reviewing"] .room-window-screen {
+  background: radial-gradient(circle, color-mix(in srgb, var(--tv) 80%, #fff) 0%, var(--tv) 55%, color-mix(in srgb, var(--tv) 40%, #000) 100%);
+  box-shadow: 0 0 4cqw color-mix(in srgb, var(--tv) 60%, transparent), inset 0 0 3cqw #0006;
+}
+.room-window-tv[data-mood="working"] .room-window-screen i,
+.room-window-tv[data-mood="reviewing"] .room-window-screen i { background: #1a1410; }
+.room-window-tv[data-mood="idle"] .room-window-screen { background: color-mix(in srgb, var(--tv) 22%, #1a1918); }
+.room-window-tv[data-mood="idle"] .room-window-screen i { height: .5cqw; border-radius: 1px; background: #888780; }
+.room-window-tv[data-mood="stuck"] .room-window-screen {
+  background: #ef9f27;
+  box-shadow: 0 0 5cqw #ef9f2799;
+  animation: room-window-blink 1.2s steps(2, jump-none) infinite;
+}
+.room-window-tv[data-mood="stuck"] .room-window-screen i { background: #3c3489; }
+.room-window-tv[data-mood="offline"] .room-window-screen {
+  background: repeating-linear-gradient(0deg, #3a3936 0 1px, #1a1918 1px 3px);
+}
+.room-window-tv[data-mood="offline"] .room-window-screen i { display: none; }
+.room-window-lower { display: flex; flex-direction: column; margin: 0 6cqw 6cqw; }
+.room-window-lower b {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 1cqw 2.4cqw;
+  overflow: hidden;
+  font-size: 5cqw;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  background: var(--banner, #5f5e5a);
+}
+.room-window-lower span {
+  padding: 1cqw 2.4cqw;
+  overflow: hidden;
+  font-size: 4cqw;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #2c2c2a;
+  background: #f1efe8;
+}
+.room-window-enter {
+  position: absolute;
+  right: 6cqw;
+  bottom: 22cqw;
+  padding: 1cqw 2.4cqw;
+  font-size: 4.2cqw;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: #1a1410;
+  background: #f3d6a6;
+  opacity: .85;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.framed-poster:hover .room-window-enter,
+.framed-poster:focus-visible .room-window-enter { opacity: 1; transform: translateX(1cqw); }
+@keyframes room-window-blink { 50% { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) {
   .framed-poster { transition: none; transform: none !important; }
+  .room-window * { animation: none !important; }
 }
 .cubby-prop {
   position: relative;
