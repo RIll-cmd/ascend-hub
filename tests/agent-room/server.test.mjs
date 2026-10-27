@@ -198,3 +198,14 @@ test('ASCEND_ROOM_IDLE_MS 0 turns the idle exit off', () => {
   assert.equal(idleFromEnv({ ASCEND_ROOM_IDLE_MS: '0' }), 0);
   assert.equal(idleFromEnv({ ASCEND_ROOM_IDLE_MS: 'soon' }), 30 * 60_000);
 });
+
+test('GET /tray?refresh=1 starts stale probes without waiting for them', async () => {
+  const { dataDir, buildsRoot } = tempRoom();
+  // Probes that never answer, and readiness that is always stale.
+  const room = await startRoomServer({ dataDir, settings: testSettings(buildsRoot), probe: () => new Promise(() => {}), port: 0, probeTtlMs: 0 });
+  try {
+    const res = await fetch(`http://127.0.0.1:${room.port}/tray?refresh=1`, { headers: { authorization: `Bearer ${room.token}` }, signal: AbortSignal.timeout(3000) });
+    assert.equal(res.status, 200);
+    assert.deepEqual((await res.json()).tvs.map(t => t.state), ['checking', 'checking', 'checking']);
+  } finally { await room.close(); }
+});

@@ -55,13 +55,20 @@ function Get-RoomLine([string]$roomState, [string]$agents) {
     switch ($roomState) { 'running' { $agents } 'adopted' { "$agents (started elsewhere)" } 'starting' { 'Starting' } default { 'Agent room stopped' } }
 }
 # Hub on demand: 'none', 'countdown:N' (whole minutes left, shown for the last 2) or 'stop'. Quiet time counts from
-# the later of Hub becoming ready and the last Hub page heartbeat; $minutes 0 turns auto-stop off.
-function Get-HubIdleAction($lastViewerAt, [DateTime]$hubReadyAt, [DateTime]$now, [int]$minutes) {
+# the latest of Hub becoming ready, the room answering again ($roomSeenAt: a restarted room has not heard a heartbeat
+# yet) and the last Hub page heartbeat; $minutes 0 turns auto-stop off.
+function Get-HubIdleAction($lastViewerAt, [DateTime]$hubReadyAt, [DateTime]$now, [int]$minutes, $roomSeenAt = $null) {
     if ($minutes -le 0) { return 'none' }
     $since = $hubReadyAt.ToUniversalTime()
+    if ($roomSeenAt -and ([DateTime]$roomSeenAt).ToUniversalTime() -gt $since) { $since = ([DateTime]$roomSeenAt).ToUniversalTime() }
     if ($lastViewerAt) { $seen = ([DateTime]::Parse([string]$lastViewerAt, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind)).ToUniversalTime(); if ($seen -gt $since) { $since = $seen } }
     $left = $minutes - ($now.ToUniversalTime() - $since).TotalMinutes
     if ($left -le 0) { 'stop' } elseif ($left -le 2) { "countdown:$([math]::Ceiling($left))" } else { 'none' }
+}
+# A second shortcut double-click: open a running Hub, start a stopped one (the owner opened Hub on purpose), else
+# show the launcher.
+function Get-ActivationAction([string]$state) {
+    if ($state -in @('ready','degraded')) { 'open' } elseif ($state -in @('stopped','failed')) { 'start' } else { 'show' }
 }
 # NotifyIcon tooltips stop at 63 characters.
 function Get-TrayTooltip($tray, [bool]$hubOn) {

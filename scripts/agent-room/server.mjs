@@ -174,7 +174,7 @@ export function idleFromEnv(env) {
   return env.ASCEND_ROOM_IDLE_MS !== undefined && Number.isFinite(value) && value >= 0 ? value : 30 * 60_000;
 }
 
-export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, fetchImpl = globalThis.fetch, port = 5181, idleMs = 30 * 60_000, queueMs = 15_000, replyMs = 10_000, token = randomBytes(32).toString('hex') }) {
+export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn, probe, fetchImpl = globalThis.fetch, port = 5181, idleMs = 30 * 60_000, probeTtlMs = PROBE_TTL_MS, queueMs = 15_000, replyMs = 10_000, token = randomBytes(32).toString('hex') }) {
   // The readiness probe is a real turn, so it also refreshes Claude's quota before any session runs.
   const probeOne = probe ?? (id => probeAgent(id, settings, runTurn, event => {
     const value = id === 'claude' ? claudeQuota(event) : null;
@@ -227,7 +227,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   const runQueue = () => {
     queue.due();
     if (busy() || !queue.items.length) return;
-    if (Date.now() - probedAt > PROBE_TTL_MS) return refreshProbes();
+    if (Date.now() - probedAt > probeTtlMs) return refreshProbes();
     if (AGENT_IDS.some(id => agents[id].state !== 'ready')) return;
     const item = queue.take();
     try {
@@ -264,7 +264,8 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
       // The launcher's tray remote: never probes unless asked to refresh readiness that has gone stale.
       if (route === 'GET /tray') {
         const refresh = new URL(req.url, 'http://room').searchParams.get('refresh') === '1';
-        if (refresh && Date.now() - probedAt > PROBE_TTL_MS && !busy()) await refreshProbes();
+        // Started, not awaited: probes are real CLI turns, and the tray must answer at once (its TVs show "checking").
+        if (refresh && Date.now() - probedAt > probeTtlMs && !busy()) void refreshProbes();
         const now = Date.now();
         return send(200, trayView({ agents, session: session?.view() ?? null, sessions: sessionsToday(dataDir, now), probedAt, lastViewerAt, nowMs: now, buildsRoot: settings.buildsRoot }));
       }
@@ -274,7 +275,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         if (!text) return send(400, { error: 'TEXT_REQUIRED', message: 'Type a task first.' });
         const brief = defaultTask(text);
         if (busy()) return send(201, { queued: true, item: queue.add(brief), ...queue.view() });
-        if (Date.now() - probedAt > PROBE_TTL_MS) await refreshProbes();
+        if (Date.now() - probedAt > probeTtlMs) await refreshProbes();
         const missing = AGENT_IDS.filter(id => agents[id].state !== 'ready');
         if (missing.length) return send(409, { error: 'AGENTS_NOT_READY', message: `Not ready: ${missing.join(', ')}.` });
         session = watch(RoomSession.create({ dataDir, settings, runTurn }, brief));
@@ -282,7 +283,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         return send(201, { session: session.summary() });
       }
       if (route === 'GET /status') {
-        if (Date.now() - probedAt > PROBE_TTL_MS && !busy()) refreshProbes();
+        if (Date.now() - probedAt > probeTtlMs && !busy()) refreshProbes();
         const repos = listRepos(settings).map(dir => ({ dir, check: suggestCheck(dir, settings.checks) }));
         refreshCodexQuota();
         return send(200, { online: true, agents, buildsRoot: settings.buildsRoot, folders: listDebateFolders(settings), repos, connectors: connectorList(settings), quota, quotaWarning: quotaWarning(quota), session: session?.summary() ?? null });

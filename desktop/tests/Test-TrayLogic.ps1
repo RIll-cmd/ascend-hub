@@ -33,6 +33,10 @@ Assert ((Get-HubIdleAction (& $iso 10) $now.AddMinutes(-60) $now 10) -eq 'stop')
 Assert ((Get-HubIdleAction (& $iso 0.5) $now.AddMinutes(-60) $now 10) -eq 'none') 'a page looked in just now'
 Assert ((Get-HubIdleAction (& $iso 60) $now.AddMinutes(-60) $now 0) -eq 'none') '0 minutes turns auto-stop off'
 Assert ((Get-HubIdleAction (& $iso 60) $now.AddMinutes(-2) $now 10) -eq 'none') 'a fresh start counts from ready, not an old page'
+Assert ((Get-HubIdleAction $null $now.AddMinutes(-60) $now 10 $now.AddMinutes(-1)) -eq 'none') 'a room that just came back has not seen the open page yet'
+Assert ((Get-ActivationAction 'ready') -eq 'open' -and (Get-ActivationAction 'degraded') -eq 'open') 'double-click opens a running Hub'
+Assert ((Get-ActivationAction 'stopped') -eq 'start' -and (Get-ActivationAction 'failed') -eq 'start') 'double-click starts Hub when it is off'
+Assert ((Get-ActivationAction 'starting') -eq 'show') 'while it starts, the launcher shows'
 
 # Tooltip: what you must do, else whether Hub is on; Windows caps it at 63 characters.
 Assert ((Get-TrayTooltip (Tray @() 'approve the plan') $true) -eq 'Ascend Hub: approve the plan') 'needs you'

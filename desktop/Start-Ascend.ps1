@@ -44,7 +44,7 @@ try {
     $script:quitting=$false;$script:autoOpened=$false;$script:trayHinted=$false;$script:roomClient=$null;$script:trayPolledAt=[DateTime]::MinValue
     # Hub on demand: the launcher owns the agent room (RoomHost), reads the tray remote's view from it, and stops Hub
     # after idleStopMinutes without a Hub page. Fixture runs never start a real room.
-    $script:pendingPath='';$script:roomHost=$null;$script:RoomView=$null;$script:hubReadyAt=$null;$script:IdleAction='none';$script:popupOpen=$false;$script:TrayChanged=$null;$script:idleMinutes=10;$script:attentionShown=$false
+    $script:pendingPath='';$script:roomSeenAt=$null;$script:roomHost=$null;$script:RoomView=$null;$script:hubReadyAt=$null;$script:IdleAction='none';$script:popupOpen=$false;$script:TrayChanged=$null;$script:idleMinutes=10;$script:attentionShown=$false
     if($product -eq 'Hub' -and -not $FixtureMode){
         try{
             $hubProfile=[Ascend.Desktop.Profile]::Read($ProfilePath).hub
@@ -87,7 +87,9 @@ try {
         $client=New-Object Net.WebClient;$client.Proxy=$null;$client.Encoding=[Text.Encoding]::UTF8;$client.Headers['Authorization']="Bearer $($conn.Token)";$script:roomClient=$client
         $client.Add_DownloadStringCompleted({param($sender,$e)
             try{
-                $script:RoomView=if($e.Error -or $e.Cancelled){$null}else{$e.Result|ConvertFrom-Json}
+                $next=if($e.Error -or $e.Cancelled){$null}else{$e.Result|ConvertFrom-Json}
+                if($null -eq $script:RoomView -and $null -ne $next){$script:roomSeenAt=[DateTime]::UtcNow}
+                $script:RoomView=$next
                 $script:HubAgentSummary=Get-RoomLine $script:roomHost.State (Get-AgentSummary $script:RoomView)
                 $script:HubDisk=Get-DiskSummary @($env:SystemDrive,$(if($script:RoomView){$script:RoomView.buildsRoot}))
                 if($script:TrayChanged){& $script:TrayChanged}
@@ -131,8 +133,10 @@ try {
         try {
             if($productOwner.ActivationPending()){
                 $current=$supervisor.Get($component)
-                # A second double-click on a running Hub goes straight to Hub; otherwise it shows the launcher.
-                if($product -eq 'Hub' -and -not $FixtureMode -and $current.State -in @('ready','degraded')){try{Open-AscendUrl}catch{Show-Launcher}}
+                # A second double-click goes straight to Hub, starting it first when it is off; otherwise it shows the launcher.
+                $action=if($product -eq 'Hub' -and -not $FixtureMode){Get-ActivationAction $current.State}else{'show'}
+                if($action -eq 'open'){try{Open-AscendUrl}catch{Show-Launcher}}
+                elseif($action -eq 'start'){$script:pendingPath='';$script:autoOpened=$false;[void]$supervisor.Start($component,$false)}
                 else{Show-Launcher}
             }
             $snapshot=$supervisor.Get($component)
@@ -141,7 +145,7 @@ try {
                     if(-not $script:autoOpened){$script:autoOpened=$true;try{Open-AscendUrl $script:pendingPath}catch{$ui['ProfileStatus'].Text="Couldn't open the browser. Press Open Hub to try again."};$script:pendingPath=''}
                     if($null -eq $script:hubReadyAt){$script:hubReadyAt=[DateTime]::UtcNow}
                     # Without the room there is no heartbeat to read, so Hub never stops for lack of one.
-                    $script:IdleAction=if($script:RoomView){Get-HubIdleAction $script:RoomView.lastViewerAt $script:hubReadyAt ([DateTime]::UtcNow) $script:idleMinutes}else{'none'}
+                    $script:IdleAction=if($script:RoomView){Get-HubIdleAction $script:RoomView.lastViewerAt $script:hubReadyAt ([DateTime]::UtcNow) $script:idleMinutes $script:roomSeenAt}else{'none'}
                     if($script:IdleAction -eq 'stop'){$script:IdleAction='none';$supervisor.ForceStop($component)}
                 } else {
                     if($snapshot.State -in @('checking','starting')){$script:autoOpened=$false}
