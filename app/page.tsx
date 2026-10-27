@@ -1651,9 +1651,12 @@ export default function Home() {
                         </div>
                       </div>
                     )}
-                    <div className="shelf-rail-h top" aria-hidden="true">
-                      <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-horizontal.avif" alt="" draggable={false} />
-                    </div>
+                    {/* The first row has no top rail: the TV scene's deck sits straight on the shelf. */}
+                    {rIdx > 0 && (
+                      <div className="shelf-rail-h top" aria-hidden="true">
+                        <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-horizontal.avif" alt="" draggable={false} />
+                      </div>
+                    )}
                     <div className="shelf-row-grid">
                       <div className="shelf-wall-v left" aria-hidden="true">
                         <img src="https://dotcom.workos.com/images/launch-week/summer-2026/shelf/border-vertical.avif" alt="" draggable={false} />
