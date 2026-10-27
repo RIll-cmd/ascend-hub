@@ -7,6 +7,7 @@ import { arcPoints, easeInOut, pulseProgress, type Vec3 } from "./pulses";
 import { buildRoom } from "./room";
 import { buildModeProps, faceCamera } from "./room-modes";
 import { graphicFor, spots } from "./room-scene";
+import { tvStatus } from "./tv-status";
 
 export type PlatePosition = { id: AgentId; x: number; y: number; visible: boolean };
 export type Deck = {
@@ -273,7 +274,8 @@ export function createDeck(canvas: HTMLCanvasElement, { tilt = true, onLost }: {
       const lines = graphic === "plan" ? room?.plan.map((t, i) => `${t.status === "done" ? "☑" : t.status === "running" ? "▸" : "☐"} ${i + 1} ${t.title}`) : undefined;
       // The live capture now shows on the shared wall screen, so the coder's own TV keeps showing it at work.
       crts[agent.id].setLive(null);
-      crts[agent.id].setScreen({ name: agent.name, color: agent.color, state: agent.state, activity: agent.activity, roles: agent.roles, look: looks?.[agent.id] ?? 0, blink, graphic, tick: graphic ? tick : 0, lines });
+      crts[agent.id].setScreen({ name: agent.name, color: agent.color, state: agent.state, activity: agent.activity, roles: agent.roles, look: looks?.[agent.id] ?? 0, blink, graphic, tick: graphic ? tick : 0, lines,
+        status: room ? tvStatus(agent, room, graphic, Date.now()) : undefined });
       const lit = room?.kind === "debate" ? room.speaker === agent.id || (room.phase === "verdict" && room.judge === agent.id) : agent.state === "busy";
       crts[agent.id].setGlow(lit && !reduced ? 0.55 + 0.45 * Math.sin(now / 320) : lit ? 0.7 : 0);
       rings[agent.id].visible = agent.waiting;

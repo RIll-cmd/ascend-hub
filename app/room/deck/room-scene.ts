@@ -9,7 +9,7 @@ export type RoomScene = {
   // Set when the owner must act: a build gate, or a pause that will not resume by itself.
   gate: { line: string } | null;
   roles: { orchestrator: AgentId | null; coders: AgentId[]; reviewer: AgentId | null };
-  plan: { title: string; status: "done" | "running" | "pending" | "failed" }[];
+  plan: { title: string; status: "done" | "running" | "pending" | "failed"; assignee: AgentId }[];
   // The shared screen's strip, for example "Task 2/3 · Claude coding · Antigravity assigned".
   task: string | null;
   check: "running" | "pass" | "fail" | null;
@@ -73,7 +73,7 @@ export function roomScene(session: SessionView | null, queue: QueueView | null):
   }
   return {
     ...base, kind, gate, roles, check, task: strip, working, reviewing,
-    plan: tasks.map(t => ({ title: t.title, status: PLAN_STATUS[t.status] })),
+    plan: tasks.map(t => ({ title: t.title, status: PLAN_STATUS[t.status], assignee: t.assignee })),
     phase: debate && PHASES.has(session.stage) ? (session.stage as RoomScene["phase"]) : null,
     speaker: kind === "debate" ? session.active?.agent ?? null : null,
     judge: debate ? session.judge ?? null : null,

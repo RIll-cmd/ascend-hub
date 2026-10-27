@@ -6,7 +6,7 @@ import { paintScreen, screenKey, type Ctx2D, type ScreenState } from "../../app/
 function recorder() {
   const calls: { op: string; args: unknown[]; fillStyle?: unknown }[] = [];
   const ctx: Record<string, unknown> = { fillStyle: "", strokeStyle: "", font: "", textAlign: "left", globalAlpha: 1, lineWidth: 1 };
-  for (const op of ["fillRect", "fillText", "beginPath", "arc", "fill", "stroke"]) {
+  for (const op of ["fillRect", "fillText", "beginPath", "arc", "fill", "stroke", "moveTo", "lineTo"]) {
     ctx[op] = (...args: unknown[]) => { calls.push({ op, args, fillStyle: ctx.fillStyle }); };
   }
   return { ctx: ctx as unknown as Ctx2D, calls, texts: () => calls.filter(c => c.op === "fillText").map(c => String(c.args[0])) };
@@ -111,4 +111,41 @@ test("paintScreen: each graphic draws its own marks instead of the eye", () => {
 test("screenKey changes with tick only for an animated graphic", () => {
   assert.notEqual(screenKey({ ...base, graphic: "code", tick: 1 }), screenKey({ ...base, graphic: "code", tick: 2 }));
   assert.equal(screenKey({ ...base, graphic: null, tick: 1 }), screenKey({ ...base, graphic: null, tick: 2 }));
+});
+
+const live: ScreenState["status"] = { channel: "CH 05", bug: "LIVE", mood: "working", headline: "CLAUDE · CODING", sub: "task 2/3 · Login form · 4m", banner: "#d97757" };
+
+test("paintScreen: a status shows the channel bug, the mascot and the lower third", () => {
+  const r = recorder();
+  paintScreen(r.ctx, 512, 384, { ...base, status: live });
+  for (const text of ["CH 05", "LIVE", "CLAUDE · CODING", "task 2/3 · Login form · 4m"]) assert.ok(r.texts().includes(text), text);
+  assert.ok(r.calls.some(c => c.op === "fillRect" && c.fillStyle === "#d97757"), "banner in the agent colour");
+  assert.ok(r.calls.some(c => c.op === "lineTo"), "mascot ears");
+  assert.ok(!r.texts().includes("editing…"), "the lower third replaces the old state word");
+});
+
+test("paintScreen: with a status the job graphic sits beside the mascot", () => {
+  const plain = recorder(), coding = recorder();
+  paintScreen(plain.ctx, 512, 384, { ...base, status: live });
+  paintScreen(coding.ctx, 512, 384, { ...base, status: live, graphic: "code", tick: 9 });
+  const codeBars = (calls: typeof plain.calls) => calls.filter(c => c.op === "fillRect" && c.fillStyle === "#9fe870").length;
+  assert.equal(codeBars(plain.calls), 0);
+  assert.ok(codeBars(coding.calls) > 0, "code lines drawn");
+});
+
+test("paintScreen: moods draw different faces, and offline keeps the static under the lower third", () => {
+  const faces = (["working", "reviewing", "idle", "stuck"] as const).map(mood => {
+    const r = recorder();
+    paintScreen(r.ctx, 512, 384, { ...base, status: { ...live, mood } });
+    return JSON.stringify(r.calls.filter(c => c.op === "arc" || c.op === "fillText"));
+  });
+  assert.equal(new Set(faces).size, 4);
+  const off = recorder();
+  paintScreen(off.ctx, 512, 384, { ...base, state: "offline", status: { ...live, bug: "OFF", mood: "offline", headline: "CLAUDE · OFFLINE" } });
+  assert.ok(off.calls.filter(c => c.op === "fillRect").length > 100, "static noise");
+  assert.ok(off.texts().includes("CLAUDE · OFFLINE"));
+});
+
+test("screenKey changes with the status", () => {
+  assert.notEqual(screenKey({ ...base, status: live }), screenKey({ ...base, status: { ...live, sub: "task 2/3 · Login form · 5m" } }));
 });
