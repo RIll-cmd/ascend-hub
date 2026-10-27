@@ -41,12 +41,15 @@ Assert ($window.FindName('Headline').Text -eq 'ROOM CLOSED') 'room closed'
 Assert ($window.ActualWidth -le 300 -and $window.ActualHeight -lt 320) "compact (got $($window.ActualWidth) x $($window.ActualHeight))"
 $window.Hide();& $pump
 
-[GC]::Collect();[GC]::WaitForPendingFinalizers();[GC]::Collect()
-$before=[Diagnostics.Process]::GetCurrentProcess().WorkingSet64
-for($i=0;$i -lt 20;$i++){
+$cycle={param([int]$count) for($i=0;$i -lt $count;$i++){
   $window.Show();[void](Set-TrayRemote $window $tray @('codex','claude','agy')[$i%3] ($i%2) 'on' (($i%2) -eq 0));& $pump
   $window.Hide();& $pump
-}
+}}
+# The first opens load WPF's rendering paths once; the budget is for what repeated opening keeps.
+& $cycle 10
+[GC]::Collect();[GC]::WaitForPendingFinalizers();[GC]::Collect()
+$before=[Diagnostics.Process]::GetCurrentProcess().WorkingSet64
+& $cycle 20
 [GC]::Collect();[GC]::WaitForPendingFinalizers();[GC]::Collect()
 $process=[Diagnostics.Process]::GetCurrentProcess();$process.Refresh()
 $growth=($process.WorkingSet64-$before)/1MB
