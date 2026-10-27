@@ -20,6 +20,10 @@ try {
   Assert (($arguments -join ' ') -eq 'scripts/run-framework.mjs serve --port 5199') "production arguments (got $($arguments -join ' '))"
   $p.runtime='development'
   Assert ((([Ascend.Desktop.Supervisor]::Arguments($p,'hub',$false,$false)) -join ' ') -like 'node_modules/vinext/dist/cli.js dev*') 'development unchanged'
+  $hubEnv=[Ascend.Desktop.Supervisor]::ChildEnvironment('hub','t','i','b')
+  Assert ($hubEnv['ASCEND_ROOM_EXTERNAL'] -eq '1') 'Hub leaves the room to the launcher'
+  Assert ($hubEnv['ASCEND_LAUNCH_TOKEN'] -eq 't' -and $hubEnv['ASCEND_INSTANCE_ID'] -eq 'i' -and $hubEnv['ASCEND_BUILD_ID'] -eq 'b') 'launch identity'
+  Assert (-not ([Ascend.Desktop.Supervisor]::ChildEnvironment('vision','t','i','b')).ContainsKey('ASCEND_ROOM_EXTERNAL')) 'Vision has no room'
   $roots=[string[]]@($root)
   $rf=Join-Path $root 'scripts/run-framework.mjs';$cli=Join-Path $root 'node_modules/vinext/dist/cli.js'
   Assert ([Ascend.Desktop.HubSessionConflict]::KnownEntry($rf,[string[]]@('node',$rf,'serve'),$roots)) 'serve session is a known Hub session'

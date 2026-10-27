@@ -189,7 +189,7 @@ namespace Ascend.Desktop {
                         Update(slot,generation,"starting","Starting Hub","");
                     }
                 };
-                var env=new Dictionary<string,string> { {"ASCEND_LAUNCH_TOKEN",token}, {"ASCEND_INSTANCE_ID",slot.View.InstanceId}, {"ASCEND_BUILD_ID",selected.buildId}, {"ASCEND_OPEN_BROWSER","0"}, {"ASCEND_DESKTOP_LAUNCH","1"}, {"PYTHONUNBUFFERED","1"} };
+                var env=ChildEnvironment(name,token,slot.View.InstanceId,selected.buildId);
                 string[] args=Arguments(selected,name,slot.View.Recovery,fixtures);
                 // Cancellation cannot interleave between spawning and recording ownership.
                 // CreateProcess may block in a Windows security hook; never hold the
@@ -248,6 +248,12 @@ namespace Ascend.Desktop {
             }
         }
         static int Port(ComponentProfile p) { return p.port>0?p.port:5173; }
+        // Hub leaves the agent room to the launcher (RoomHost), so stopping Hub never stops a running session.
+        public static Dictionary<string,string> ChildEnvironment(string component,string token,string instanceId,string buildId) {
+            var env=new Dictionary<string,string> { {"ASCEND_LAUNCH_TOKEN",token}, {"ASCEND_INSTANCE_ID",instanceId}, {"ASCEND_BUILD_ID",buildId}, {"ASCEND_OPEN_BROWSER","0"}, {"ASCEND_DESKTOP_LAUNCH","1"}, {"PYTHONUNBUFFERED","1"} };
+            if(component=="hub") env["ASCEND_ROOM_EXTERNAL"]="1";
+            return env;
+        }
         public static string[] Arguments(ComponentProfile p,string component,bool recovery,bool fixtures) {
             if(fixtures) return p.fixtureArguments;
             if(component=="vision") return recovery ? new [] {"desktop_host.py","--config",p.config,"--env-file",p.envFile,"--no-open"} : new [] {"main.py","--focus","--config",p.config,"--env-file",p.envFile};
