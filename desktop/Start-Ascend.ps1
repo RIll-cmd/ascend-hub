@@ -44,7 +44,7 @@ try {
     $script:quitting=$false;$script:autoOpened=$false;$script:trayHinted=$false;$script:roomClient=$null;$script:trayPolledAt=[DateTime]::MinValue
     # Hub on demand: the launcher owns the agent room (RoomHost), reads the tray remote's view from it, and stops Hub
     # after idleStopMinutes without a Hub page. Fixture runs never start a real room.
-    $script:pendingPath='';$script:roomHost=$null;$script:Tray=$null;$script:hubReadyAt=$null;$script:IdleAction='none';$script:popupOpen=$false;$script:TrayChanged=$null;$script:idleMinutes=10;$script:attentionShown=$false
+    $script:pendingPath='';$script:roomHost=$null;$script:RoomView=$null;$script:hubReadyAt=$null;$script:IdleAction='none';$script:popupOpen=$false;$script:TrayChanged=$null;$script:idleMinutes=10;$script:attentionShown=$false
     if($product -eq 'Hub' -and -not $FixtureMode){
         try{
             $hubProfile=[Ascend.Desktop.Profile]::Read($ProfilePath).hub
@@ -77,7 +77,7 @@ try {
     function Start-TrayPoll([bool]$refresh=$false) {
         $room=$script:roomHost
         if($null -eq $room -or $room.State -notin @('running','adopted')){
-            $script:Tray=$null;$script:HubAgentSummary=Get-RoomLine $(if($room){$room.State}else{'stopped'}) 'Offline'
+            $script:RoomView=$null;$script:HubAgentSummary=Get-RoomLine $(if($room){$room.State}else{'stopped'}) 'Offline'
             if($script:TrayChanged){& $script:TrayChanged};return
         }
         $every=if($script:popupOpen){2}else{15}
@@ -87,17 +87,17 @@ try {
         $client=New-Object Net.WebClient;$client.Proxy=$null;$client.Encoding=[Text.Encoding]::UTF8;$client.Headers['Authorization']="Bearer $($conn.Token)";$script:roomClient=$client
         $client.Add_DownloadStringCompleted({param($sender,$e)
             try{
-                $script:Tray=if($e.Error -or $e.Cancelled){$null}else{$e.Result|ConvertFrom-Json}
-                $script:HubAgentSummary=Get-RoomLine $script:roomHost.State (Get-AgentSummary $script:Tray)
-                $script:HubDisk=Get-DiskSummary @($env:SystemDrive,$(if($script:Tray){$script:Tray.buildsRoot}))
+                $script:RoomView=if($e.Error -or $e.Cancelled){$null}else{$e.Result|ConvertFrom-Json}
+                $script:HubAgentSummary=Get-RoomLine $script:roomHost.State (Get-AgentSummary $script:RoomView)
+                $script:HubDisk=Get-DiskSummary @($env:SystemDrive,$(if($script:RoomView){$script:RoomView.buildsRoot}))
                 if($script:TrayChanged){& $script:TrayChanged}
-            }catch{$script:Tray=$null}
+            }catch{$script:RoomView=$null}
             finally{$sender.Dispose();$script:roomClient=$null}
         })
-        try{$client.DownloadStringAsync([Uri]("http://127.0.0.1:$($conn.Port)/tray"+$(if($refresh){'?refresh=1'}else{''})))}catch{$client.Dispose();$script:roomClient=$null;$script:Tray=$null}
+        try{$client.DownloadStringAsync([Uri]("http://127.0.0.1:$($conn.Port)/tray"+$(if($refresh){'?refresh=1'}else{''})))}catch{$client.Dispose();$script:roomClient=$null;$script:RoomView=$null}
     }
     function Invoke-Quit {
-        $prompt=Get-QuitPrompt ([bool]($script:Tray -and $script:Tray.running)) ([bool]($script:roomHost -and $script:roomHost.Owned))
+        $prompt=Get-QuitPrompt ([bool]($script:RoomView -and $script:RoomView.running)) ([bool]($script:roomHost -and $script:roomHost.Owned))
         if($prompt -and -not $FixtureMode -and [Windows.MessageBox]::Show("$prompt Quit anyway?",'Quit Ascend Hub','YesNo','Warning') -ne 'Yes'){return}
         $script:quitting=$true
         $snapshot=$supervisor.Get($component)
@@ -141,7 +141,7 @@ try {
                     if(-not $script:autoOpened){$script:autoOpened=$true;try{Open-AscendUrl $script:pendingPath}catch{$ui['ProfileStatus'].Text="Couldn't open the browser. Press Open Hub to try again."};$script:pendingPath=''}
                     if($null -eq $script:hubReadyAt){$script:hubReadyAt=[DateTime]::UtcNow}
                     # Without the room there is no heartbeat to read, so Hub never stops for lack of one.
-                    $script:IdleAction=if($script:Tray){Get-HubIdleAction $script:Tray.lastViewerAt $script:hubReadyAt ([DateTime]::UtcNow) $script:idleMinutes}else{'none'}
+                    $script:IdleAction=if($script:RoomView){Get-HubIdleAction $script:RoomView.lastViewerAt $script:hubReadyAt ([DateTime]::UtcNow) $script:idleMinutes}else{'none'}
                     if($script:IdleAction -eq 'stop'){$script:IdleAction='none';$supervisor.ForceStop($component)}
                 } else {
                     if($snapshot.State -in @('checking','starting')){$script:autoOpened=$false}
@@ -152,8 +152,8 @@ try {
             }
             Set-LauncherSnapshot $window $snapshot $product
             if($null -ne $tray){
-                $tray.Text=Get-TrayTooltip $script:Tray ($snapshot.State -in @('ready','degraded'))
-                $needs=[bool]($script:Tray -and $script:Tray.needs)
+                $tray.Text=Get-TrayTooltip $script:RoomView ($snapshot.State -in @('ready','degraded'))
+                $needs=[bool]($script:RoomView -and $script:RoomView.needs)
                 if($needs -ne $script:attentionShown){$script:attentionShown=$needs;$tray.Icon=if($needs){$attentionIcon}else{$baseIcon}}
             }
             if($script:closeRequested -and $snapshot.State -eq 'stopped'){$window.Close()}
@@ -205,7 +205,7 @@ try {
         function Update-TrayRemote {
             if(-not $remote.IsVisible){return}
             $power=Get-PowerState $supervisor.Get($component).State $script:IdleAction
-            $script:remoteLower=Set-TrayRemote $remote $script:Tray $script:remoteSel $script:remoteIndex $power $script:blinkOn
+            $script:remoteLower=Set-TrayRemote $remote $script:RoomView $script:remoteSel $script:remoteIndex $power $script:blinkOn
             $script:remoteIndex=$script:remoteLower.Index
         }
         $script:TrayChanged={Update-TrayRemote}
@@ -216,13 +216,13 @@ try {
             $remote.FindName('TaskPanel').Visibility=if($on){'Visible'}else{'Collapsed'}
             $remote.FindName('Lower').Visibility=if($on){'Collapsed'}else{'Visible'}
             if($on){
-                $remote.FindName('TaskHint').Text=if($null -eq $script:Tray){"The agent room isn't running."}elseif($script:Tray.running){'Adds to the queue'}else{'Enter starts it'}
+                $remote.FindName('TaskHint').Text=if($null -eq $script:RoomView){"The agent room isn't running."}elseif($script:RoomView.running){'Adds to the queue'}else{'Enter starts it'}
                 [void]$remote.FindName('TaskText').Focus()
             }
         }
         function Hide-TrayRemote {if($remote.IsVisible){$remote.Hide();$script:remoteHiddenAt=[DateTime]::UtcNow};$script:popupOpen=$false;$blink.Stop()}
         function Show-TrayRemote {
-            $script:remoteSel=Get-TraySelection $script:Tray $script:remoteLast;$script:remoteIndex=0;Set-TaskMode $false
+            $script:remoteSel=Get-TraySelection $script:RoomView $script:remoteLast;$script:remoteIndex=0;Set-TaskMode $false
             $remote.Left=-10000;$remote.Top=-10000;$remote.Show();$remote.UpdateLayout()
             # shortcut: places the remote on the primary monitor's work area; a taskbar on a second monitor would need Screen.FromPoint.
             $device=[Windows.Forms.Control]::MousePosition
@@ -283,7 +283,7 @@ try {
         $remote.FindName('Prev').Add_Click({$script:remoteIndex=[math]::Max(0,$script:remoteIndex-1);Update-TrayRemote})
         $remote.FindName('Next').Add_Click({$script:remoteIndex++;Update-TrayRemote})
         $remote.FindName('Lower').Add_Click({
-            if($null -eq $script:Tray){Hide-TrayRemote;Show-Launcher;return}
+            if($null -eq $script:RoomView){Hide-TrayRemote;Show-Launcher;return}
             $lower=$script:remoteLower
             Open-HubAt $(if($lower -and $lower.SessionId -and -not $lower.Running){"room/summary/$($lower.SessionId)"}else{'room'})
         })

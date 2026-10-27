@@ -80,5 +80,7 @@ Assert ($k.Selected -eq 'agy' -and $k.Index -eq 0) '3 picks Antigravity from its
 Assert ((Get-TrayKey 'NumPad1' 'agy' 0).Selected -eq 'codex') 'number pad'
 Assert ((Get-TrayKey 'Left' 'claude' 0).Index -eq 0 -and (Get-TrayKey 'Right' 'claude' 0).Index -eq 1) 'arrows step'
 Assert ((Get-TrayKey 'Escape' 'claude' 0).Close) 'Esc closes'
+# PowerShell names ignore case: a script-scope "$script:Tray" would overwrite the tray icon held in $tray.
+Assert (-not (Select-String -LiteralPath (Join-Path $desktop 'Start-Ascend.ps1') -Pattern '\$script:tray\b' -Quiet)) 'nothing shadows the tray icon variable'
 'tray remote logic checks passed'
 
