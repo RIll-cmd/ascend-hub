@@ -151,8 +151,11 @@ The big CRT on the home screen is a working television. Click its upper knob to 
 
 - **Ascend Hub** and **Ascend Vision** desktop shortcuts with a small native console: Start, Open, Stop, Force stop, Retry and diagnostics.
 - Hub opens in an Edge app window when it is ready and keeps a tray icon with *Open Hub*, *Show launcher*, *Stop Hub* and *Quit*.
+- **Tray remote:** a left click on the tray icon opens a small shelf of three TVs (Codex, Claude, Antigravity) with the same words as the room's TVs, a lower third, and a remote strip. The coloured buttons (or 1, 2, 3) pick an agent, ◀ ▶ step through its sessions from today, **+TASK** starts a feature build from one line (or queues it while a session runs; *More options* opens Hub with the text in the prompt box), and **⏻ HUB** turns Hub on or off. Enter on the lower third opens the session in Hub. It is drawn natively in the launcher, so it needs no browser.
+- **Hub on demand:** the launcher owns the agent room, so agents keep working while Hub is off. Hub starts when you open it and stops by itself 10 minutes after the last Hub page closes (the power button counts down the last 2). Set `"idleStopMinutes"` under `hub` in the desktop profile to change the minutes, or 0 to keep Hub on. With Hub off, only the launcher and the room run (about 170 MB).
+- The tray icon shows an amber dot when a session waits for you, and its tooltip says what is needed.
 - Hub runs from a production build: it starts in about 2 seconds and uses about 150 MB of memory.
-- While Hub runs, the console checks Hub, the Agent Room (naming any agent whose CLI is offline, usually signed out), Core status, and free disk space on the system drive and the builds drive, warning below 5 GB.
+- The console checks the Agent Room whether or not Hub runs (naming any agent whose CLI is offline, usually signed out, with a Start button if the room stopped), and while Hub runs, Hub, Core status, and free disk space on the system drive and the builds drive, warning below 5 GB.
 
 ## Screenshots
 
@@ -216,7 +219,7 @@ Install the desktop shortcuts once, from Windows PowerShell, with your own paths
   -VisionEnvFile 'D:\ascend-vision\ascend-vision\.env'
 ```
 
-Then double-click **Ascend Hub** on the desktop. Closing the launcher window while Hub runs hides it to the tray; **Quit** stops Hub and the Agent Room. See [desktop/README.md](desktop/README.md) for every option.
+Then double-click **Ascend Hub** on the desktop. Closing the launcher window hides it to the tray, where the agent room keeps running; **Quit** stops Hub and the Agent Room (it asks first while a session runs). After updating Hub, run the installer again (or restart the launcher from this checkout) so the installed launcher gets the tray remote. See [desktop/README.md](desktop/README.md) for every option.
 
 ## Using the Agent Room
 
