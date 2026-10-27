@@ -356,7 +356,8 @@ export default function Home() {
   const [rowTemplateModalOpen, setRowTemplateModalOpen] = useState(false);
   const [tvModalTab, setTvModalTab] = useState<"media-center" | "standard">("media-center");
   const [lightingMode, setLightingMode] = useState<"amber" | "magenta">("amber");
-  const [shelfOffsetY, setShelfOffsetY] = useState<number>(-23);
+  // 0 puts the shelf top right under the TV scene, so the DVD deck at its bottom edge sits on the shelf.
+  const [shelfOffsetY, setShelfOffsetY] = useState<number>(0);
   const [wallCoverHeight, setWallCoverHeight] = useState<number>(21);
   const [wallWidth, setWallWidth] = useState<number>(610);
   const [wallWidthMode, setWallWidthMode] = useState<"full" | "shelf" | "custom">("full");
@@ -734,7 +735,7 @@ export default function Home() {
     handleWallWidthChange(610);
     handleWallWidthModeChange("custom");
     handleWallOffsetXChange(-870);
-    handleShelfOffsetChange(-2);
+    handleShelfOffsetChange(0);
     handleShelfTopCropChange(0);
     notify("Trim restored to CB calibrated values");
   };
@@ -902,7 +903,8 @@ export default function Home() {
     const savedShelfOffset = typeof window !== "undefined" ? localStorage.getItem("ascend_shelf_offset_y") : null;
     if (savedShelfOffset !== null) {
       const parsed = parseInt(savedShelfOffset, 10);
-      if (!isNaN(parsed)) setShelfOffsetY(parsed === -2 ? -23 : parsed);
+      // -2 and -23 were earlier defaults that hid the bottom of the deck behind the shelf.
+      if (!isNaN(parsed)) setShelfOffsetY(parsed === -2 || parsed === -23 ? 0 : parsed);
     }
     const savedWallCover = typeof window !== "undefined" ? localStorage.getItem("ascend_wall_cover_height") : null;
     if (savedWallCover !== null) {

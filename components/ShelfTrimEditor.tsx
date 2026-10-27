@@ -145,7 +145,7 @@ export function ShelfTrimEditor({
                 onWallWidthChange(610);
                 onWallOffsetXChange(-870);
                 onWallCoverChange(21);
-                onShelfOffsetChange(-2);
+                onShelfOffsetChange(0);
               }}
             >
               CB Preset (610px @ -870)
@@ -258,7 +258,7 @@ export function ShelfTrimEditor({
             <button type="button" onClick={() => onShelfOffsetChange(shelfOffsetY + 1)} title="Move down 1px">+1</button>
             <button type="button" onClick={() => onShelfOffsetChange(shelfOffsetY + 5)} title="Move down 5px">+5</button>
             <button type="button" onClick={() => onShelfOffsetChange(shelfOffsetY + 25)} title="Move down 25px">+25</button>
-            <button type="button" className={shelfOffsetY === -2 ? "reset-btn" : ""} onClick={() => onShelfOffsetChange(-2)} title="Reset to -2px">Reset (-2px)</button>
+            <button type="button" className={shelfOffsetY === 0 ? "reset-btn" : ""} onClick={() => onShelfOffsetChange(0)} title="Reset to 0px">Reset (0px)</button>
           </div>
         </div>
       )}
