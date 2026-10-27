@@ -4,6 +4,7 @@ $ErrorActionPreference='Stop'
 if ($PSVersionTable.PSVersion.Major -ne 5) { throw 'Run with powershell.exe 5.1.' }
 function Assert([bool]$condition,[string]$message){if(-not $condition){throw "FAILED: $message"}}
 $desktop=Split-Path -Parent $PSScriptRoot
+Add-Type -AssemblyName WindowsBase
 . (Join-Path $desktop 'LauncherPresentation.ps1')
 function Tv([string]$id,[string]$state){[pscustomobject]@{id=$id;state=$state}}
 function Tray($tvs,$needs=$null,$running=$false){[pscustomobject]@{tvs=$tvs;needs=$needs;running=$running;lastViewerAt=$null}}
@@ -44,3 +45,40 @@ Assert ($null -eq (Get-QuitPrompt $false $true)) 'nothing running'
 Assert ((Get-QuitPrompt $true $true) -eq 'A session is running. Quit stops it and the agent room.') 'owned room'
 Assert ((Get-QuitPrompt $true $false) -eq 'The agent room was started elsewhere and keeps running.') 'adopted room'
 'tray logic checks passed'
+# The tray remote.
+. (Join-Path $desktop 'TrayRemote.ps1')
+$lead=[pscustomobject]@{lead='codex'}
+Assert ((Get-TraySelection $lead 'agy') -eq 'codex') 'the TV that needs you or works leads'
+Assert ((Get-TraySelection ([pscustomobject]@{lead=$null}) 'agy') -eq 'agy') 'else the last one picked'
+Assert ((Get-TraySelection $null '') -eq 'claude') 'else Claude'
+Assert ((Get-PowerState 'stopped' 'none') -eq 'off' -and (Get-PowerState 'failed' 'none') -eq 'off') 'off'
+Assert ((Get-PowerState 'starting' 'none') -eq 'starting' -and (Get-PowerState 'checking' 'none') -eq 'starting') 'starting'
+Assert ((Get-PowerState 'ready' 'none') -eq 'on') 'on'
+Assert ((Get-PowerState 'ready' 'countdown:2') -eq 'closing:2') 'closing countdown'
+$work=[Windows.Rect]::new(0,0,1920,1040)
+$p=Get-PopupPlacement $work 300 250 ([Windows.Point]::new(1800,1060))
+Assert ($p.Left -eq 1612 -and $p.Top -eq 782) "bottom taskbar (got $($p.Left),$($p.Top))"
+$p=Get-PopupPlacement ([Windows.Rect]::new(0,0,1860,1080)) 300 250 ([Windows.Point]::new(1890,1000))
+Assert ($p.Left -eq 1552 -and $p.Top -eq 822) "right taskbar (got $($p.Left),$($p.Top))"
+$p=Get-PopupPlacement ([Windows.Rect]::new(0,40,1920,1040)) 300 250 ([Windows.Point]::new(100,20))
+Assert ($p.Left -eq 8 -and $p.Top -eq 48) "top taskbar, near the left edge (got $($p.Left),$($p.Top))"
+$tv={param($id,$bug,$headline,$sub) [pscustomobject]@{id=$id;state='idle';channel='CH 05';bug=$bug;mood='idle';headline=$headline;sub=$sub;banner='#d97757';stale=$false}}
+$closed=Get-LowerThird $null 'claude' 0
+Assert ($closed.Headline -eq 'ROOM CLOSED' -and $closed.Sub -eq 'start the room from the launcher' -and $closed.Bug -eq 'OFF') 'room closed'
+$quiet=[pscustomobject]@{tvs=@((& $tv 'claude' 'IDLE' 'CLAUDE · IDLE' 'ready'));running=$false;today=[pscustomobject]@{claude=@()}}
+$l=Get-LowerThird $quiet 'claude' 3
+Assert ($l.Headline -eq 'CLAUDE · IDLE' -and $l.Count -eq 0 -and $null -eq $l.SessionId) 'no sessions today: the live words, no arrows'
+$busy=[pscustomobject]@{tvs=@((& $tv 'claude' 'LIVE' 'CLAUDE · CODING' 'task 2/3 · Login form · 4m'));running=$true;today=[pscustomobject]@{claude=@(
+  [pscustomobject]@{id='s2';headline='RUNNING · 4m ago';sub='Login form'},[pscustomobject]@{id='s1';headline='DONE · 37m ago';sub='Todo app'})}}
+$l=Get-LowerThird $busy 'claude' 0
+Assert ($l.Headline -eq 'CLAUDE · CODING' -and $l.SessionId -eq 's2' -and $l.Running -and $l.Count -eq 2) 'the running newest session speaks in the live words'
+$l=Get-LowerThird $busy 'claude' 1
+Assert ($l.Headline -eq 'DONE · 37m ago' -and $l.Sub -eq 'Todo app' -and $l.SessionId -eq 's1' -and -not $l.Running) 'an earlier session'
+Assert ((Get-LowerThird $busy 'claude' 9).Index -eq 1) 'the position stops at the oldest'
+$k=Get-TrayKey 'D3' 'claude' 2
+Assert ($k.Selected -eq 'agy' -and $k.Index -eq 0) '3 picks Antigravity from its newest'
+Assert ((Get-TrayKey 'NumPad1' 'agy' 0).Selected -eq 'codex') 'number pad'
+Assert ((Get-TrayKey 'Left' 'claude' 0).Index -eq 0 -and (Get-TrayKey 'Right' 'claude' 0).Index -eq 1) 'arrows step'
+Assert ((Get-TrayKey 'Escape' 'claude' 0).Close) 'Esc closes'
+'tray remote logic checks passed'
+
