@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { ArrowUp, ListPlus, Plus } from "lucide-react";
 import {
   AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES, TERMINAL_STAGES,
@@ -240,19 +240,23 @@ function SessionSets({ value, onChange }: { value: string[] | null; onChange: (s
 export const TEMPLATE_LABELS ={ feature: "Feature", bugfix: "Bug fix", refactor: "Refactor", review: "Review only" } as const;
 
 // Everything a new session needs. The settings live in the side panel, the task in the composer under the chat.
+const noSubscribe = () => () => {};
+
 export function useBrief(agents?: Record<AgentId, Availability>, folders: string[] = [], repos: RepoChoice[] = [], buildsRoot = "D:\\ascend-builds", connectorChoices: ConnectorChoice[] = []) {
   const [kind, setKind] = useState<SessionMode>("build");
   const [project, setProject] = useState("");
   const [task, setTask] = useState("");
-  // The tray remote's "More options" opens /room?draft=<text>: the text lands in the prompt box once, then leaves the address.
+  // The tray remote's "More options" opens /room?draft=<text>: the text lands in the prompt box once (during render, so
+  // the server's empty box hydrates first), then leaves the address.
+  const draft = useSyncExternalStore(noSubscribe, () => new URLSearchParams(window.location.search).get("draft"), () => null);
+  const [drafted, setDrafted] = useState(false);
+  if (draft && !drafted) { setDrafted(true); setTask(draft.slice(0, 4000)); }
   useEffect(() => {
+    if (!drafted) return;
     const url = new URL(window.location.href);
-    const draft = url.searchParams.get("draft");
-    if (!draft) return;
-    setTask(draft.slice(0, 4000));
     url.searchParams.delete("draft");
     window.history.replaceState(null, "", url);
-  }, []);
+  }, [drafted]);
   const [ownRoles, setOwnRoles] = useState(false);
   const [roles, setRoles] = useState<Roles>(DEFAULT_ROLES);
   const [question, setQuestion] = useState("");

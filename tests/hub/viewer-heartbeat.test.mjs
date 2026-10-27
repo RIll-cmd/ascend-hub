@@ -13,5 +13,5 @@ test('every Hub page tells the room it is open', () => {
 });
 
 test('the room page takes a draft from the tray remote', () => {
-  assert.match(read('app/room/room-parts.tsx'), /searchParams\.get\("draft"\)/);
+  assert.match(read('app/room/room-parts.tsx'), /\.get\("draft"\)/);
 });
