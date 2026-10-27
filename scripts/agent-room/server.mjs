@@ -268,7 +268,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         const now = Date.now();
         return send(200, trayView({ agents, session: session?.view() ?? null, sessions: sessionsToday(dataDir, now), probedAt, lastViewerAt, nowMs: now, buildsRoot: settings.buildsRoot }));
       }
-      if (route === 'POST /viewer') { res.writeHead(204, { 'cache-control': 'no-store' }); return res.end(); }
+      if (route === 'POST /viewer') return send(200, { ok: true });
       if (route === 'POST /tray/task') {
         const text = String(body?.text ?? '').trim();
         if (!text) return send(400, { error: 'TEXT_REQUIRED', message: 'Type a task first.' });

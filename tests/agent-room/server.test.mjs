@@ -166,7 +166,7 @@ test('a viewer header stamps lastViewerAt; the launcher\'s own calls do not', as
   const { room, call } = await boot();
   assert.equal((await (await call('GET', '/tray')).json()).lastViewerAt, null);
   const res = await fetch(`http://127.0.0.1:${room.port}/viewer`, { method: 'POST', headers: { authorization: `Bearer ${room.token}`, 'x-ascend-viewer': '1' } });
-  assert.equal(res.status, 204);
+  assert.equal(res.status, 200);
   assert.match((await (await call('GET', '/tray')).json()).lastViewerAt, /^\d{4}-\d\d-\d\dT/);
   await room.close();
 });

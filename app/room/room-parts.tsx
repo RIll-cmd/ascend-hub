@@ -244,6 +244,15 @@ export function useBrief(agents?: Record<AgentId, Availability>, folders: string
   const [kind, setKind] = useState<SessionMode>("build");
   const [project, setProject] = useState("");
   const [task, setTask] = useState("");
+  // The tray remote's "More options" opens /room?draft=<text>: the text lands in the prompt box once, then leaves the address.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const draft = url.searchParams.get("draft");
+    if (!draft) return;
+    setTask(draft.slice(0, 4000));
+    url.searchParams.delete("draft");
+    window.history.replaceState(null, "", url);
+  }, []);
   const [ownRoles, setOwnRoles] = useState(false);
   const [roles, setRoles] = useState<Roles>(DEFAULT_ROLES);
   const [question, setQuestion] = useState("");

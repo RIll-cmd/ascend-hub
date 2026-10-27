@@ -19,12 +19,12 @@ test("offline when there is no token or the port is dead", async () => {
 });
 
 test("forwards method, body and bearer token, and passes status through", async () => {
-  const seen: { auth?: string; method?: string; body?: string; url?: string } = {};
+  const seen: { auth?: string; method?: string; body?: string; url?: string; viewer?: string | string[] } = {};
   const server = createServer((req, res) => {
     let body = "";
     req.on("data", c => (body += c));
     req.on("end", () => {
-      Object.assign(seen, { auth: req.headers.authorization, method: req.method, body, url: req.url });
+      Object.assign(seen, { auth: req.headers.authorization, method: req.method, body, url: req.url, viewer: req.headers["x-ascend-viewer"] });
       res.writeHead(409, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: "SESSION_ACTIVE" }));
     });
@@ -34,7 +34,8 @@ test("forwards method, body and bearer token, and passes status through", async 
   const res = await forwardToRoom("/sessions", { method: "POST", body: { project: "p" } }, { port, token: "secret" });
   assert.equal(res.status, 409);
   assert.deepEqual(await res.json(), { error: "SESSION_ACTIVE" });
-  assert.deepEqual(seen, { auth: "Bearer secret", method: "POST", body: '{"project":"p"}', url: "/sessions" });
+  // The viewer mark tells the room a Hub page is open, so the launcher keeps Hub running.
+  assert.deepEqual(seen, { auth: "Bearer secret", method: "POST", body: '{"project":"p"}', url: "/sessions", viewer: "1" });
   server.close();
 });
 

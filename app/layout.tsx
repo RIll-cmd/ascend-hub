@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ViewerHeartbeat } from "@/components/ViewerHeartbeat";
 import "./globals.css";
 import "@/components/status/tv-inspector.css";
 import "./room/room.css";
@@ -60,7 +61,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">{children}<ViewerHeartbeat /></body>
     </html>
   );
 }

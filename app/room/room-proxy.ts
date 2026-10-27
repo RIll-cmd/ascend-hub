@@ -14,7 +14,8 @@ export async function forwardToRoom(path: string, init: { method?: string; body?
   try {
     const res = await fetch(`http://127.0.0.1:${conn.port}${path}`, {
       method: init.method ?? "GET",
-      headers: { authorization: `Bearer ${conn.token}`, "content-type": "application/json" },
+      // x-ascend-viewer: a Hub page is open; the desktop launcher stops Hub after a quiet spell without one.
+      headers: { authorization: `Bearer ${conn.token}`, "content-type": "application/json", "x-ascend-viewer": "1" },
       body: init.body === undefined ? undefined : JSON.stringify(init.body),
       signal: AbortSignal.timeout(init.timeoutMs ?? 5000),
       cache: "no-store",
@@ -29,7 +30,7 @@ export async function forwardToRoom(path: string, init: { method?: string; body?
 export async function forwardFileFromRoom(path: string, timeoutMs = 60_000, conn = roomConnection()): Promise<Response> {
   if (!conn) return Response.json({ online: false, reason: "ASCEND_ROOM_TOKEN is not set in .env.local" }, { status: 503, headers: NO_STORE });
   try {
-    const res = await fetch(`http://127.0.0.1:${conn.port}${path}`, { headers: { authorization: `Bearer ${conn.token}` }, signal: AbortSignal.timeout(timeoutMs), cache: "no-store" });
+    const res = await fetch(`http://127.0.0.1:${conn.port}${path}`, { headers: { authorization: `Bearer ${conn.token}`, "x-ascend-viewer": "1" }, signal: AbortSignal.timeout(timeoutMs), cache: "no-store" });
     const headers: Record<string, string> = { "cache-control": "no-store", "content-type": res.headers.get("content-type") ?? "application/octet-stream" };
     const disposition = res.headers.get("content-disposition");
     if (disposition) headers["content-disposition"] = disposition;
