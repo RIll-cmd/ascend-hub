@@ -1,5 +1,6 @@
 import type { QueueView } from "../queue-panel";
-import { AGENT_NAMES, type AgentId, type SessionView } from "../room-types";
+import type { AgentId, SessionView } from "../room-types";
+import * as words from "../../../scripts/agent-room/tv-words.mjs";
 
 // The room's arrangement and what it shows, derived from the session and the queue. Pure, so the deck, the page's
 // right column and the tests all read the same description.
@@ -24,61 +25,9 @@ export type RoomScene = {
 };
 export type Spot = { desk: [number, number, number]; deskYaw: number };
 
-const TERMINAL = new Set(["done", "rejected", "stopped"]);
-const PANEL_STAGES = new Set(["discuss", "roles", "gate-roles"]);
-const PHASES = new Set(["opening", "critique", "verdict"]);
-const GATE_LINES: Record<string, string> = {
-  "gate-roles": "approve the roles", "gate-plan": "approve the plan", "gate-race": "pick a race winner", "gate-result": "review the result",
-};
-const PLAN_STATUS = { done: "done", running: "running", review: "running", pending: "pending", skipped: "failed" } as const;
-
-function upNextOf(queue: QueueView | null): string | null {
-  if (queue?.items.length) return queue.items[0].title;
-  const next = [...(queue?.schedules ?? [])].sort((a, b) => a.nextRun.localeCompare(b.nextRun))[0];
-  return next ? `${next.title} · ${new Date(next.nextRun).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : null;
-}
-
-// Who is reviewing right now: the agent in a turn on a task under review that is not its own coder (any review pass).
-function reviewerAtWork(session: SessionView): AgentId | null {
-  const current = session.plan?.tasks.find(t => t.status === "review") ?? null;
-  const agent = session.active?.agent ?? null;
-  return current && agent && agent !== current.assignee ? agent : null;
-}
-
-export function roomScene(session: SessionView | null, queue: QueueView | null): RoomScene {
-  const base: RoomScene = {
-    kind: "idle", gate: null, roles: { orchestrator: null, coders: [], reviewer: null }, plan: [], task: null, check: null,
-    phase: null, speaker: null, judge: null, queued: queue?.items.length ?? 0, upNext: upNextOf(queue), working: [], reviewing: null,
-  };
-  if (!session || TERMINAL.has(session.stage)) return base;
-  const debate = session.mode === "debate";
-  const kind: RoomKind = debate || PANEL_STAGES.has(session.stage) ? "debate" : "coding";
-  const roles = session.roles ? { orchestrator: session.roles.orchestrator, coders: [...session.roles.coders], reviewer: session.roles.reviewer } : base.roles;
-  const pause = session.pause;
-  // A rate-limit pause with a retry time resumes by itself, so it does not ask for the owner.
-  const selfRetry = pause?.kind === "rate-limit" && Boolean(pause.retryAt);
-  const gate = pause && !selfRetry ? { line: "paused · retry or stop" } : GATE_LINES[session.stage] && !debate ? { line: GATE_LINES[session.stage] } : null;
-  const tasks = session.plan?.tasks ?? [];
-  const current = tasks.find(t => t.status === "running" || t.status === "review") ?? null;
-  const check = session.checking ? "running" : current?.check ? (current.check.ok ? "pass" : "fail") : null;
-  const reviewing = reviewerAtWork(session);
-  const racing = session.active?.activity?.startsWith("racing") ?? false;
-  const working = [...new Set([...tasks.filter(t => t.status === "running").map(t => t.assignee), ...(racing ? roles.coders : [])])];
-  let strip: string | null = null;
-  if (current) {
-    const index = tasks.indexOf(current) + 1;
-    const coder = `${AGENT_NAMES[current.assignee]} ${current.status === "review" ? "done" : "coding"}`;
-    const reviewer = roles.reviewer ? ` · ${AGENT_NAMES[roles.reviewer]} ${reviewing === roles.reviewer ? "reviewing" : "assigned"}` : "";
-    strip = `Task ${index}/${tasks.length} · ${coder}${reviewer}`;
-  }
-  return {
-    ...base, kind, gate, roles, check, task: strip, working, reviewing,
-    plan: tasks.map(t => ({ title: t.title, status: PLAN_STATUS[t.status], assignee: t.assignee })),
-    phase: debate && PHASES.has(session.stage) ? (session.stage as RoomScene["phase"]) : null,
-    speaker: kind === "debate" ? session.active?.agent ?? null : null,
-    judge: debate ? session.judge ?? null : null,
-  };
-}
+// The arrangement itself lives in scripts/agent-room/tv-words.mjs, which the agent room reads too.
+export const roomScene: (session: SessionView | null, queue: QueueView | null) => RoomScene = words.roomScene as never;
+const reviewerAtWork: (session: SessionView) => AgentId | null = words.reviewerAtWork as never;
 
 // Where each desk stands. Idle desks stand forward of the bookcases (back wall, x -3.6 and 2.6); the workshop's
 // L bench seats the orchestrator and coders on the long side and the reviewer on the return; the panel is an arc.
@@ -107,14 +56,7 @@ export function spots(scene: RoomScene, ids: AgentId[]): Record<AgentId, Spot> {
 }
 
 // What an agent's TV shows instead of its eye, from what it is doing right now. An offline agent always shows NO SIGNAL.
-export function graphicFor(id: AgentId, state: "offline" | "checking" | "idle" | "busy", scene: RoomScene): "code" | "review" | "plan" | "wave" | null {
-  if (state === "offline") return null;
-  if (scene.kind === "debate") return state === "busy" && scene.speaker === id ? "wave" : null;
-  if (scene.kind !== "coding") return null;
-  if (scene.reviewing === id) return "review";
-  if (scene.working.includes(id)) return "code";
-  return scene.roles.orchestrator === id ? "plan" : null;
-}
+export const graphicFor: (id: AgentId, state: "offline" | "checking" | "idle" | "busy", scene: RoomScene) => "code" | "review" | "plan" | "wave" | null = words.graphicFor as never;
 
 export type NowCard = {
   task: string;

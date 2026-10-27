@@ -1,8 +1,9 @@
 import { AGENT_IDS, AGENT_NAMES, TERMINAL_STAGES, rolesOf, type AgentId, type Message, type RoomStatus, type SessionView } from "../room-types";
 import type { QueueView } from "../queue-panel";
 import { roomScene, type RoomScene } from "./room-scene";
+import * as words from "../../../scripts/agent-room/tv-words.mjs";
 
-export const AGENT_COLORS: Record<AgentId, string> = { codex: "#e28a2b", claude: "#d97757", agy: "#3d7bff" };
+export const AGENT_COLORS: Record<AgentId, string> = words.AGENT_COLORS;
 const GATE_STAGES = ["gate-roles", "gate-plan", "gate-race", "gate-result"];
 export const MAX_MINIS = 4;
 
