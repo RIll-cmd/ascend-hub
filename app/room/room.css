@@ -276,8 +276,6 @@
 /* The prompt box under the chat. */
 .agent-room-composer { display: flex; flex-direction: column; gap: 6px; background: var(--room-card); border: 1px solid rgba(43, 33, 24, 0.3); border-radius: 12px; padding: 10px 12px; }
 .agent-room-composer textarea { font: inherit; border: 0; background: transparent; resize: vertical; min-height: 56px; outline: none; }
-.agent-room-composer-bar { display: flex; align-items: center; gap: 8px; }
-.agent-room-composer-bar small { opacity: 0.65; }
 .agent-room-gate .agent-room-produced { flex-basis: 100%; width: 100%; }
 .agent-room-gate .agent-room-skill-proposal { flex-basis: 100%; width: 100%; }
 .agent-room-skill-proposal summary { cursor: pointer; font-weight: 700; }
@@ -315,7 +313,6 @@
 .agent-room-attachments li { display: flex; align-items: center; gap: 6px; padding: 2px 4px 2px 8px; border: 2px solid #000; border-radius: 5px; background: var(--paper); color: var(--ink); font-size: 12px; }
 .agent-room-attachments small { opacity: 0.7; }
 .room-app .agent-room-attachments button:not([data-slot]) { padding: 0 6px; border: 0; background: transparent; box-shadow: none; line-height: 1.4; }
-.agent-room-composer-bar button { margin-left: auto; }
 /* Gate prompts sit under the chat like the composer. */
 .agent-room-stage .agent-room-gate { border: 1px solid rgba(43, 33, 24, 0.3); border-radius: 12px; }
 
@@ -411,11 +408,24 @@
 .md-code pre { margin: 0; padding: 10px 12px; background: var(--code-bg); color: var(--code-text); border: 2px solid #000; border-radius: 5px; overflow-x: auto;
   font: 12.5px/1.5 var(--mono), ui-monospace, Consolas, monospace; white-space: pre; }
 .md-code-lang { order: -1; font-size: 11px; font-weight: 700; color: var(--on-paper-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-.room-app .agent-room-composer { display: flex; flex-direction: column; gap: 8px; background: var(--paper); color: var(--ink); border: 2px solid #000; border-radius: 5px;
-  box-shadow: 4px 4px 0 0 #000; padding: 12px 14px; }
+/* Laid out like Claude's composer: one rounded box (attachments, text, then + and send), a quiet line under it. */
+.room-app .agent-room-composer { display: flex; flex-direction: column; gap: 6px; background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+.room-app .agent-room-composer-box { display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 8px 16px; background: var(--paper); color: var(--ink);
+  border: 1px solid rgba(0, 0, 0, 0.45); border-radius: 18px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+.room-app .agent-room-composer-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 2px 10px rgba(0, 0, 0, 0.35); }
+.room-app .agent-room-composer-box textarea { resize: none; field-sizing: content; min-height: 48px; max-height: 240px; }
+.room-app .agent-room-composer-box textarea:focus-visible { outline: none; }
 .agent-room-composer-bar { display: flex; align-items: center; gap: 8px; }
-.room-app .agent-room-composer-bar small { color: var(--on-paper-muted); font-weight: 600; }
-.room-app .agent-room-composer-bar [data-slot="button"] { margin-left: auto; }
+.room-app button.agent-room-composer-icon, .room-app button.agent-room-composer-send { display: grid; place-items: center; width: 32px; height: 32px; padding: 0;
+  border-radius: 9px; border: 0; box-shadow: none; cursor: pointer; }
+.room-app button.agent-room-composer-icon { background: transparent; color: var(--ink); }
+.room-app button.agent-room-composer-icon:hover { background: rgba(0, 0, 0, 0.08); }
+.room-app button.agent-room-composer-send { margin-left: auto; background: var(--accent); color: #fff; }
+.room-app button.agent-room-composer-send:disabled { opacity: 0.4; cursor: default; }
+.agent-room-composer-meta { display: flex; align-items: flex-start; gap: 10px; padding: 0 10px; }
+.room-app .agent-room-composer-meta small { color: var(--on-page-muted); font-weight: 600; font-size: 12px; line-height: 20px; white-space: nowrap; }
+.room-app .agent-room-composer-meta .agent-room-schedule { margin-left: auto; color: var(--on-page-muted); }
+.room-app .agent-room-composer-meta .agent-room-schedule[open] { justify-content: flex-end; color: var(--on-page); }
 .room-app .agent-room-gate, .room-app .agent-room-offline { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; background: var(--paper); color: var(--ink);
   border: 2px solid #000; border-radius: 5px; box-shadow: 4px 4px 0 0 #000; padding: 14px; }
 .room-app .agent-room-offline { margin: 20px; }

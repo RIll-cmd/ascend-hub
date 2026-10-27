@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowUp, ListPlus, Plus } from "lucide-react";
 import {
   AGENT_IDS, AGENT_NAMES, DEFAULT_ROLES, TERMINAL_STAGES,
   type AgentId, type Availability, type Message, type PlanTask, type Roles, type SessionMode, type SessionView, type Stage,
@@ -472,7 +473,9 @@ async function addAttachments(current: Attachment[], files: File[], pasted: bool
 
 const sizeLabel = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
-// The prompt box under the chat: what to build or debate, and Start. The side panel's fields belong to this form.
+// The prompt box under the chat, laid out like Claude's: attachments and the text in a rounded box, attach at its
+// bottom left and send at its bottom right, and the kind of work and Schedule on a line under it. The side panel's
+// fields belong to this form.
 // busy: a session runs, so the form queues the next one instead of starting it.
 export function BriefComposer({ brief: b, act, busy = false }: { brief: Brief; act: Act; busy?: boolean }) {
   const build = b.kind === "build";
@@ -498,33 +501,40 @@ export function BriefComposer({ brief: b, act, busy = false }: { brief: Brief; a
   };
   return (
     <form id={BRIEF_FORM} className="agent-room-composer" onSubmit={e => { e.preventDefault(); void (busy ? act("/api/room/queue", { body: b.body }) : act("/api/room/sessions", b.body)); }}>
-      <Textarea className="min-h-[72px] resize-y border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0" value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required={!(build && b.inRepo && b.github.trim())} rows={3}
-        onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && b.canStart) e.currentTarget.form?.requestSubmit(); }}
-        onPaste={e => {
-          const images = [...e.clipboardData.files].filter(f => f.type.startsWith("image/"));
-          if (!attachable || !images.length) return;
-          e.preventDefault();
-          void add(images, true);
-        }}
-        placeholder={build ? (b.inRepo ? "What should they build? @path/to/file and @diff point at your repo" : "What should they build?") : "What should they debate?"} aria-label={build ? "What should they build?" : "What should they debate?"} />
-      {attachable && b.attachments.length > 0 && (
-        <ul className="agent-room-attachments" aria-label="Attachments">
-          {b.attachments.map(a => (
-            <li key={a.name}>
-              <span>{a.name}</span><small>{sizeLabel(a.size)}</small>
-              <button type="button" aria-label={`Remove ${a.name}`} onClick={() => b.setAttachments(b.attachments.filter(x => x !== a))}>×</button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {problem && <p role="alert" className="agent-room-error">{problem}</p>}
-      <div className="agent-room-composer-bar">
-        {attachable && (
-          <>
-            <input ref={picker} type="file" multiple accept={ATTACH_TYPES} hidden onChange={e => { void add([...(e.target.files ?? [])]); e.target.value = ""; }} />
-            <Button type="button" variant="neutral" size="sm" onClick={() => picker.current?.click()} title="Attach a screenshot, a PDF spec or notes (or paste an image into the box)">Attach</Button>
-          </>
+      <div className="agent-room-composer-box">
+        {attachable && b.attachments.length > 0 && (
+          <ul className="agent-room-attachments" aria-label="Attachments">
+            {b.attachments.map(a => (
+              <li key={a.name}>
+                <span>{a.name}</span><small>{sizeLabel(a.size)}</small>
+                <button type="button" aria-label={`Remove ${a.name}`} onClick={() => b.setAttachments(b.attachments.filter(x => x !== a))}>×</button>
+              </li>
+            ))}
+          </ul>
         )}
+        <Textarea className="min-h-12 resize-none border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0" value={build ? b.task : b.question} onChange={e => (build ? b.setTask : b.setQuestion)(e.target.value)} maxLength={4000} required={!(build && b.inRepo && b.github.trim())} rows={3}
+          onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && b.canStart) e.currentTarget.form?.requestSubmit(); }}
+          onPaste={e => {
+            const images = [...e.clipboardData.files].filter(f => f.type.startsWith("image/"));
+            if (!attachable || !images.length) return;
+            e.preventDefault();
+            void add(images, true);
+          }}
+          placeholder={build ? (b.inRepo ? "What should they build? @path/to/file and @diff point at your repo" : "What should they build?") : "What should they debate?"} aria-label={build ? "What should they build?" : "What should they debate?"} />
+        <div className="agent-room-composer-bar">
+          {attachable && (
+            <>
+              <input ref={picker} type="file" multiple accept={ATTACH_TYPES} hidden onChange={e => { void add([...(e.target.files ?? [])]); e.target.value = ""; }} />
+              <button type="button" className="agent-room-composer-icon" aria-label="Attach files" onClick={() => picker.current?.click()} title="Attach a screenshot, a PDF spec or notes (or paste an image into the box)"><Plus size={18} aria-hidden="true" /></button>
+            </>
+          )}
+          <button type="submit" className="agent-room-composer-send" disabled={busy ? !canWait : !b.canStart} aria-label={busy ? "Add to queue" : "Start"} title={busy ? "Add to queue: starts when the running session ends" : "Start (Ctrl+Enter)"}>
+            {busy ? <ListPlus size={18} aria-hidden="true" /> : <ArrowUp size={18} aria-hidden="true" />}
+          </button>
+        </div>
+      </div>
+      {problem && <p role="alert" className="agent-room-error">{problem}</p>}
+      <div className="agent-room-composer-meta">
         <small>{b.missing.length > 0 ? `Waiting for: ${b.missing.map(id => AGENT_NAMES[id]).join(", ")}` : build ? `${TEMPLATE_LABELS[b.template]} · ${b.inRepo ? "existing repo" : "new project"}` : "Debate · read-only"}</small>
         <details className="agent-room-schedule">
           <summary>Schedule</summary>
@@ -538,7 +548,6 @@ export function BriefComposer({ brief: b, act, busy = false }: { brief: Brief; a
             title={b.attachments.length ? "Attachments only travel with a session started now" : "Adds the session to the queue at this time"}
             onClick={() => void act("/api/room/schedules", { body: b.body, at: new Date(at).toISOString(), repeat })}>Schedule</Button>
         </details>
-        <Button type="submit" disabled={busy ? !canWait : !b.canStart} title={busy ? "Starts when the running session ends" : "Ctrl+Enter"}>{busy ? "Add to queue" : "Start"}</Button>
       </div>
     </form>
   );

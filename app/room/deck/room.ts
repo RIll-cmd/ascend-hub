@@ -114,8 +114,8 @@ export function buildRoom(scene: THREE.Scene, keep: Keep): void {
   mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 32), tableWood, 0, 0.5, 0.9, true).name = 'table';
   mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 12), tableWood, 0, 0.25, 0.9, true).name = 'table';
 
-  // Lamp bulb glow beside the floor lamp prop (Task 8 props sit at x -4.4).
-  mesh(new THREE.SphereGeometry(0.11, 16, 16), keep(new THREE.MeshBasicMaterial({ color: "#ffd9a0" })), -4.33, 1.8, -2.68);
+  // Lamp bulb inside the floor lamp prop's shade (the prop sits at x -4.4, z -2.6; its shade is centred 0.13 m in).
+  mesh(new THREE.SphereGeometry(0.06, 16, 16), keep(new THREE.MeshBasicMaterial({ color: "#ffd9a0" })), -4.268, 1.62, -2.732);
   const lamp = new THREE.PointLight("#ffb46a", 1.6, 7);
   lamp.name = "lamp";
   lamp.position.set(-4.2, 1.8, -2.5);
