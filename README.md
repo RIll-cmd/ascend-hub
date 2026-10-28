@@ -12,7 +12,7 @@ Codex, Claude and Antigravity plan, build, review and merge as a team in the Age
 ![Platform: Windows first](https://img.shields.io/badge/platform-Windows%20first-0078d4)
 ![Runs locally](https://img.shields.io/badge/runs-127.0.0.1%20only-555)
 
-<img src="docs/screenshots/shelf.webp" alt="The Ascend Hub status shelf: four CRT televisions for Ascend Core, Ascend Vision, Codex CLI and Antigravity around the Ascend Hub poster" width="900" />
+<img src="docs/screenshots/shelf.webp" alt="The Ascend Hub shelf: four CRT televisions for Claude, Ascend Vision, Codex CLI and Antigravity around the Agent Room poster, which reads ALL QUIET, 3 of 3 agents ready" width="900" />
 
 </div>
 
@@ -159,11 +159,27 @@ The big CRT on the home screen is a working television. Click its upper knob to 
 
 ## Screenshots
 
+**Home**
+
 | | |
 | --- | --- |
-| <img src="docs/screenshots/home.webp" alt="Home screen with the retro CRT television, calendar and clock" /> **Home** | <img src="docs/screenshots/limits.webp" alt="The Limits panel open over the home screen, with 5-hour and weekly bars for Claude and Codex" /> **Subscription limits** |
-| <img src="docs/screenshots/tv-detail.webp" alt="The Codex CLI status monitor opened from its shelf TV" /> **Status monitor** | <img src="docs/screenshots/room-start.webp" alt="The Agent Room in the Dark wood theme: session history on the left, the 3D room with three agent desks and the prompt box in the middle, limits, agents and new-session options on the right" /> **Agent Room** |
-| <img src="docs/screenshots/room-workflow.webp" alt="The Workflow tab of a finished parallel session, with swim lanes and three tasks" /> **Workflow view** (two tasks ran in parallel) | <img src="docs/screenshots/room-debate.webp" alt="A finished debate with the judge's combined answer" /> **Debate verdict** |
+| <img src="docs/screenshots/home.webp" alt="Home screen with the retro CRT television, calendar and clock" /> **Home** | <img src="docs/screenshots/limits.webp" alt="The Limits panel open over the home screen, with 5-hour and weekly bars for Claude and Codex and a note that Antigravity does not report its limits" /> **Subscription limits** |
+
+**The shelf in each state.** The agent TVs and the Agent Room poster read the room; the Vision TV reads Ascend Core.
+
+| | |
+| --- | --- |
+| <img src="docs/screenshots/shelf.webp" alt="All three agents idle: the agent TVs show a dozing mascot and the poster reads ALL QUIET, 3 of 3 agents ready. The Vision eye sits on Claude's TV." /> **All quiet** (the Vision eye sits on CH 01) | <img src="docs/screenshots/shelf-working.webp" alt="Claude's TV shows its mascot at work, Codex is idle and Antigravity shows a lost signal; the poster reads LIVE, CLAUDE · CODING, task 2/3 · Start, stop and reset · 4m" /> **Working** (Claude coding, Antigravity's CLI offline) |
+| <img src="docs/screenshots/shelf-needs-you.webp" alt="Codex's TV shows the stuck screen and the poster reads WAIT, CODEX · NEEDS YOU, approve the plan" /> **Needs you** (the orchestrator waits at the plan gate) | <img src="docs/screenshots/shelf-closed.webp" alt="All three agent TVs show a lost signal and the poster reads OFF, ROOM CLOSED, the room process is not running" /> **Room closed** |
+| <img src="docs/screenshots/tv-detail.webp" alt="Claude's status monitor opened from its shelf TV: Working, current activity task 2/3 · Start, stop and reset, with Refresh and Copy status buttons" /> **Status monitor** (click any shelf TV) | <img src="docs/screenshots/tray-remote.webp" alt="The tray remote in three states: Claude coding with a progress bar and the ON AIR light, Codex needing you with the plan gate, and the room closed with every TV on no signal" /> **Tray remote** (Windows, from the launcher) |
+
+**The Agent Room at work**
+
+| | |
+| --- | --- |
+| <img src="docs/screenshots/room-start.webp" alt="The Agent Room in the Dark wood theme: session history on the left, the 3D room with three agent desks and the prompt box in the middle, new-session options, options, agents, queue and settings on the right" /> **Agent Room**, ready for a new session | <img src="docs/screenshots/room-coding.webp" alt="A running build: the stage bar at Build, Claude at its desk editing index.html, the plan with task 2 of 3 running, and the Now card saying Claude is working and Antigravity will review" /> **Coding** (task 2 of 3) |
+| <img src="docs/screenshots/room-review.webp" alt="The same build with Antigravity reviewing task 2 at its desk while Claude waits" /> **Review** | <img src="docs/screenshots/room-gate.webp" alt="The build stopped at the plan gate: the Now card says NEEDS YOU, approve the plan, with the three planned tasks below" /> **Plan gate** (needs you) |
+| <img src="docs/screenshots/room-workflow.webp" alt="The Workflow tab of a finished session: run totals, stage timings, a swim lane per agent and three finished tasks with their checks" /> **Workflow view** | <img src="docs/screenshots/room-debate.webp" alt="A finished debate with the judge's combined answer: where the agents agree, where they disagree, and the open question" /> **Debate verdict** |
 
 <p align="center">
 <img src="docs/screenshots/room-themes.webp" alt="The same finished session in six themes: Sky, Lime, Retro SaaS, BrutAdmin, Brutstack and Neoflux" width="900" /><br/>
