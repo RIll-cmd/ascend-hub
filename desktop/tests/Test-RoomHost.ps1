@@ -9,6 +9,11 @@ $desktop=Split-Path -Parent $PSScriptRoot
 Add-Type -AssemblyName System.Web.Extensions
 $refs=@([object].Assembly.Location,[System.Net.IPAddress].Assembly.Location,[System.Linq.Enumerable].Assembly.Location,[System.Web.Script.Serialization.JavaScriptSerializer].Assembly.Location)
 Add-Type -Path @((Join-Path $desktop 'ProcessHost.cs'),(Join-Path $desktop 'Supervisor.cs'),(Join-Path $desktop 'RoomHost.cs')) -ReferencedAssemblies $refs
+# The tray remote's memory meter: a process and everything it started, 0 for a process that is gone.
+$self=[Diagnostics.Process]::GetCurrentProcess().WorkingSet64
+$child=Start-Process -FilePath $NodeExe -ArgumentList '-e','setTimeout(()=>{},5000)' -WindowStyle Hidden -PassThru
+try{Start-Sleep -Milliseconds 500;$child.Refresh();$tree=[Ascend.Desktop.HubSessionConflict]::TreeWorkingSet($PID);Assert ($tree -ge $self*0.8+$child.WorkingSet64*0.8) "the tree counts its children (got $tree)"}finally{$child.Kill()}
+Assert ([Ascend.Desktop.HubSessionConflict]::TreeWorkingSet(0) -eq 0 -and [Ascend.Desktop.HubSessionConflict]::TreeWorkingSet(999999) -eq 0) 'no process, no memory'
 $fixture=Join-Path $PSScriptRoot 'fixture_room.mjs'
 $root=Join-Path $env:TEMP ('room-host-'+[guid]::NewGuid().ToString('N'))
 $other=Join-Path $env:TEMP ('room-host-'+[guid]::NewGuid().ToString('N'))

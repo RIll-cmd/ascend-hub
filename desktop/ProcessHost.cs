@@ -112,6 +112,13 @@ namespace Ascend.Desktop {
             }
             return ids.ToList();
         }
+        // The tray remote's memory meter: the working set of a process and everything it started; 0 once it is gone.
+        public static long TreeWorkingSet(int pid) {
+            if(pid<=0)return 0;
+            long total=0;var pids=Descendants(pid);pids.Insert(0,pid);
+            foreach(var id in pids){try{using(var p=System.Diagnostics.Process.GetProcessById(id))total+=p.WorkingSet64;}catch(ArgumentException){}catch(InvalidOperationException){}}
+            return total;
+        }
         static System.Collections.Generic.List<int> Descendants(int pid) {
             var entries=new System.Collections.Generic.Dictionary<int,int>();var result=new System.Collections.Generic.List<int>();
             IntPtr snapshot=CreateToolhelp32Snapshot(2,0);if(snapshot==new IntPtr(-1))throw new InvalidOperationException("process-unverified");
@@ -215,5 +222,10 @@ namespace Ascend.Desktop {
         [DllImport("kernel32.dll")] static extern uint WaitForSingleObject(IntPtr handle, uint timeout);
         [DllImport("kernel32.dll", SetLastError=true)] static extern bool GetExitCodeProcess(IntPtr process, out uint exitCode);
         [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr handle);
+    }
+    // Windows 11 rounds a borderless popup's corners only when asked; older Windows ignores the request.
+    public static class WindowCorners {
+        [DllImport("dwmapi.dll")]static extern int DwmSetWindowAttribute(IntPtr window,int attribute,ref int value,int size);
+        public static void Round(IntPtr window){int round=2;try{DwmSetWindowAttribute(window,33,ref round,4);}catch(DllNotFoundException){}catch(EntryPointNotFoundException){}}
     }
 }

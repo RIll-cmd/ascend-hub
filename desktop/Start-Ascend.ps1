@@ -209,10 +209,17 @@ try {
         function Update-TrayRemote {
             if(-not $remote.IsVisible){return}
             $power=Get-PowerState $supervisor.Get($component).State $script:IdleAction
-            $script:remoteLower=Set-TrayRemote $remote $script:RoomView $script:remoteSel $script:remoteIndex $power $script:blinkOn
+            $script:remoteLower=Set-TrayRemote $remote $script:RoomView $script:remoteSel $script:remoteIndex $power $script:blinkOn $script:memoryLine
             $script:remoteIndex=$script:remoteLower.Index
         }
-        $script:TrayChanged={Update-TrayRemote}
+        # The header's memory meter, measured only while the remote shows (on open and with each 2 s poll).
+        $script:memoryLine=''
+        function Update-TrayMemory {
+            $room=$script:roomHost
+            $roomBytes=if($null -eq $room){0}elseif($room.Owned){[Ascend.Desktop.HubSessionConflict]::TreeWorkingSet($room.Pid)}elseif($room.State -eq 'adopted'){-1}else{0}
+            $script:memoryLine=Get-MemoryLine ([Ascend.Desktop.HubSessionConflict]::TreeWorkingSet($supervisor.Get($component).Pid)) $roomBytes
+        }
+        $script:TrayChanged={if($remote.IsVisible){Update-TrayMemory};Update-TrayRemote}
         # Blinking only while the remote shows: nothing animates or redraws while it is closed.
         $blink=New-Object Windows.Threading.DispatcherTimer;$blink.Interval=[TimeSpan]::FromMilliseconds(600)
         $blink.Add_Tick({$script:blinkOn=-not $script:blinkOn;Update-TrayRemote})
@@ -228,6 +235,8 @@ try {
         function Show-TrayRemote {
             $script:remoteSel=Get-TraySelection $script:RoomView $script:remoteLast;$script:remoteIndex=0;Set-TaskMode $false
             $remote.Left=-10000;$remote.Top=-10000;$remote.Show();$remote.UpdateLayout()
+            [Ascend.Desktop.WindowCorners]::Round((New-Object Windows.Interop.WindowInteropHelper $remote).Handle)
+            Update-TrayMemory
             # shortcut: places the remote on the primary monitor's work area; a taskbar on a second monitor would need Screen.FromPoint.
             $device=[Windows.Forms.Control]::MousePosition
             $cursor=[Windows.PresentationSource]::FromVisual($remote).CompositionTarget.TransformFromDevice.Transform([Windows.Point]::new($device.X,$device.Y))
@@ -282,10 +291,18 @@ try {
         })
         for($n=0;$n -lt 3;$n++){
             $id=$script:TrayIds[$n]
-            foreach($name in @("Tv$n","Pick$n")){$button=$remote.FindName($name);$button.Tag=$id;$button.Add_Click({param($sender) Select-TrayAgent ([string]$sender.Tag)})}
+            foreach($name in @("Tv$n","Pick$n")){$button=$remote.FindName($name);$button.Uid=$id;$button.Add_Click({param($sender) Select-TrayAgent $sender.Uid})}
         }
         $remote.FindName('Prev').Add_Click({$script:remoteIndex=[math]::Max(0,$script:remoteIndex-1);Update-TrayRemote})
         $remote.FindName('Next').Add_Click({$script:remoteIndex++;Update-TrayRemote})
+        # The wheel over the lower third steps through today's sessions like Left and Right.
+        $remote.FindName('Lower').Add_PreviewMouseWheel({param($sender,$e)
+            $e.Handled=$true;$script:remoteIndex=(Get-TrayKey $(if($e.Delta -gt 0){'PageUp'}else{'PageDown'}) $script:remoteSel $script:remoteIndex).Index;Update-TrayRemote
+        })
+        $remote.FindName('Folder').Add_Click({
+            $root=if($script:RoomView){[string]$script:RoomView.buildsRoot}else{''}
+            if($root -and [IO.Directory]::Exists($root)){Hide-TrayRemote;Start-Process -FilePath 'explorer.exe' -ArgumentList ('"'+$root+'"')}
+        })
         $remote.FindName('Lower').Add_Click({
             if($null -eq $script:RoomView){Hide-TrayRemote;Show-Launcher;return}
             $lower=$script:remoteLower

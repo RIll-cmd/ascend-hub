@@ -84,7 +84,35 @@ Assert ($k.Selected -eq 'agy' -and $k.Index -eq 0) '3 picks Antigravity from its
 Assert ((Get-TrayKey 'NumPad1' 'agy' 0).Selected -eq 'codex') 'number pad'
 Assert ((Get-TrayKey 'Left' 'claude' 0).Index -eq 0 -and (Get-TrayKey 'Right' 'claude' 0).Index -eq 1) 'arrows step'
 Assert ((Get-TrayKey 'Escape' 'claude' 0).Close) 'Esc closes'
+Assert ((Get-TrayKey 'PageDown' 'claude' 0).Index -eq 1 -and (Get-TrayKey 'PageUp' 'claude' 1).Index -eq 0) 'the mouse wheel steps like the arrows'
+
+# A coding TV's progress through the plan, read from its line of detail.
+$t=Get-TaskProgress 'task 2/3 · Login form · 4m'
+Assert ($t.Current -eq 2 -and $t.Total -eq 3) 'task 2 of 3'
+Assert ($null -eq (Get-TaskProgress 'ready') -and $null -eq (Get-TaskProgress '')) 'no plan, no bar'
+Assert ($null -eq (Get-TaskProgress 'task 4/3 · x')) 'a position past the end is ignored'
+
+# The face each mood draws on a TV.
+$f=Get-TvFace 'working'; Assert ($f.Eyes -eq 'open' -and $f.Mouth -eq 'smile' -and $f.Mark -eq '') 'working: awake and pleased'
+$f=Get-TvFace 'reviewing'; Assert ($f.Eyes -eq 'squint' -and $f.Mouth -eq 'flat') 'reviewing: squints'
+$f=Get-TvFace 'stuck'; Assert ($f.Eyes -eq 'wide' -and $f.Mouth -eq 'o' -and $f.Mark -eq '!') 'stuck: calls you'
+$f=Get-TvFace 'idle'; Assert ($f.Eyes -eq 'closed' -and $f.Mark -eq 'z') 'idle: dozes'
+$f=Get-TvFace 'offline'; Assert ($f.Eyes -eq 'none' -and $f.Mouth -eq 'none') 'offline: static only'
+
+# The header's ON AIR light and memory meter.
+$air={param($bugs) [pscustomobject]@{tvs=@($bugs|ForEach-Object{[pscustomobject]@{bug=$_}})}}
+Assert ((Get-OnAir $null) -eq 'off') 'no room'
+Assert ((Get-OnAir (& $air @('IDLE','LIVE','OFF'))) -eq 'live') 'something works'
+Assert ((Get-OnAir (& $air @('LIVE','WAIT','IDLE'))) -eq 'wait') 'needs you beats working'
+Assert ((Get-OnAir (& $air @('IDLE','IDLE','OFF'))) -eq 'off') 'all quiet'
+Assert ((Get-MemoryLine 159383552 42991616) -eq "HUB 152 MB $([char]0xB7) ROOM 41 MB") 'both running'
+Assert ((Get-MemoryLine 0 42991616) -eq "HUB OFF $([char]0xB7) ROOM 41 MB") 'Hub off'
+Assert ((Get-MemoryLine 0 0) -eq "HUB OFF $([char]0xB7) ROOM OFF") 'nothing running'
+Assert ((Get-MemoryLine 159383552 -1) -eq 'HUB 152 MB') 'a room started elsewhere is not counted'
+Assert ((Get-TodayLine 0) -eq 'no sessions today' -and (Get-TodayLine 1) -eq '1 session today' -and (Get-TodayLine 4) -eq '4 sessions today') 'today count'
 # PowerShell names ignore case: a script-scope "$script:Tray" would overwrite the tray icon held in $tray.
 Assert (-not (Select-String -LiteralPath (Join-Path $desktop 'Start-Ascend.ps1') -Pattern '\$script:tray\b' -Quiet)) 'nothing shadows the tray icon variable'
+# The remote's buttons draw their corner radius from Tag, so the launcher keeps each agent id elsewhere.
+Assert (-not (Select-String -LiteralPath (Join-Path $desktop 'Start-Ascend.ps1') -Pattern '\$button\.Tag=' -Quiet)) 'remote buttons keep their Tag'
 'tray remote logic checks passed'
 

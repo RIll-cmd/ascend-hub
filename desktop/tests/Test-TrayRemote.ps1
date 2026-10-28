@@ -20,8 +20,17 @@ $window=New-TrayRemote $desktop
 $window.WindowStartupLocation='Manual';$window.Left=-10000;$window.Top=-10000;$window.ShowActivated=$false
 $pump={$window.Dispatcher.Invoke([Action]{},[Windows.Threading.DispatcherPriority]::Background)}
 $window.Show();& $pump
-$lower=Set-TrayRemote $window $tray 'claude' 0 'on'
+$lower=Set-TrayRemote $window $tray 'claude' 0 'on' $true 'HUB 152 MB, ROOM 41 MB'
 & $pump
+Assert ($window.FindName('Memory').Text -eq 'HUB 152 MB, ROOM 41 MB') 'the memory meter'
+Assert ($window.FindName('OnAirText').Text -eq 'NEEDS YOU') 'the header calls you before it says on air'
+Assert ($window.FindName('Progress').Visibility -eq 'Visible' -and $window.FindName('Progress').Children.Count -eq 3) 'one progress segment per task'
+Assert ($window.FindName('Today').Text -eq '2 sessions today') 'today count'
+Assert ($window.FindName('Mark0').Text -eq '!' -and $window.FindName('Mouth0').Visibility -eq 'Visible') 'the stuck TV calls you'
+Assert ($window.FindName('NoSignal2').Visibility -eq 'Visible' -and $window.FindName('EyeL2').Visibility -eq 'Collapsed' -and $window.FindName('Mouth2').Visibility -eq 'Collapsed') 'offline: no face, NO SIGNAL'
+Assert ($window.FindName('Glow1').Opacity -gt 0 -and $window.FindName('Glow2').Opacity -eq 0) 'a working TV lights the wall'
+Assert ([string]$window.FindName('Tv1').ToolTip -like '*Login form*') 'hovering a TV says what it does'
+Assert ($window.FindName('Folder').Visibility -eq 'Visible') 'the builds folder button'
 Assert ($window.FindName('Headline').Text -eq 'CLAUDE · CODING') 'the running session speaks in the live words'
 Assert ([Windows.Automation.AutomationProperties]::GetName($window.FindName('Tv0')) -eq 'Codex: CODEX · NEEDS YOU, approve the plan') 'TV names say what each agent is doing'
 Assert ([Windows.Automation.AutomationProperties]::GetName($window.FindName('Tv2')) -eq 'Antigravity: ANTIGRAVITY · OFFLINE, CLI not available') 'offline TV'
@@ -34,11 +43,13 @@ Assert ([Windows.Automation.AutomationProperties]::GetName($window.FindName('Pow
 Assert ($window.FindName('Screen0').Opacity -lt 1) 'the needs-you screen blinks'
 $long=[pscustomobject]@{tvs=@((Tv codex idle idle IDLE ('X'*60) ('y'*80) '#5F5E5A'));lead=$null;running=$false;today=[pscustomobject]@{codex=@()}}
 [void](Set-TrayRemote $window $long 'codex' 0 'off');& $pump
-Assert ($window.FindName('Headline').ActualWidth -le 254 -and $window.ActualWidth -le 300) 'a 60-character headline is cut, not widened'
+Assert ($window.FindName('Folder').Visibility -eq 'Collapsed' -and $window.FindName('Progress').Visibility -eq 'Collapsed') 'no builds folder, no plan'
+Assert ($window.FindName('Mark0').Text -eq 'z' -and $window.FindName('OnAirText').Text -eq 'ON AIR') 'an idle TV dozes; the header is dark'
+Assert ($window.FindName('Headline').ActualWidth -le 262 -and $window.ActualWidth -le 320) 'a 60-character headline is cut, not widened'
 [void](Set-TrayRemote $window $null 'claude' 0 'off')
 & $pump
 Assert ($window.FindName('Headline').Text -eq 'ROOM CLOSED') 'room closed'
-Assert ($window.ActualWidth -le 300 -and $window.ActualHeight -lt 320) "compact (got $($window.ActualWidth) x $($window.ActualHeight))"
+Assert ($window.ActualWidth -le 320 -and $window.ActualHeight -lt 380) "compact (got $($window.ActualWidth) x $($window.ActualHeight))"
 $window.Hide();& $pump
 
 $cycle={param([int]$count) for($i=0;$i -lt $count;$i++){
