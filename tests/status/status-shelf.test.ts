@@ -18,7 +18,7 @@ const snapshot = {
   generatedAt: "2026-09-17T00:00:00.000Z",
   services: [
     {
-      serviceId: "ascend-core",
+      serviceId: "claude-cli",
       instanceId: "core-local-1",
       serviceType: "agent" as const,
       state: "idle" as const,
@@ -117,7 +117,7 @@ test("unknown services receive the generic TV fallback and tolerate absent optio
 test("the four first-shelf TVs are assigned to the intended services", () => {
   assert.deepEqual(getShelfTvAssignment("slot-1-1-t"), {
     channel: "CH 01",
-    serviceId: "ascend-core",
+    serviceId: "claude-cli",
   });
   assert.deepEqual(getShelfTvAssignment("slot-1-3-t"), {
     channel: "CH 02",

@@ -22,7 +22,7 @@ const agent = (patch: Partial<TvAgent> = {}): TvAgent =>
 
 test("a coder at work is live: its task and how long", () => {
   const s = tvStatus(agent(), roomScene(session(), null), "code", NOW);
-  assert.deepEqual([s.channel, s.bug, s.mood, s.headline, s.sub, s.banner], ["CH 05", "LIVE", "working", "CLAUDE · CODING", "task 2/3 · Login form · 4m", "#d97757"]);
+  assert.deepEqual([s.channel, s.bug, s.mood, s.headline, s.sub, s.banner], ["CH 01", "LIVE", "working", "CLAUDE · CODING", "task 2/3 · Login form · 4m", "#d97757"]);
 });
 
 test("a reviewer squints at the task under review", () => {

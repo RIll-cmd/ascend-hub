@@ -68,7 +68,7 @@ Everything runs on your own computer and listens on `127.0.0.1` only.
 
 ### Status shelf
 
-- Four shelf TVs, built from Ascend Core's `services[]` list: **CH 01 Ascend Core / AIRA**, **CH 02 Ascend Vision**, **CH 03 Codex CLI** and **CH 04 Antigravity CLI**. Unknown services get a generic TV with no code changes.
+- Four shelf TVs: **CH 01 Claude** (its iMac trimmed in Claude's coral), **CH 02 Ascend Vision**, **CH 03 Codex CLI** and **CH 04 Antigravity**. The three agent TVs show what the Agent Room's TVs show, from the same `/api/room` poll as the Agent Room poster: idle, working (with the task, for example "task 2/3 · Login form · 4m"), needs you (with what to approve) or offline. When the room is not running they say so. Vision still reads Ascend Core's `services[]` list.
 - Four states (`idle`, `working`, `stuck`, `offline`), shown as text as well as colour, with last-seen times.
 - Polls every four seconds and slows down in hidden tabs. Stale or failed reports are labelled as such, never shown as live.
 - Click a TV, or move the Vision eye with **WASD** / **arrow keys** and press **Space**, to open its status monitor. **Escape** zooms back out.
@@ -118,7 +118,7 @@ The page has three columns: past sessions on the left, the 3D room and the chat 
   - **Idle, a ready room:** dim light, desks parked forward of the shelves, a typewriter on the centre table reading "NEW TASK · type here" (click it to jump to the start form), queued sessions as a stack of pages with their count, and a chalkboard with what is up next.
   - **Coding, a workshop:** an L-shaped workbench under a work lamp. The coder's TV shows code typing in, the reviewer's a diff under a magnifier while it reviews, the orchestrator's the plan. A shared wall screen shows the plan (or the live app during UI tasks) under a strip such as "Task 2/3 · Claude coding · Antigravity assigned". A lamp reads CHECKS RUNNING, CHECKS PASSED or CHECKS FAILED, and a "NEEDS YOU" flag stands on the bench when a gate or a pause waits for you.
   - **Debate, a panel:** desks in an arc, a stage light on whoever has the floor (the judge at the verdict), a sound wave on the speaker's TV, a JUDGE sign, and the phases on the chalkboard. A build's discuss and roles steps use the panel too.
-  - **TVs in the shelf's broadcast style:** each agent's TV has a channel number (CH 03 Codex, CH 04 Antigravity, CH 05 Claude), a LIVE / WAIT / IDLE / OFF light, the shelf's mascot drawn with a face for its mood (wide eyes working, a monocle reviewing, asleep when idle, orange with a "!" when you are needed), the job graphic beside it while it works, and a news lower third such as "CODEX · CODING" over "task 2/3 · Login form · 4m". At a gate the orchestrator's TV says what you must do.
+  - **TVs in the shelf's broadcast style:** each agent's TV has a channel number (CH 01 Claude, CH 03 Codex, CH 04 Antigravity, matching the home shelf), a LIVE / WAIT / IDLE / OFF light, the shelf's mascot drawn with a face for its mood (wide eyes working, a monocle reviewing, asleep when idle, orange with a "!" when you are needed), the job graphic beside it while it works, and a news lower third such as "CODEX · CODING" over "task 2/3 · Login form · 4m". At a gate the orchestrator's TV says what you must do.
   - Furniture eases into place once per change; reduced motion jumps straight there. The flat view says which room it is and whether you are needed.
 - **Task Console:** the right column follows the room: the start form and queue when idle; while coding, a **Now** card (the task, who is working on it, that task's own checks, and the reviewer as "assigned, waiting" until its review starts) above the plan; the session and verdict in a debate. Limits and role sets fold into one **Settings** row. On narrow screens the Now card comes before the room.
 - **Mascots:** each agent in the Agents list and its details card has a small robot in its colour. It rests with closed eyes when idle, looks around with a blinking light while it has a turn, shows crossed eyes and a red light when its CLI is offline or its session is paused, and smiles and hops once when the session is done. Motion stops when the system asks for reduced motion.
@@ -240,7 +240,7 @@ Then double-click **Ascend Hub** on the desktop. Closing the launcher window hid
 
 ## Status shelf setup
 
-The shelf shows live data only when Ascend Core is running and Hub can read it. Hub never invents status: without Core, the TVs say the status feed is unavailable.
+The Vision TV shows live data only when Ascend Core is running and Hub can read it. Hub never invents status: without Core, that TV says the status feed is unavailable. The agent TVs need only the Agent Room.
 
 1. Start Ascend Core (see its README).
 2. Add the read-only connection to `.env.local`:

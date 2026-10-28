@@ -34,7 +34,7 @@ interface ShelfStatusTvProps {
 }
 
 const SERVICE_LABELS: Record<ShelfTvAssignment["serviceId"], string> = {
-  "ascend-core": "Ascend Core", "ascend-vision": "Ascend Vision",
+  "claude-cli": "Claude", "ascend-vision": "Ascend Vision",
   "codex-cli": "Codex CLI", "antigravity-cli": "Antigravity",
 };
 
@@ -106,7 +106,7 @@ export function ShelfStatusTv({ assignment, profile, service, loading, error, st
   };
 
   return (
-    <div className="crt-tv-wrapper shelf-status-tv" data-freshness={presentation.freshness}>
+    <div className="crt-tv-wrapper shelf-status-tv" data-service={assignment.serviceId} data-freshness={presentation.freshness}>
       {/* Artwork coordinates retain the calibrated CRT crop. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img className="crt-tv-frame" src={profile.image} alt="" draggable={false} aria-hidden="true" />

@@ -5,7 +5,7 @@ import * as presentations from "../../components/status/status-presentation";
 
 const NOW = Date.parse("2026-10-02T12:00:00Z");
 const report: ShelfServiceStatus = {
-  serviceId: "ascend-core", instanceId: "core-a", serviceType: "agent", state: "working",
+  serviceId: "claude-cli", instanceId: "core-a", serviceType: "agent", state: "working",
   stateSince: "2026-10-02T11:59:00Z", lastHeartbeatAt: "2026-10-02T11:59:55Z", staleAfterSeconds: 30,
 };
 const input = { service: report, loading: false, error: null, stale: false, nowMs: NOW };

@@ -1,5 +1,5 @@
 export type VisionEyeServiceId =
-  | "ascend-core"
+  | "claude-cli"
   | "ascend-vision"
   | "codex-cli"
   | "antigravity-cli";

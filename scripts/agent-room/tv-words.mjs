@@ -3,8 +3,8 @@
 
 export const AGENT_NAMES = { codex: 'Codex', claude: 'Claude', agy: 'Antigravity' };
 export const AGENT_COLORS = { codex: '#e28a2b', claude: '#d97757', agy: '#3d7bff' };
-// Continues the shelf's numbering (CH 03 Codex, CH 04 Antigravity); Claude has no shelf TV, so it takes the next one.
-export const CHANNELS = { codex: 'CH 03', agy: 'CH 04', claude: 'CH 05' };
+// The shelf's numbering: CH 01 Claude, CH 03 Codex, CH 04 Antigravity (CH 02 is Vision).
+export const CHANNELS = { codex: 'CH 03', agy: 'CH 04', claude: 'CH 01' };
 
 const TERMINAL = new Set(['done', 'rejected', 'stopped']);
 const PANEL_STAGES = new Set(['discuss', 'roles', 'gate-roles']);

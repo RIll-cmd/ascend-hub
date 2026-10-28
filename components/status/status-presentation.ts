@@ -56,6 +56,7 @@ function feedExplanation(error: string | null): string {
   // Only public client errors are allowed through; never expose arbitrary upstream text.
   switch (error) {
     case "Status Shelf is not configured on this Hub.": return error;
+    case "The agent room is not running.": return error;
     case "Status authority returned an unsupported snapshot.": return "The status feed returned an unsupported snapshot.";
     case "Status request timed out.": return "The status feed request timed out.";
     default: return "Cannot reach the status feed.";
@@ -112,7 +113,7 @@ const STATE_PRESENTATION: Record<ServiceState, Pick<StatusPresentation, "label" 
 };
 
 const KNOWN_SERVICES: Record<string, Pick<StatusPresentation, "brand" | "artwork">> = {
-  "ascend-core": { brand: "Ascend Core", artwork: "core" },
+  "claude-cli": { brand: "Claude", artwork: "generic" },
   "ascend-vision": { brand: "Ascend Vision", artwork: "vision" },
   "codex-cli": { brand: "Codex CLI", artwork: "generic" },
   "antigravity-cli": { brand: "Antigravity CLI", artwork: "generic" },

@@ -37,7 +37,7 @@ export interface AgentAuxiliaryModelInput {
 }
 
 const SERVICE_LABELS: Record<ShelfTvAssignment["serviceId"], string> = {
-  "ascend-core": "ASCEND CORE / AIRA",
+  "claude-cli": "CLAUDE CODE",
   "ascend-vision": "ASCEND VISION",
   "codex-cli": "CODEX CLI",
   "antigravity-cli": "ANTIGRAVITY CLI",

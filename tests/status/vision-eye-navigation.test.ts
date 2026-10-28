@@ -13,7 +13,7 @@ import {
 } from "../../components/status/vision-eye-navigation";
 
 const targets: VisionEyeTarget[] = [
-  { serviceId: "ascend-core", channel: "CH 01", x: 100, y: 100, width: 80, height: 60 },
+  { serviceId: "claude-cli", channel: "CH 01", x: 100, y: 100, width: 80, height: 60 },
   { serviceId: "ascend-vision", channel: "CH 02", x: 400, y: 110, width: 80, height: 60 },
   { serviceId: "codex-cli", channel: "CH 03", x: 110, y: 350, width: 80, height: 60 },
   { serviceId: "antigravity-cli", channel: "CH 04", x: 410, y: 360, width: 80, height: 60 },
@@ -30,26 +30,26 @@ test("maps arrows and WASD to movement and Space to activation", () => {
 });
 
 test("chooses the nearest TV in the requested direction", () => {
-  assert.equal(findDirectionalVisionEyeTarget("ascend-core", "right", targets)?.serviceId, "ascend-vision");
-  assert.equal(findDirectionalVisionEyeTarget("ascend-core", "down", targets)?.serviceId, "codex-cli");
+  assert.equal(findDirectionalVisionEyeTarget("claude-cli", "right", targets)?.serviceId, "ascend-vision");
+  assert.equal(findDirectionalVisionEyeTarget("claude-cli", "down", targets)?.serviceId, "codex-cli");
   assert.equal(findDirectionalVisionEyeTarget("antigravity-cli", "left", targets)?.serviceId, "codex-cli");
   assert.equal(findDirectionalVisionEyeTarget("antigravity-cli", "up", targets)?.serviceId, "ascend-vision");
 });
 
 test("keeps selection when no target exists in that direction", () => {
-  assert.equal(findDirectionalVisionEyeTarget("ascend-core", "left", targets)?.serviceId, "ascend-core");
+  assert.equal(findDirectionalVisionEyeTarget("claude-cli", "left", targets)?.serviceId, "claude-cli");
 });
 
 test("prefers the intended column on a wide shelf with slightly staggered rows", () => {
   const wideTargets: VisionEyeTarget[] = [
-    { serviceId: "ascend-core", channel: "CH 01", x: 100, y: 100, width: 80, height: 60 },
+    { serviceId: "claude-cli", channel: "CH 01", x: 100, y: 100, width: 80, height: 60 },
     { serviceId: "ascend-vision", channel: "CH 02", x: 900, y: 110, width: 80, height: 60 },
     { serviceId: "codex-cli", channel: "CH 03", x: 105, y: 400, width: 80, height: 60 },
     { serviceId: "antigravity-cli", channel: "CH 04", x: 905, y: 410, width: 80, height: 60 },
   ];
 
   assert.equal(
-    findDirectionalVisionEyeTarget("ascend-core", "right", wideTargets)?.serviceId,
+    findDirectionalVisionEyeTarget("claude-cli", "right", wideTargets)?.serviceId,
     "ascend-vision",
   );
   assert.equal(
@@ -59,7 +59,7 @@ test("prefers the intended column on a wide shelf with slightly staggered rows",
 });
 
 test("returns null when the current TV has not been measured", () => {
-  assert.equal(findDirectionalVisionEyeTarget("ascend-core", "right", targets.slice(1)), null);
+  assert.equal(findDirectionalVisionEyeTarget("claude-cli", "right", targets.slice(1)), null);
 });
 
 test("does not jump rows at the right or bottom edge of a staggered grid", () => {
@@ -109,23 +109,23 @@ test("page integrates selection-only movement and Space activation", async () =>
 });
 
 test("starts a TV signal transfer at the source collapse phase", () => {
-  const initial = createTvSignalState("ascend-core");
+  const initial = createTvSignalState("claude-cli");
   const next = beginTvSignalTransition(initial, "ascend-vision", "right");
 
   assert.deepEqual(next, {
     activeTvId: "ascend-vision",
-    sourceTvId: "ascend-core",
+    sourceTvId: "claude-cli",
     targetTvId: "ascend-vision",
     direction: "right",
     phase: "collapsing",
   });
-  assert.equal(getTvSignalScreenMode("ascend-core", next), "departing");
+  assert.equal(getTvSignalScreenMode("claude-cli", next), "departing");
   assert.equal(getTvSignalScreenMode("ascend-vision", next), "default");
 });
 
 test("advances signal transfer through gap, reconstruction, and settled idle", () => {
   const collapsing = beginTvSignalTransition(
-    createTvSignalState("ascend-core"),
+    createTvSignalState("claude-cli"),
     "ascend-vision",
     "right",
   );
@@ -134,7 +134,7 @@ test("advances signal transfer through gap, reconstruction, and settled idle", (
   const settled = advanceTvSignalTransition(reconstructing);
 
   assert.equal(traveling.phase, "traveling");
-  assert.equal(getTvSignalScreenMode("ascend-core", traveling), "default");
+  assert.equal(getTvSignalScreenMode("claude-cli", traveling), "default");
   assert.equal(getTvSignalScreenMode("ascend-vision", traveling), "default");
   assert.equal(reconstructing.phase, "reconstructing");
   assert.equal(getTvSignalScreenMode("ascend-vision", reconstructing), "arriving");
@@ -144,7 +144,7 @@ test("advances signal transfer through gap, reconstruction, and settled idle", (
 
 test("ignores overlapping transfers while the receiver is changing channels", () => {
   const collapsing = beginTvSignalTransition(
-    createTvSignalState("ascend-core"),
+    createTvSignalState("claude-cli"),
     "ascend-vision",
     "right",
   );
@@ -156,8 +156,8 @@ test("ignores overlapping transfers while the receiver is changing channels", ()
 });
 
 test("does not animate when selecting the already active TV", () => {
-  const initial = createTvSignalState("ascend-core");
-  assert.equal(beginTvSignalTransition(initial, "ascend-core", "right"), initial);
+  const initial = createTvSignalState("claude-cli");
+  assert.equal(beginTvSignalTransition(initial, "claude-cli", "right"), initial);
 });
 
 test("renders full-screen Fairy over the mounted CRT status", async () => {

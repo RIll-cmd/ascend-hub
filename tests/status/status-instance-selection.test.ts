@@ -11,7 +11,7 @@ test("the page remembers an empty instance ID once and retains it across refresh
   const slotId = "slot-1-1-t";
   const nowMs = Date.parse("2026-10-05T00:00:00Z");
   const service = {
-    serviceId: "ascend-core", instanceId: "", serviceType: "agent" as const,
+    serviceId: "claude-cli", instanceId: "", serviceType: "agent" as const,
     state: "idle" as const, stateSince: "2026-10-05T00:00:00Z",
     lastHeartbeatAt: "2026-10-05T00:00:00Z", staleAfterSeconds: 30,
   };

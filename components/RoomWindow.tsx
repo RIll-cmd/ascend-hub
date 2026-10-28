@@ -1,20 +1,23 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { roomWindow } from "@/app/room/deck/room-window";
 import type { RoomStatus, SessionView } from "@/app/room/room-types";
 
-type Seen = { status: RoomStatus | null; session: SessionView | null } | null;
+// at: when the room answered (or failed to). status null: the room is closed.
+export type RoomPeek = { status: RoomStatus | null; session: SessionView | null; at: number };
 
-// The poster's art: a little picture of the Agent Room that shows what its TVs show. Polls slowly; the room page
+// One slow poll of the Agent Room for the home page: the poster and the shelf's agent TVs both read it. The room page
 // itself polls fast.
-export function RoomWindow() {
-  const [seen, setSeen] = useState<Seen>(null);
-  const [now, setNow] = useState(() => Date.now());
+export function useRoomPeek() {
+  const [peek, setPeek] = useState<RoomPeek | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const tickRef = useRef<() => Promise<void>>(async () => {});
   useEffect(() => {
     let alive = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const tick = async () => {
-      const next: Seen = { status: null, session: null };
+      clearTimeout(timer);
+      const next: RoomPeek = { status: null, session: null, at: 0 };
       try {
         const [statusRes, sessionRes] = await Promise.all([
           fetch("/api/room", { cache: "no-store" }),
@@ -26,16 +29,25 @@ export function RoomWindow() {
         }
       } catch { /* closed */ }
       if (!alive) return;
-      setSeen(next);
-      setNow(Date.now());
+      setPeek({ ...next, at: Date.now() });
+      clearTimeout(timer); // a refresh may have overlapped a scheduled tick: keep one chain
       timer = setTimeout(tick, document.hidden ? 30_000 : 5_000);
     };
+    tickRef.current = tick;
     void tick();
     return () => { alive = false; clearTimeout(timer); };
   }, []);
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try { await tickRef.current(); } finally { setRefreshing(false); }
+  }, []);
+  return { peek, refresh, refreshing };
+}
 
-  const w = roomWindow(seen?.status ?? null, seen?.session ?? null, now);
-  const looking = seen === null;
+// The poster's art: a little picture of the Agent Room that shows what its TVs show.
+export function RoomWindow({ peek }: { peek: RoomPeek | null }) {
+  const w = roomWindow(peek?.status ?? null, peek?.session ?? null, peek?.at ?? 0);
+  const looking = peek === null;
   return (
     <div className="framed-poster-art room-window" data-bug={looking ? "IDLE" : w.bug} style={{ "--banner": looking ? "#5f5e5a" : w.banner } as React.CSSProperties}>
       <div className="room-window-head">

@@ -91,10 +91,10 @@ test("uses truthful state-specific details and clamps progress", () => {
 
 test("sanitizes upstream scalar text and handles invalid timestamps", () => {
   const model = buildAgentAuxiliaryModel({
-    assignment: { channel: "CH 01", serviceId: "ascend-core" },
+    assignment: { channel: "CH 01", serviceId: "claude-cli" },
     service: {
       ...workingService,
-      serviceId: "ascend-core",
+      serviceId: "claude-cli",
       instanceId: `core\n${"x".repeat(100)}`,
       stateSince: "invalid",
       lastHeartbeatAt: "invalid",
@@ -116,7 +116,7 @@ test("sanitizes upstream scalar text and handles invalid timestamps", () => {
 });
 
 test("reports loading, unavailable, and missing-service states without exposing raw errors", () => {
-  const assignment = { channel: "CH 01", serviceId: "ascend-core" } as const;
+  const assignment = { channel: "CH 01", serviceId: "claude-cli" } as const;
 
   const loading = buildAgentAuxiliaryModel({ assignment, service: null, loading: true, error: null, stale: false, nowMs: NOW });
   assert.equal(loading.signalLabel, "CONNECTING");

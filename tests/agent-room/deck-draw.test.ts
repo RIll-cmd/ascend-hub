@@ -113,12 +113,12 @@ test("screenKey changes with tick only for an animated graphic", () => {
   assert.equal(screenKey({ ...base, graphic: null, tick: 1 }), screenKey({ ...base, graphic: null, tick: 2 }));
 });
 
-const live: ScreenState["status"] = { channel: "CH 05", bug: "LIVE", mood: "working", headline: "CLAUDE · CODING", sub: "task 2/3 · Login form · 4m", banner: "#d97757" };
+const live: ScreenState["status"] = { channel: "CH 01", bug: "LIVE", mood: "working", headline: "CLAUDE · CODING", sub: "task 2/3 · Login form · 4m", banner: "#d97757" };
 
 test("paintScreen: a status shows the channel bug, the mascot and the lower third", () => {
   const r = recorder();
   paintScreen(r.ctx, 512, 384, { ...base, status: live });
-  for (const text of ["CH 05", "LIVE", "CLAUDE · CODING", "task 2/3 · Login form · 4m"]) assert.ok(r.texts().includes(text), text);
+  for (const text of ["CH 01", "LIVE", "CLAUDE · CODING", "task 2/3 · Login form · 4m"]) assert.ok(r.texts().includes(text), text);
   assert.ok(r.calls.some(c => c.op === "fillRect" && c.fillStyle === "#d97757"), "banner in the agent colour");
   assert.ok(r.calls.some(c => c.op === "lineTo"), "mascot ears");
   assert.ok(!r.texts().includes("editing…"), "the lower third replaces the old state word");

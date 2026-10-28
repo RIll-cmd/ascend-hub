@@ -6,8 +6,8 @@ const page = readFileSync(new URL('../../app/page.tsx', import.meta.url), 'utf8'
 const css = readFileSync(new URL('../../app/globals.css', import.meta.url), 'utf8');
 
 test('the framed poster links to the agent room with an accessible name', () => {
-  const poster = page.slice(page.indexOf('slot.isPoster ?'), page.indexOf('<RoomWindow />') + 14);
-  assert.match(poster, /<RoomWindow \/>/, 'the poster is a window into the room');
+  const poster = page.slice(page.indexOf('slot.isPoster ?'), page.indexOf('<RoomWindow peek={room.peek} />') + 31);
+  assert.match(poster, /<RoomWindow peek=\{room\.peek\} \/>/, 'the poster is a window into the room');
   assert.match(poster, /<a\s/, 'a plain anchor: vinext Link does nothing on click in production builds');
   assert.match(poster, /href="\/room"/);
   assert.match(poster, /aria-label="Enter the agent room"/);

@@ -66,7 +66,7 @@ $p=Get-PopupPlacement ([Windows.Rect]::new(0,0,1860,1080)) 300 250 ([Windows.Poi
 Assert ($p.Left -eq 1552 -and $p.Top -eq 822) "right taskbar (got $($p.Left),$($p.Top))"
 $p=Get-PopupPlacement ([Windows.Rect]::new(0,40,1920,1040)) 300 250 ([Windows.Point]::new(100,20))
 Assert ($p.Left -eq 8 -and $p.Top -eq 48) "top taskbar, near the left edge (got $($p.Left),$($p.Top))"
-$tv={param($id,$bug,$headline,$sub) [pscustomobject]@{id=$id;state='idle';channel='CH 05';bug=$bug;mood='idle';headline=$headline;sub=$sub;banner='#d97757';stale=$false}}
+$tv={param($id,$bug,$headline,$sub) [pscustomobject]@{id=$id;state='idle';channel='CH 01';bug=$bug;mood='idle';headline=$headline;sub=$sub;banner='#d97757';stale=$false}}
 $closed=Get-LowerThird $null 'claude' 0
 Assert ($closed.Headline -eq 'ROOM CLOSED' -and $closed.Sub -eq 'start the room from the launcher' -and $closed.Bug -eq 'OFF') 'room closed'
 $quiet=[pscustomobject]@{tvs=@((& $tv 'claude' 'IDLE' 'CLAUDE · IDLE' 'ready'));running=$false;today=[pscustomobject]@{claude=@()}}

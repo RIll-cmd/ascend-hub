@@ -57,7 +57,8 @@ import {
 import { RetroMediaCenter, RetroTv, DvdPlayer, StudioSpeaker } from "../components/RetroMediaCenter";
 import { RetroRoomHero } from "../components/RetroRoomHero";
 import { ShelfTrimEditor } from "../components/ShelfTrimEditor";
-import { RoomWindow } from "../components/RoomWindow";
+import { RoomWindow, useRoomPeek } from "../components/RoomWindow";
+import { roomShelfServices } from "../components/status/room-shelf";
 import { CrtTvDisplay } from "../components/CrtTvDisplay";
 import { RetroCdBrowserModal } from "../components/RetroCdBrowserModal";
 import { getShelfTvAccessibleLabel, ShelfStatusTv, type StatusMediaIssue } from "../components/status/ShelfStatusTv";
@@ -333,6 +334,7 @@ function Modal({ title, children, onClose, classic = false }: { title: string; c
 
 export default function Home() {
   const shelfStatus = useStatusShelf();
+  const room = useRoomPeek();
   const reduceMotion = useReducedMotion();
   const [layout, setLayout] = useState<Layout>(initialLayout);
   const [rows, setRows] = useState<ShelfRow[]>(DEFAULT_SHELF_ROWS);
@@ -376,7 +378,7 @@ export default function Home() {
   const [selectedStatusInstances, setSelectedStatusInstances] = useState<Record<string, string>>({});
   const [statusMediaIssues, setStatusMediaIssues] = useState<Record<string, Record<string, StatusMediaIssue>>>({});
   const [tvSignalTransition, setTvSignalTransition] = useState(() =>
-    createTvSignalState("ascend-core"),
+    createTvSignalState("claude-cli"),
   );
   const selectedVisionEyeServiceId = tvSignalTransition.activeTvId;
   const [visionEyeTargets, setVisionEyeTargets] = useState<readonly VisionEyeTarget[]>([]);
@@ -768,18 +770,28 @@ export default function Home() {
     setCameraSceneElement(node);
   }, []);
   const cameraMounted = focusedStatusTv !== null;
+  // Vision reports through Core's status feed; the agent TVs show what the Agent Room's TVs show.
   const statusTvSlots = useMemo(() => {
+    const coreFeed = {
+      services: shelfStatus.current ? shelfStatus.current.services : [], loading: Boolean(shelfStatus.loading && !shelfStatus.current),
+      error: shelfStatus.error, stale: Boolean(shelfStatus.stale), refresh: shelfStatus.refresh, refreshing: shelfStatus.refreshing,
+    };
+    const roomFeed = {
+      services: room.peek ? roomShelfServices(room.peek.status, room.peek.session, room.peek.at, nowMs) : [],
+      loading: room.peek === null, error: room.peek && !room.peek.status ? "The agent room is not running." : null,
+      stale: false, refresh: room.refresh, refreshing: room.refreshing,
+    };
     return ["slot-1-1-t", "slot-1-3-t", "slot-1-1-b", "slot-1-3-b"].map(slotId => {
-      const service = resolveShelfTvService(slotId, shelfStatus.current?.services ?? [],
-        selectedStatusInstances[slotId], nowMs);
+      const feed = getShelfTvAssignment(slotId)?.serviceId === "ascend-vision" ? coreFeed : roomFeed;
+      const service = resolveShelfTvService(slotId, feed.services, selectedStatusInstances[slotId], nowMs);
       const presentation = deriveShelfTvPresentation({
-        service, loading: Boolean(shelfStatus.loading && !shelfStatus.current), error: shelfStatus.error,
-        stale: Boolean(shelfStatus.stale), nowMs: nowMs,
+        service, loading: feed.loading, error: feed.error, stale: feed.stale, nowMs: nowMs,
         selectedInstanceId: selectedStatusInstances[slotId],
       });
-      return { slotId, service, presentation };
+      return { slotId, service, presentation, feed };
     });
-  }, [shelfStatus.current, shelfStatus.loading, shelfStatus.error, shelfStatus.stale, nowMs, selectedStatusInstances]);
+  }, [shelfStatus.current, shelfStatus.loading, shelfStatus.error, shelfStatus.stale, shelfStatus.refresh, shelfStatus.refreshing,
+    room.peek, room.refresh, room.refreshing, nowMs, selectedStatusInstances]);
 
   // Initialize identity before children commit, so a poll cannot display a replacement first.
   const unrememberedSlots = statusTvSlots.filter(slot => slot.service && selectedStatusInstances[slot.slotId] === undefined);
@@ -804,9 +816,9 @@ export default function Home() {
         assignment: focusedStatusTv.assignment,
         service: focusedService,
         presentation: focusedSlot.presentation,
-        loading: Boolean(shelfStatus.loading && !shelfStatus.current),
-        error: shelfStatus.error,
-        stale: Boolean(shelfStatus.stale),
+        loading: focusedSlot.feed.loading,
+        error: focusedSlot.feed.error,
+        stale: focusedSlot.feed.stale,
         nowMs: nowMs,
         selectedInstanceId: selectedStatusInstances[focusedStatusTv.slotId],
       })
@@ -825,16 +837,16 @@ export default function Home() {
     const collectibleId = trigger.dataset.statusCollectibleId;
     if (!slotId || !collectibleId) return;
     // Explicit reopen may choose a replacement. Refresh inside the dialog never changes identity.
-    const retained = resolveShelfTvService(slotId, shelfStatus.current?.services ?? [],
-      selectedStatusInstances[slotId], nowMs);
-    const selected = retained ?? resolveShelfTvService(slotId, shelfStatus.current?.services ?? [], undefined, nowMs);
+    const services = statusTvSlots.find(slot => slot.slotId === slotId)?.feed.services ?? [];
+    const retained = resolveShelfTvService(slotId, services, selectedStatusInstances[slotId], nowMs);
+    const selected = retained ?? resolveShelfTvService(slotId, services, undefined, nowMs);
     if (selected) setSelectedStatusInstances(current => ({ ...current, [slotId]: selected.instanceId }));
     setTvSignalTransition(createTvSignalState(assignment.serviceId));
     if (visionEyeActivationTimerRef.current) clearTimeout(visionEyeActivationTimerRef.current);
     cameraTriggerRef.current = trigger;
     setFocusedStatusTv({ assignment, slotId, collectibleId, open: true });
     setVisionEyeActivating(false);
-  }, [focusedStatusTv, shelfStatus, selectedStatusInstances, nowMs]);
+  }, [focusedStatusTv, statusTvSlots, selectedStatusInstances, nowMs]);
   useEffect(() => {
     if (!cameraMounted) return;
 
@@ -1564,12 +1576,12 @@ export default function Home() {
               <AgentAuxiliaryPanel model={focusedAgentModel} open={focusedStatusTv.open}
                 reduceMotion={Boolean(reduceMotion)} closeRef={cameraExitRef}
                 onClose={() => setFocusedStatusTv(current => current ? { ...current, open: false } : null)}
-                onRefresh={shelfStatus.refresh} refreshing={shelfStatus.refreshing} refreshError={shelfStatus.error}
+                onRefresh={focusedSlot.feed.refresh} refreshing={focusedSlot.feed.refreshing} refreshError={focusedSlot.feed.error}
                 mediaIssue={focusedMediaIssue}
                 compactTv={<ShelfStatusTv assignment={focusedStatusTv.assignment}
                   profile={getCrtProfile(focusedStatusTv.collectibleId)!} service={focusedService}
-                  presentation={focusedSlot.presentation} loading={Boolean(shelfStatus.loading && !shelfStatus.current)}
-                  error={shelfStatus.error} stale={Boolean(shelfStatus.stale)} reduceMotion={Boolean(reduceMotion)}
+                  presentation={focusedSlot.presentation} loading={focusedSlot.feed.loading}
+                  error={focusedSlot.feed.error} stale={focusedSlot.feed.stale} reduceMotion={Boolean(reduceMotion)}
                   mediaId={`focused-${focusedStatusTv.slotId}`}
                   onMediaStatusChange={onStatusMediaChange} />}
               />
@@ -1780,9 +1792,9 @@ export default function Home() {
                                                   reduceMotion={Boolean(reduceMotion)}
                                                   mediaId={`shelf-${slot.id}`}
                                                   onMediaStatusChange={onStatusMediaChange}
-                                                  loading={Boolean(shelfStatus.loading && !shelfStatus.current)}
-                                                  error={shelfStatus.error}
-                                                  stale={Boolean(shelfStatus.stale)}
+                                                  loading={statusSlot?.feed.loading ?? true}
+                                                  error={statusSlot?.feed.error ?? null}
+                                                  stale={statusSlot?.feed.stale ?? false}
                                                   signalMode={statusSignalMode}
                                                   signalDirection={tvSignalTransition.direction}
                                                   signalActivating={visionEyeActivating && statusSignalMode === "active"}
@@ -1839,7 +1851,7 @@ export default function Home() {
                                           }}
                                           onPointerLeave={event => { event.currentTarget.style.transform = ""; }}
                                         >
-                                          <RoomWindow />
+                                          <RoomWindow peek={room.peek} />
                                         </a>
                                       ) : (
                                         <div

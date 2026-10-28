@@ -11,7 +11,7 @@ import { getStatusVideo } from "../../components/status/status-video";
 import * as videos from "../../components/status/status-video";
 import { deriveShelfTvPresentation } from "../../components/status/status-presentation";
 
-const assignment = { channel: "CH 01", serviceId: "ascend-core" } as const;
+const assignment = { channel: "CH 01", serviceId: "claude-cli" } as const;
 const profile = {
   collectibleId: "test-tv",
   label: "Test TV",
@@ -20,7 +20,7 @@ const profile = {
   screen: { top: "0", left: "0", width: "100%", height: "100%", radius: "0" },
 };
 const service = {
-  serviceId: "ascend-core",
+  serviceId: "claude-cli",
   instanceId: "core-local-1",
   serviceType: "agent" as const,
   state: "working" as const,
@@ -129,7 +129,7 @@ test("the TV control accessible name includes instance, lifecycle, freshness, an
     nowMs: Date.parse(service.lastHeartbeatAt) + 31_000 });
   const label = getShelfTvAccessibleLabel(assignment, presentation, "unavailable");
   const markup = renderToStaticMarkup(createElement("button", { "aria-label": label }, "Open details"));
-  assert.match(markup, /aria-label="Open CH 01 Ascend Core status details\. Ascend Core, instance core-local-1\. Last known working\./);
+  assert.match(markup, /aria-label="Open CH 01 Claude status details\. Claude, instance core-local-1\. Last known working\./);
   assert.match(markup, /The status report is stale\. Latest report: 31 seconds ago/);
   assert.match(markup, /Status video unavailable/);
   const unavailable = deriveShelfTvPresentation({ service: null, loading: false, error: "unavailable", nowMs: 0 });

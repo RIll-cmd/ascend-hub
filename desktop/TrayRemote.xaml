@@ -252,7 +252,7 @@
         <Rectangle x:Name="Accent" Fill="#5F5E5A" RadiusX="2" RadiusY="2"/>
         <StackPanel Grid.Column="1" Margin="8,6,8,5">
           <DockPanel Margin="0,0,0,4">
-            <TextBlock x:Name="Channel" Text="CH 05" FontSize="10" Foreground="#8F8578" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+            <TextBlock x:Name="Channel" Text="CH 01" FontSize="10" Foreground="#8F8578" DockPanel.Dock="Left" VerticalAlignment="Center"/>
             <Border x:Name="BugPill" CornerRadius="3" Padding="5,1" Background="#2A211B" HorizontalAlignment="Right">
               <StackPanel Orientation="Horizontal">
                 <Ellipse x:Name="BugDot" Width="6" Height="6" Fill="#888780" Margin="0,0,4,0" VerticalAlignment="Center"/>

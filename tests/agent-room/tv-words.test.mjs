@@ -13,5 +13,5 @@ const session = () => ({
 test('the room can read the TV words without TypeScript', () => {
   const scene = roomScene(session(), null);
   const s = tvStatus({ id: 'claude', name: 'Claude', color: '#d97757', state: 'busy', activity: 'editing', since: '2026-10-27T10:00:00Z', roles: ['coder'] }, scene, graphicFor('claude', 'busy', scene), Date.parse('2026-10-27T10:04:30Z'));
-  assert.deepEqual([s.channel, s.bug, s.headline, s.sub], ['CH 05', 'LIVE', 'CLAUDE · CODING', 'task 2/3 · Login form · 4m']);
+  assert.deepEqual([s.channel, s.bug, s.headline, s.sub], ['CH 01', 'LIVE', 'CLAUDE · CODING', 'task 2/3 · Login form · 4m']);
 });

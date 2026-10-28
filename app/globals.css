@@ -924,6 +924,9 @@ a.framed-poster { display: block; color: inherit; cursor: pointer; }
 .agent-auxiliary-panel__compact-tv { width: 100%; height:100%; aspect-ratio:1; container-type: size; }
 .agent-auxiliary-panel__compact-tv .crt-tv-wrapper { width: 100%; height: 100%; }
 .agent-auxiliary-panel__monitor .crt-tv-frame { filter: drop-shadow(0 18px 20px #000b); }
+/* Claude's TV: the iMac's teal trim turned to Claude's coral (#d97757). */
+.shelf-status-tv[data-service="claude-cli"] .crt-tv-frame { filter: hue-rotate(190deg) saturate(1.3) drop-shadow(0 12px 22px rgba(0, 0, 0, 0.9)); }
+.agent-auxiliary-panel__monitor .shelf-status-tv[data-service="claude-cli"] .crt-tv-frame { filter: hue-rotate(190deg) saturate(1.3) drop-shadow(0 18px 20px #000b); }
 .agent-auxiliary-panel__monitor .shelf-status-tv__bezel-label { font-size: clamp(8px, .72vw, 11px); }
 .agent-auxiliary-panel__compact-tv .shelf-status-tv__bezel-label { font-size: clamp(8px, .85vw, 11px); }
 .agent-auxiliary-panel__status-row, .agent-auxiliary-panel__list-item { display:flex; align-items:flex-start; gap:12px; min-width:0; padding:12px 14px; border:1px solid #393a35; background:#20211f; }
