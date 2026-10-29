@@ -110,7 +110,8 @@ export function scorecard(sessions, { now = Date.now(), days = 7 } = {}) {
       orchestrator.revisions += transcript.filter(m => m.from === 'room' && String(m.text ?? '').startsWith(REVISION)).length;
     }
 
-    for (const [id, use] of Object.entries(state.usage ?? {})) agent(id).tokens += Number(use?.tokens) || 0;
+    // A session's usage is per agent, not per role, so a lead's planning tokens would swamp its coding cost.
+    for (const [id, use] of Object.entries(state.usage ?? {})) if (id !== lead) agent(id).tokens += Number(use?.tokens) || 0;
 
     if (state.stage === 'rejected' || state.stage === 'stopped') {
       const before = (state.stageLog ?? []).map(s => s.stage).filter(s => s !== state.stage);

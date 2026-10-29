@@ -119,3 +119,12 @@ test('readSessions skips a corrupt state file', () => {
   assert.equal(sessions.length, 1);
   assert.equal(sessions[0].transcript.length, 1);
 });
+
+test('tokens an agent spent leading a session are not charged to its coding', () => {
+  const result = card([
+    session({ roles: { orchestrator: 'codex', coders: ['claude'], reviewer: null }, usage: { codex: { tokens: 9000 }, claude: { tokens: 1000 } }, tasks: [task()] }),
+    session({ roles: { orchestrator: 'claude', coders: ['codex'], reviewer: null }, usage: { codex: { tokens: 2000 } }, tasks: [task({ assignee: 'codex' })] }),
+  ]);
+  assert.equal(result.agents.codex.tokensPerPass, 2000);
+  assert.equal(result.agents.claude.tokensPerPass, 1000);
+});
