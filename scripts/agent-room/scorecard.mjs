@@ -42,13 +42,15 @@ const emptyAgent = () => ({
   tokensPerPass: null,
 });
 
-const isFirstTry = t => t.status === 'done' && (t.attempts ?? 0) === 0 && (t.rounds ?? 0) <= 1 && !t.reassigned;
+const isFirstTry = (t, moved) => t.status === 'done' && (t.attempts ?? 0) === 0 && (t.rounds ?? 0) <= 1 && !moved;
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 // Owner stops before any work started are the owner's choice, not an agent's result.
-function counted(state) {
-  const tasks = state.plan?.tasks ?? [];
-  return !(state.stage === 'stopped' && tasks.every(t => t.status === 'pending'));
+// stop() puts cut-off tasks back to pending, so started work shows in rounds, attempts, failures or an assign line.
+function counted(state, transcript) {
+  if (state.stage !== 'stopped') return true;
+  const started = t => t.status !== 'pending' || (t.rounds ?? 0) > 0 || (t.attempts ?? 0) > 0 || (t.failures?.length ?? 0) > 0;
+  return (state.plan?.tasks ?? []).some(started) || transcript.some(m => m.kind === 'assign');
 }
 
 function firstAssignee(transcript, taskId) {
@@ -67,7 +69,7 @@ export function scorecard(sessions, { now = Date.now(), days = 7 } = {}) {
   for (const { state, transcript = [] } of sessions) {
     const at = Date.parse(state.createdAt ?? '');
     if (from !== null && !(at >= from && at <= now)) continue;
-    if (!counted(state)) continue;
+    if (!counted(state, transcript)) continue;
     total += 1;
     const tasks = state.plan?.tasks ?? [];
     const reviewerId = state.roles?.reviewer ?? state.roles?.orchestrator ?? null;
@@ -75,7 +77,10 @@ export function scorecard(sessions, { now = Date.now(), days = 7 } = {}) {
     for (const t of tasks) {
       if (!t.assignee) continue;
       const coder = agent(t.assignee).coder;
-      const first = isFirstTry(t);
+      // An owner reassignment never sets `reassigned`, so the first assign line decides; a race is assigned to every coder at once.
+      const original = t.race || t.raced ? null : firstAssignee(transcript, t.id);
+      const moved = Boolean(t.reassigned) || (original !== null && original !== t.assignee);
+      const first = isFirstTry(t, moved);
       coder.tasks += 1;
       if (first) coder.firstTry += 1;
       if (t.status === 'done') coder.done += 1;
@@ -85,10 +90,7 @@ export function scorecard(sessions, { now = Date.now(), days = 7 } = {}) {
       }
       if ((t.keptGoing ?? 0) > 0 || (t.extraRounds ?? 0) > 0) coder.stalls += 1;
       coder.failures += t.failures?.length ?? 0;
-      if (t.reassigned) {
-        const original = firstAssignee(transcript, t.id);
-        if (original && original !== t.assignee) agent(original).coder.reassignedAway += 1;
-      }
+      if (original && original !== t.assignee) agent(original).coder.reassignedAway += 1;
       const role = t.role || 'general';
       const cell = ((byRole[role] ??= {})[t.assignee] ??= { tasks: 0, firstTry: 0 });
       cell.tasks += 1;

@@ -46,7 +46,7 @@ test('tasks without a role count as general', () => {
 });
 
 test('owner-stopped sessions with no started task are left out', () => {
-  const result = card([session({ stage: 'stopped', tasks: [task({ status: 'pending' })] })]);
+  const result = card([session({ stage: 'stopped', tasks: [task({ status: 'pending', rounds: 0 })] })]);
   assert.equal(result.sessions, 0);
   assert.deepEqual(result.endings, []);
 });
@@ -153,4 +153,37 @@ test('the weekly push goes out once, only when ntfy is set up', async () => {
   await new Promise(r => setTimeout(r, 10));
   assert.equal(calls.length, 1);
   assert.match(calls[0].body, /^Agent scorecard, last 7 days:/);
+});
+
+test('a session stopped after work started is scored and listed as ended badly', () => {
+  const result = card([session({ stage: 'stopped', tasks: [task({ status: 'pending', attempts: 1, failures: ['checks failed'] })] })]);
+  assert.equal(result.sessions, 1);
+  assert.equal(result.agents.claude.coder.failures, 1);
+  assert.equal(result.endings.length, 1);
+  const oldStyle = card([session({ stage: 'stopped', tasks: [{ id: '1', assignee: 'claude', status: 'pending' }],
+    transcript: [{ seq: 4, from: 'room', kind: 'assign', to: ['claude'], text: 'Task 1: T → Claude' }] })]);
+  assert.equal(oldStyle.sessions, 1, 'an assign line shows work started in sessions without rounds');
+});
+
+test('an owner reassignment charges the first assignee even without the reassigned flag', () => {
+  const result = card([session({
+    tasks: [task({ assignee: 'codex' })],
+    transcript: [
+      { seq: 5, from: 'room', kind: 'assign', to: ['claude'], text: 'Task 1: T → Claude' },
+      { seq: 8, from: 'room', text: 'Owner reassigned task 1 to Codex.' },
+      { seq: 9, from: 'room', kind: 'assign', to: ['codex'], text: 'Task 1: T → Codex' },
+    ],
+  })]);
+  assert.equal(result.agents.claude.coder.reassignedAway, 1);
+  assert.equal(result.agents.codex.coder.firstTry, 0);
+});
+
+test('a race won by another coder is not a reassignment', () => {
+  const result = card([session({
+    roles: { orchestrator: 'agy', coders: ['codex', 'claude'], reviewer: null },
+    tasks: [task({ assignee: 'claude', race: true, raced: { winner: 'claude' } })],
+    transcript: [{ seq: 5, from: 'room', kind: 'assign', to: ['codex', 'claude'], text: 'Task 1: T → raced by Codex, Claude, each in its own worktree.' }],
+  })]);
+  assert.equal(result.agents.codex.coder.reassignedAway, 0);
+  assert.equal(result.agents.claude.coder.firstTry, 1);
 });
