@@ -3,7 +3,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AGENT_IDS } from './parse.mjs';
 import { AGENT_NAMES } from './prompts.mjs';
-import { readJson } from './store.mjs';
+import { phonePush } from './notify.mjs';
+import { readJson, writeJsonAtomic } from './store.mjs';
 
 const SESSION_ID = /^\d+-[0-9a-f]{6}$/;
 const DAY_MS = 86_400_000;
@@ -139,4 +140,38 @@ export function scorecard(sessions, { now = Date.now(), days = 7 } = {}) {
     window: { days, from: from === null ? null : new Date(from).toISOString(), to: new Date(now).toISOString() },
     sessions: total, agents, byRole, endings, weekly,
   };
+}
+
+// ISO 8601 week of a local date, such as 2026-W45: the week belongs to the year of its Thursday.
+function isoWeek(date) {
+  const weekday = (date.getDay() + 6) % 7;
+  const thursday = new Date(date.getFullYear(), date.getMonth(), date.getDate() - weekday + 3);
+  const firstThursday = new Date(thursday.getFullYear(), 0, 4);
+  const week = 1 + Math.round(((thursday - firstThursday) / DAY_MS - 3 + ((firstThursday.getDay() + 6) % 7)) / 7);
+  return `${thursday.getFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+const weeklyFile = (dataDir, key) => join(dataDir, 'scorecard', `${key}.json`);
+
+// From Monday 09:00 local until the week's summary is saved; a room that was off on Monday catches up later that week.
+export function weeklyDue(dataDir, now = new Date()) {
+  const weekday = (now.getDay() + 6) % 7;
+  const mondayNine = new Date(now.getFullYear(), now.getMonth(), now.getDate() - weekday, 9);
+  const key = isoWeek(now);
+  return now >= mondayNine && !existsSync(weeklyFile(dataDir, key)) ? key : null;
+}
+
+export function markWeekly(dataDir, key, lines) {
+  writeJsonAtomic(weeklyFile(dataDir, key), { key, at: new Date().toISOString(), lines });
+}
+
+// One push a week with last week's lines; nothing without notify.ntfy. Returns whether it sent.
+export function sendWeekly(dataDir, settings, fetchImpl = globalThis.fetch, now = new Date()) {
+  const key = weeklyDue(dataDir, now);
+  if (!key || !settings.notify?.ntfy) return false;
+  const { weekly } = scorecard(readSessions(dataDir), { now: now.getTime(), days: 7 });
+  const lines = weekly.length ? weekly : ['No agent work this week.'];
+  phonePush(settings.notify, ['Agent scorecard, last 7 days:', ...lines].join('\n'), fetchImpl);
+  markWeekly(dataDir, key, lines);
+  return true;
 }

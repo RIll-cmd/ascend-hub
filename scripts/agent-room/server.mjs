@@ -14,7 +14,7 @@ import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
 import { attentionNotifier, phonePush } from './notify.mjs';
 import { replyWatcher } from './phone.mjs';
 import { RoomQueue } from './queue.mjs';
-import { readSessions, scorecard } from './scorecard.mjs';
+import { readSessions, scorecard, sendWeekly } from './scorecard.mjs';
 import { sessionDigest, sessionMarkdown } from './export.mjs';
 import { LIVE_SCREEN, RoomSession, TERMINAL } from './session.mjs';
 import { ghToken, stageSkill } from './github.mjs';
@@ -436,6 +436,11 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
   refreshProbes();
   const queueTimer = setInterval(runQueue, queueMs);
   queueTimer.unref();
+  // The Monday scorecard push; a failure is only logged, it must never take the room down.
+  const weeklyTimer = setInterval(() => {
+    try { sendWeekly(dataDir, settings, fetchImpl); } catch (error) { console.warn(`Weekly scorecard skipped: ${error.message}`); }
+  }, 10 * 60_000);
+  weeklyTimer.unref();
   // Answers from the phone arrive by polling the private reply topic; the outcome goes back as a push.
   const replies = replyWatcher({
     notify: settings.notify, fetchImpl, everyMs: replyMs,
@@ -453,6 +458,7 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
     closed = true;
     clearInterval(idleTimer);
     clearInterval(queueTimer);
+    clearInterval(weeklyTimer);
     replies?.stop();
     rmSync(infoFile, { force: true });
     await new Promise(resolveClose => server.close(resolveClose));

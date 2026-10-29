@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { readSessions, scorecard } from '../../scripts/agent-room/scorecard.mjs';
+import { markWeekly, readSessions, scorecard, sendWeekly, weeklyDue } from '../../scripts/agent-room/scorecard.mjs';
 import { tempRoom } from './helpers.mjs';
 
 const NOW = Date.parse('2026-10-29T12:00:00Z');
@@ -127,4 +127,30 @@ test('tokens an agent spent leading a session are not charged to its coding', ()
   ]);
   assert.equal(result.agents.codex.tokensPerPass, 2000);
   assert.equal(result.agents.claude.tokensPerPass, 1000);
+});
+
+test('weekly is due from Monday 9:00 local once per week', () => {
+  const { dataDir } = tempRoom();
+  assert.equal(weeklyDue(dataDir, new Date(2026, 10, 2, 8, 59)), null);
+  assert.equal(weeklyDue(dataDir, new Date(2026, 10, 2, 9, 0)), '2026-W45');
+  markWeekly(dataDir, '2026-W45', ['Claude: 1 task']);
+  assert.equal(weeklyDue(dataDir, new Date(2026, 10, 2, 9, 5)), null);
+  assert.equal(weeklyDue(dataDir, new Date(2026, 10, 11, 7, 0)), '2026-W46', 'a Wednesday whose week was missed still sends');
+  assert.equal(weeklyDue(dataDir, new Date(2026, 11, 28, 9, 0)), '2026-W53');
+  assert.equal(weeklyDue(dataDir, new Date(2027, 0, 4, 9, 0)), '2027-W01');
+});
+
+test('the weekly push goes out once, only when ntfy is set up', async () => {
+  const { dataDir } = tempRoom();
+  const calls = [];
+  const fetchImpl = async (url, init) => { calls.push({ url, body: String(init.body) }); return { ok: true }; };
+  const monday = new Date(2026, 10, 2, 10, 0);
+  assert.equal(sendWeekly(dataDir, {}, fetchImpl, monday), false);
+  assert.equal(calls.length, 0);
+  const notify = { notify: { ntfy: 'https://ntfy.sh/private-topic' } };
+  assert.equal(sendWeekly(dataDir, notify, fetchImpl, monday), true);
+  assert.equal(sendWeekly(dataDir, notify, fetchImpl, monday), false);
+  await new Promise(r => setTimeout(r, 10));
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].body, /^Agent scorecard, last 7 days:/);
 });
