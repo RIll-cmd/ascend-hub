@@ -233,3 +233,27 @@ test('scorecard answers for 7 days by default and refuses bad days', async () =>
     await room.close();
   }
 });
+
+test('notify pushes through ntfy only when it is set up', async () => {
+  for (const ntfy of ['https://ntfy.sh/t', null]) {
+    const { dataDir, buildsRoot } = tempRoom();
+    const pushed = [];
+    const fetchImpl = async (url, init) => { pushed.push({ url, body: init?.body }); return { ok: true }; };
+    const settings = { ...testSettings(buildsRoot), ...(ntfy ? { notify: { ntfy } } : {}) };
+    const room = await startRoomServer({ dataDir, settings, probe: async () => ({ state: 'ready' }), fetchImpl, port: 0 });
+    const call = (body) => fetch(`http://127.0.0.1:${room.port}/notify`, {
+      method: 'POST', headers: { authorization: `Bearer ${room.token}`, 'content-type': 'application/json' }, body: JSON.stringify(body),
+    });
+    try {
+      const sent = await call({ text: 'Ascend: hello' });
+      assert.equal(sent.status, 200);
+      assert.deepEqual(await sent.json(), { sent: Boolean(ntfy) });
+      assert.equal(pushed.filter(push => push.url === ntfy).length, ntfy ? 1 : 0);
+      assert.equal((await call({ text: '' })).status, 400);
+      assert.equal((await call({ text: 'x'.repeat(201) })).status, 400);
+      assert.equal((await call({})).status, 400);
+    } finally {
+      await room.close();
+    }
+  }
+});

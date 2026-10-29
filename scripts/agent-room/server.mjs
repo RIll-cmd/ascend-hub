@@ -311,6 +311,12 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
         if (!SCORE_DAYS.has(days)) return send(400, { error: 'DAYS_INVALID', message: 'days must be 7, 30 or all.' });
         return send(200, { scorecard: scorecard(readSessions(dataDir), { days: days === 'all' ? null : Number(days) }) });
       }
+      if (route === 'POST /notify') {
+        const text = body?.text;
+        if (typeof text !== 'string' || !text.trim() || text.length > 200) return send(400, { error: 'NOTIFY_INVALID', message: 'text must be 1 to 200 characters.' });
+        phonePush(settings.notify, text, fetchImpl);
+        return send(200, { sent: Boolean(settings.notify?.ntfy) });
+      }
       if (route === 'GET /queue') return send(200, queue.view());
       if (route === 'POST /queue') {
         const item = queue.add(body?.body);
