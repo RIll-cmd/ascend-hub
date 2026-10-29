@@ -14,6 +14,7 @@ import { memoryPullRequest, readMemory, writeMemory } from './memory.mjs';
 import { attentionNotifier, phonePush } from './notify.mjs';
 import { replyWatcher } from './phone.mjs';
 import { RoomQueue } from './queue.mjs';
+import { readSessions, scorecard } from './scorecard.mjs';
 import { sessionDigest, sessionMarkdown } from './export.mjs';
 import { LIVE_SCREEN, RoomSession, TERMINAL } from './session.mjs';
 import { ghToken, stageSkill } from './github.mjs';
@@ -81,6 +82,7 @@ function leftoverWorktrees(dataDir) {
 }
 
 const SESSION_ID = /^\d+-[0-9a-f]{6}$/;
+const SCORE_DAYS = new Set(['7', '30', 'all']);
 
 const summaryOf = s => ({ id: s.id, mode: s.mode ?? 'build', project: s.project, stage: s.stage, title: String(s.task ?? '').split('\n')[0].slice(0, 80), createdAt: s.createdAt });
 const sessionIds = root => (existsSync(root) ? readdirSync(root).filter(id => SESSION_ID.test(id)).sort().reverse() : []);
@@ -303,6 +305,11 @@ export async function startRoomServer({ dataDir, settings, runTurn = realRunTurn
           agents.claude = await probeOne('claude').catch(error => ({ state: 'offline', detail: error.message }));
         }
         return send(200, { quota, quotaWarning: quotaWarning(quota), refreshed: { codex: Boolean(settings.codexHome), claude } });
+      }
+      if (route === 'GET /scorecard') {
+        const days = new URL(req.url, 'http://room').searchParams.get('days') ?? '7';
+        if (!SCORE_DAYS.has(days)) return send(400, { error: 'DAYS_INVALID', message: 'days must be 7, 30 or all.' });
+        return send(200, { scorecard: scorecard(readSessions(dataDir), { days: days === 'all' ? null : Number(days) }) });
       }
       if (route === 'GET /queue') return send(200, queue.view());
       if (route === 'POST /queue') {

@@ -209,3 +209,27 @@ test('GET /tray?refresh=1 starts stale probes without waiting for them', async (
     assert.deepEqual((await res.json()).tvs.map(t => t.state), ['checking', 'checking', 'checking']);
   } finally { await room.close(); }
 });
+
+test('scorecard answers for 7 days by default and refuses bad days', async () => {
+  const { room, call, dataDir } = await boot();
+  try {
+    const dir = join(dataDir, 'sessions', `${Date.now()}-abcdef`);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'state.json'), JSON.stringify({ id: 'x', mode: 'build', stage: 'done', createdAt: new Date().toISOString(),
+      roles: ROLES, plan: { tasks: [{ id: '1', assignee: 'claude', status: 'done', attempts: 0, rounds: 1 }] } }));
+    const week = await call('GET', '/scorecard');
+    assert.equal(week.status, 200);
+    const { scorecard } = await week.json();
+    assert.equal(scorecard.window.days, 7);
+    assert.equal(scorecard.agents.claude.coder.firstTry, 1);
+    assert.equal((await (await call('GET', '/scorecard?days=all')).json()).scorecard.window.days, null);
+    assert.equal((await (await call('GET', '/scorecard?days=30')).json()).scorecard.window.days, 30);
+    for (const bad of ['abc', '-1', '100000']) {
+      const res = await call('GET', `/scorecard?days=${bad}`);
+      assert.equal(res.status, 400);
+      assert.equal((await res.json()).error, 'DAYS_INVALID');
+    }
+  } finally {
+    await room.close();
+  }
+});
