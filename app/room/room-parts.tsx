@@ -21,6 +21,8 @@ import { inlineSummary } from "./markdown-parse";
 import { DiffView } from "./workflow-panel";
 import { ProducedFiles } from "./produced-files";
 import { SkillProposal } from "./skill-proposal";
+import { coderHint } from "./scorecard-view";
+import { useScorecard } from "./use-scorecard";
 
 export type Act = (path: string, body?: unknown) => Promise<void>;
 
@@ -102,6 +104,9 @@ function AgentSelect({ value, options, label, onChange }: { value: AgentId; opti
 export function RolesEditor({ value, onChange }: { value: Roles; onChange: (roles: Roles) => void }) {
   const toggleCoder = (id: AgentId) =>
     onChange({ ...value, coders: value.coders.includes(id) ? value.coders.filter(c => c !== id) : [...value.coders, id] });
+  // The start form has no single task role, so the hint is each agent's record across all its coder tasks.
+  const { card } = useScorecard("all");
+  const hints = AGENT_IDS.flatMap(id => coderHint(card, undefined, id) ?? []);
   return (
     <fieldset className="agent-room-roles">
       <legend>Roles</legend>
@@ -109,6 +114,7 @@ export function RolesEditor({ value, onChange }: { value: Roles; onChange: (role
       <span>Coders {AGENT_IDS.map(id => (
         <label key={id} className="agent-room-check"><Checkbox checked={value.coders.includes(id)} onCheckedChange={() => toggleCoder(id)} /> {AGENT_NAMES[id]}</label>
       ))}</span>
+      {hints.length > 0 && <small className="scorecard-hint">{hints.join(" · ")}</small>}
       <label>Reviewer{" "}
         <NativeSelect size="sm" aria-label="Reviewer" value={value.reviewer ?? ""} onChange={e => onChange({ ...value, reviewer: (e.target.value || null) as AgentId | null })}>
           <NativeSelectOption value="">None</NativeSelectOption>

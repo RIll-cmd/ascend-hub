@@ -99,3 +99,20 @@ export function rolesOf(agent: AgentId, roles: Roles | null): string[] {
 
 // One run of the session's check command; its full output is read on demand.
 export type CheckRun = { n: number; at: string; label: string; command: string; ok: boolean; code: number | null; ms: number; chars: number };
+
+// GET /api/room/scorecard: grades from saved sessions (scripts/agent-room/scorecard.mjs).
+export type AgentCard = {
+  coder: { tasks: number; firstTry: number; checksGreen: number; checksScored: number; stalls: number; reassignedAway: number; failures: number };
+  reviewer: { tasks: number; roundsAsked: number; laterFailed: number };
+  orchestrator: { sessions: number; done: number; rejected: number; revisions: number };
+  tokens: number;
+  tokensPerPass: number | null;
+};
+export type Scorecard = {
+  window: { days: 7 | 30 | null; from: string | null; to: string };
+  sessions: number;
+  agents: Partial<Record<AgentId, AgentCard>>;
+  byRole: Record<string, Partial<Record<AgentId, { tasks: number; firstTry: number }>>>;
+  endings: { id: string; at: string | null; stage: "rejected" | "stopped"; lastStage: string | null; task: string }[];
+  weekly: string[];
+};

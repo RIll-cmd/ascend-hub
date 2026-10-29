@@ -624,3 +624,15 @@
 .agent-room .room-right .agent-room-section .agent-room-section { margin: 0; }
 .room-now-narrow { display: none; }
 @media (max-width: 1100px) { .room-now-narrow { display: block; margin-bottom: 10px; } .room-now-wide { display: none; } }
+
+/* Agent scorecard (scorecard-panel.tsx) */
+.scorecard { display: grid; gap: 8px; font-size: 12px; }
+.scorecard-windows { display: flex; gap: 4px; }
+.scorecard-windows button { padding: 2px 8px; border: 1px solid rgba(127, 127, 127, 0.4); border-radius: 4px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.scorecard-windows button[aria-pressed="true"] { border-color: currentColor; font-weight: 700; }
+.scorecard-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.scorecard-table th, .scorecard-table td { padding: 2px 4px; text-align: right; border-bottom: 1px solid rgba(127, 127, 127, 0.2); }
+.scorecard-table th:first-child { text-align: left; }
+.scorecard-role, .scorecard-note, .scorecard-hint { margin: 0; opacity: 0.85; }
+.scorecard-weekly, .scorecard-endings ul { margin: 0; padding-left: 16px; }
+.scorecard-hint { display: block; font-size: 11px; }

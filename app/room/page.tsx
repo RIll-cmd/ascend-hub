@@ -14,6 +14,7 @@ import { deckView, freshPulses, latestSeq, type DeckPulse, type DeckView } from 
 import { Inspector, LimitsCard, RoomSidebar, SessionCard, TopBar, TranscriptDrawer, type HistoryItem } from "./room-frame";
 import { BriefComposer, BriefSettings, GateBar, SideSection, TaskBoard, Transcript, useBrief, VerdictPanel, WorktreeCleanup } from "./room-parts";
 import { RoleSets } from "./role-sets";
+import { ScorecardSection } from "./scorecard-panel";
 import { roomSound, soundPref } from "./room-sound";
 import { themePref } from "./theme";
 import { soundCues } from "./room-sound-cues";
@@ -232,6 +233,7 @@ export default function RoomPage() {
         <Inspector agent={focus} view={view} session={session} pinned={selected !== null} onSelect={id => setSelected(current => (current === id ? null : id))} />
         {!offline && <QueuePanel act={act} view={queue} reload={reloadQueue} />}
         {composing && <WorktreeCleanup />}
+        {!offline && <ScorecardSection />}
         <SettingsSection quota={status?.quota} />
       </aside>
       <TranscriptDrawer open={drawer} onClose={closeDrawer} messages={messages} />
