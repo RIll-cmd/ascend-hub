@@ -435,6 +435,6 @@ desktop/tests/Test-SessionReplacement.ps1
 
 ## License and credits
 
-This repository has no license file yet, so default copyright applies: you may read the code, but reuse needs the owner's permission.
+The code is released under the [MIT License](LICENSE). The license does not cover third-party artwork and media in `public/`.
 
 Built with React 19, TypeScript, Vinext (Vite), Tailwind CSS, Three.js and Framer Motion. The Agent Room's controls are [neobrutalism.dev](https://www.neobrutalism.dev/) components (MIT, see `components/neo/LICENSE`). Third-party reference artwork and media keep their own files and notices; their presence here does not grant redistribution rights.
