@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { register } from "node:module";
 import { fileURLToPath } from "node:url";
 import { startAgentRoom } from "./agent-room/launch.mjs";
 import { isBuildFresh, readSourceStamp, writeBuildStamp } from "./build-stamp.mjs";
@@ -27,6 +28,7 @@ if (command === "serve" && !managedLinux) {
     if (built.status !== 0) process.exit(built.status ?? 1);
     writeBuildStamp(root, stamp);
   }
+  register("./cloudflare-stub-hook.mjs", import.meta.url);
   startAgentRoom();
 }
 

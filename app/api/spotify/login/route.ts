@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     redirect_uri: redirectUri,
     show_dialog: "true",
   });
-  const state = randomBytes(32).toString("base64url");
+  const state = Buffer.from(randomBytes(32)).toString("base64url");
   params.set("state", state);
 
   const response = NextResponse.redirect(`https://accounts.spotify.com/authorize?${params.toString()}`);
