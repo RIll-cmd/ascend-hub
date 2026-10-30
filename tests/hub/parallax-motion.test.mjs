@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizedPointer, dampedAxis } from "../components/ui/parallax-motion.ts";
+import { normalizedPointer, dampedAxis } from "../../components/ui/parallax-motion.ts";
 
 test("pointer coordinates use the stage center and clamp outside its bounds", () => {
   const rect = { left: 100, top: 50, width: 400, height: 200 };

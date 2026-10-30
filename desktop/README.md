@@ -68,7 +68,7 @@ The supervisor check uses isolated authenticated loopback fixture children, cove
 Additional checks:
 
 ```powershell
-powershell.exe -NoProfile -STA -File desktop/tests/Test-LauncherLayout.ps1 -AuditDirectory docs/audits/tv-launcher-assets
+powershell.exe -NoProfile -STA -File desktop/tests/Test-LauncherLayout.ps1 -AuditDirectory scratch/launcher-audit
 powershell.exe -NoProfile -STA -File desktop/tests/Test-NativeLaunchers.ps1 -PythonExe C:/Python314/python.exe
 powershell.exe -NoProfile -File desktop/tests/Test-Installer.ps1
 ```

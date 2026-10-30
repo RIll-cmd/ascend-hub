@@ -42,6 +42,6 @@
   ],
   "exclude": [
     "node_modules",
-    "examples"
+    "scratch"
   ]
 }

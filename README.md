@@ -301,9 +301,9 @@ Test-Path -LiteralPath $agyWorkspace   # must be True
 & 'D:\ascend_hub\scripts\status-adapters\antigravity-status.ps1' -Workspace $agyWorkspace
 ```
 
-Submit `Compute 2 + 2 and reply with the number only. Do not use tools.` and watch the TV go `offline → working → idle`. An interrupted run (`Ctrl+C`) is recorded as interrupted or abandoned, never as completed. If the workspace check returns `False`, follow the [Antigravity setup guide](docs/antigravity-cli-status-adapter.md) instead of installing hooks elsewhere.
+Submit `Compute 2 + 2 and reply with the number only. Do not use tools.` and watch the TV go `offline → working → idle`. An interrupted run (`Ctrl+C`) is recorded as interrupted or abandoned, never as completed. If the workspace check returns `False`, fix `$agyWorkspace` instead of installing hooks elsewhere.
 
-Each agent needs its own instance-bound producer credential, stored outside this repository. Keep `scripts/status-adapters/` paths stable, because installed hooks reference them. Full guides: [Codex adapter](docs/codex-status-adapter.md), [Antigravity adapter](docs/antigravity-cli-status-adapter.md).
+Each agent needs its own instance-bound producer credential, stored outside this repository. Keep `scripts/status-adapters/` paths stable, because installed hooks reference them.
 
 </details>
 
@@ -414,8 +414,7 @@ desktop/tests/Test-SessionReplacement.ps1
 | `desktop/` | Windows launcher, installer and supervisor |
 | `public/` | Artwork, fonts, videos and 3D models |
 | `tests/` | Agent Room, Hub, status, adapter and media tests |
-| `docs/` | Roadmap, operator guides, audits and design references |
-| `vendor/`, `build/`, `worker/` | Vendored code, build plugins and the Worker entry point |
+| `docs/` | Screenshots and design references |
 
 ## Security and privacy
 
@@ -431,16 +430,11 @@ desktop/tests/Test-SessionReplacement.ps1
 
 ## Documentation
 
-- [Roadmap](docs/ROADMAP.md): milestones M1–M6 and what is next
 - [Desktop launcher](desktop/README.md)
-- [Codex CLI status adapter](docs/codex-status-adapter.md) and [Antigravity CLI status adapter](docs/antigravity-cli-status-adapter.md)
-- [Status Shelf architecture](<future ai implementation.md>)
-- [Phase 3 audit](docs/phase-3-local-ai-status-adapter-audit.md) and [implementation status](docs/phase-3-implementation-status.md)
-- [Development, hosting and optional database setup](docs/development-and-hosting.md)
 - [Design references](docs/design/README.md)
 
 ## License and credits
 
 This repository has no license file yet, so default copyright applies: you may read the code, but reuse needs the owner's permission.
 
-Built with React 19, TypeScript, Vinext (Vite), Tailwind CSS, Three.js and Framer Motion. The Agent Room's controls are [neobrutalism.dev](https://www.neobrutalism.dev/) components (MIT, see `components/neo/LICENSE`). Third-party reference artwork, media and vendored code keep their own files and notices; their presence here does not grant redistribution rights.
+Built with React 19, TypeScript, Vinext (Vite), Tailwind CSS, Three.js and Framer Motion. The Agent Room's controls are [neobrutalism.dev](https://www.neobrutalism.dev/) components (MIT, see `components/neo/LICENSE`). Third-party reference artwork and media keep their own files and notices; their presence here does not grant redistribution rights.

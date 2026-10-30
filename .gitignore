@@ -55,9 +55,6 @@ next-env.d.ts
 /.wrangler/
 # Checkout-local execution profile and tool state; never publish them.
 /.sites-runtime/
-/.agents/
-/.codex/
-/.cursor/
 /outputs/
 /work/
 /.worktrees/
@@ -67,15 +64,4 @@ next-env.d.ts
 
 # scratch and inspection artifacts
 /scratch/
-# Malformed drive-path artifact created by local tooling.
-/D/
 *.bak
-/*crop*.png
-/*alignment*.png
-/trial_screen_crop.png
-/border-h.avif
-/room_tv_crop.png
-/tv_screen_im1_crop.png
-
-# Brainstorming companion mockups
-/.superpowers/

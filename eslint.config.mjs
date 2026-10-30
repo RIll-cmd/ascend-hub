@@ -12,7 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Ignore local agent tools, throwaway artifacts, worktrees, and vendored code.
+    // Ignore local agent tools, throwaway artifacts, worktrees.
     ".agents/**",
     ".codex/**",
     ".cursor/**",
@@ -22,13 +22,12 @@ const eslintConfig = defineConfig([
     ".worktrees/**",
     "scratch/**",
     "outputs/**",
-    "vendor/**",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
     rules: {
       // These files are vendored verbatim from shadcn@4.17.0. Keep the
-      // registry source intact while applying the stricter rules to Site code.
+      // registry source intact while applying the stricter rules to app code.
       "@typescript-eslint/no-unused-vars": "off",
       "react-hooks/purity": "off",
       "react-hooks/set-state-in-effect": "off",
