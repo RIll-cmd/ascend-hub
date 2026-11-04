@@ -16,8 +16,14 @@ Codex, Claude and Antigravity plan, build, review and merge as a team in the Age
 
 </div>
 
+## Demo
+
+<p align="center"><a href="docs/demo/hub-demo.mp4"><img src="docs/demo/hub-demo-poster.jpg" width="720" alt="Watch the 77-second demo" /></a></p>
+<p align="center"><b>▶ <a href="docs/demo/hub-demo.mp4">Watch the 77-second demo</a></b><br /><em>A real Agent Room session: the limits, role sets and skills, the owner gates, the build, and a skill the agents wrote. Voice-over made with ElevenLabs.</em></p>
+
 ## Contents
 
+- [Demo](#demo)
 - [What it is](#what-it-is)
 - [Features](#features)
 - [Screenshots](#screenshots)
