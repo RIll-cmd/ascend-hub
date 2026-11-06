@@ -18,8 +18,8 @@ Codex, Claude and Antigravity plan, build, review and merge as a team in the Age
 
 ## Demo
 
-<p align="center"><a href="https://cdn.jsdelivr.net/gh/RIll-cmd/ascend-hub@main/docs/demo/hub-demo.mp4"><img src="docs/demo/hub-demo-poster.jpg" width="720" alt="Watch the 77-second demo" /></a></p>
-<p align="center"><b>▶ <a href="https://cdn.jsdelivr.net/gh/RIll-cmd/ascend-hub@main/docs/demo/hub-demo.mp4">Watch the 77-second demo</a></b><br /><em>A real Agent Room session: the limits, role sets and skills, the owner gates, the build, and a skill the agents wrote. Voice-over made with ElevenLabs.</em></p>
+<p align="center"><a href="https://cdn.jsdelivr.net/gh/cyrillcajucom/ascend-hub@main/docs/demo/hub-demo.mp4"><img src="docs/demo/hub-demo-poster.jpg" width="720" alt="Watch the 77-second demo" /></a></p>
+<p align="center"><b>▶ <a href="https://cdn.jsdelivr.net/gh/cyrillcajucom/ascend-hub@main/docs/demo/hub-demo.mp4">Watch the 77-second demo</a></b><br /><em>A real Agent Room session: the limits, role sets and skills, the owner gates, the build, and a skill the agents wrote. Voice-over made with ElevenLabs.</em></p>
 
 ## Contents
 
@@ -47,8 +47,8 @@ Ascend Hub is the front end of the Ascend ecosystem:
 | Project | Role |
 | --- | --- |
 | **Ascend Hub** (this repo) | The dashboard you look at: status shelf, Agent Room, media and limits. |
-| [Ascend Core](https://github.com/RIll-cmd/ascend-core) | The status authority. It stores each service's state; Hub only reads it. |
-| [Ascend Vision](https://github.com/RIll-cmd/ascend-vision) | The desktop assistant. It can read Agent Room questions aloud and take spoken answers. |
+| [Ascend Core](https://github.com/cyrillcajucom/ascend-core) | The status authority. It stores each service's state; Hub only reads it. |
+| [Ascend Vision](https://github.com/cyrillcajucom/ascend-vision) | The desktop assistant. It can read Agent Room questions aloud and take spoken answers. |
 
 ```mermaid
 flowchart LR
@@ -209,7 +209,7 @@ The big CRT on the home screen is a working television. Click its upper knob to 
   - [Codex CLI](https://github.com/openai/codex) (`npm i -g @openai/codex`, then `codex login`)
   - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (`npm i -g @anthropic-ai/claude-code`, then sign in inside `claude`)
   - Antigravity CLI (`agy`)
-- Optional: a running [Ascend Core](https://github.com/RIll-cmd/ascend-core) for live shelf status, and [Ascend Vision](https://github.com/RIll-cmd/ascend-vision) for voice gates.
+- Optional: a running [Ascend Core](https://github.com/cyrillcajucom/ascend-core) for live shelf status, and [Ascend Vision](https://github.com/cyrillcajucom/ascend-vision) for voice gates.
 
 > [!NOTE]
 > The Agent Room runs each CLI as you, with the account that CLI is signed into. Sessions count against the same subscription limits as your own terminal use, and API keys in your environment (such as `ANTHROPIC_API_KEY`) would be used instead of a subscription.
@@ -217,7 +217,7 @@ The big CRT on the home screen is a working television. Click its upper knob to 
 ## Quick start
 
 ```powershell
-git clone https://github.com/RIll-cmd/ascend-hub.git
+git clone https://github.com/cyrillcajucom/ascend-hub.git
 cd ascend-hub
 npm run install:ci
 npm run serve
